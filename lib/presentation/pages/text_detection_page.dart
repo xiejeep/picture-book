@@ -57,7 +57,7 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
   int? _selectedIndex;
   bool _isProcessing = false;
   String? _errorMessage;
-  bool _showOnlyEnglish = true;
+
   bool _isAiEnhancing = false;
   bool _showAiBanner = false;
   String _currentAiModel = AppConstants.defaultModel;
@@ -70,6 +70,10 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
   HandlePosition? _resizeHandle;
   Offset? _dragStartPoint;
   Rect? _dragStartRect;
+
+  bool _isTwoFingerPan = false;
+  Offset? _panStartFocalPoint;
+  Matrix4? _panStartMatrix;
 
   bool _drawMode = false;
   Rect? _tempRect;
@@ -197,6 +201,45 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
     return _displaySize.width / _imageSize.width;
   }
 
+  void _zoomIn() {
+    final currentScale = _controller.value.getMaxScaleOnAxis();
+    final newScale = (currentScale * 1.3).clamp(0.5, 4.0);
+    final scaleRatio = newScale / currentScale;
+    final newMatrix = _controller.value.clone();
+    final renderBox =
+        _interactiveViewerKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+    final centerX = renderBox.size.width / 2;
+    final centerY = renderBox.size.height / 2;
+    newMatrix.translate(centerX, centerY);
+    newMatrix.scale(scaleRatio, scaleRatio);
+    newMatrix.translate(-centerX, -centerY);
+    _controller.value = newMatrix;
+    setState(() {});
+  }
+
+  void _zoomOut() {
+    final currentScale = _controller.value.getMaxScaleOnAxis();
+    final newScale = (currentScale / 1.3).clamp(0.5, 4.0);
+    final scaleRatio = newScale / currentScale;
+    final newMatrix = _controller.value.clone();
+    final renderBox =
+        _interactiveViewerKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+    final centerX = renderBox.size.width / 2;
+    final centerY = renderBox.size.height / 2;
+    newMatrix.translate(centerX, centerY);
+    newMatrix.scale(scaleRatio, scaleRatio);
+    newMatrix.translate(-centerX, -centerY);
+    _controller.value = newMatrix;
+    setState(() {});
+  }
+
+  void _resetZoom() {
+    _controller.value = Matrix4.identity();
+    setState(() {});
+  }
+
   Offset _toImagePoint(Offset screenPoint) {
     final RenderBox? renderBox =
         _interactiveViewerKey.currentContext?.findRenderObject() as RenderBox?;
@@ -247,7 +290,7 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
     for (int i = _textBlocks.length - 1; i >= 0; i--) {
       final block = _textBlocks[i];
       if (block.isDeleted) continue;
-      if (_showOnlyEnglish && !_isEnglishText(block.text)) continue;
+      if (!_isEnglishText(block.text)) continue;
       if (block.boundingBox.contains(point)) {
         return i;
       }
@@ -258,7 +301,7 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
   List<TextBlockData> _getVisibleBlocks() {
     final result = _textBlocks.where((block) {
       if (block.isDeleted) return false;
-      if (_showOnlyEnglish && !_isEnglishText(block.text)) return false;
+      if (!_isEnglishText(block.text)) return false;
       return true;
     }).toList();
     return result;
@@ -289,9 +332,20 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
     });
   }
 
-  void _handlePanStart(DragStartDetails details) {
+  void _handleScaleStart(ScaleStartDetails details) {
+    if (details.pointerCount >= 2) {
+      setState(() {
+        _isTwoFingerPan = true;
+        _panStartFocalPoint = details.focalPoint;
+        _panStartMatrix = _controller.value.clone();
+      });
+      return;
+    }
+
+    _isTwoFingerPan = false;
+
     if (_drawMode) {
-      final imagePoint = _toImagePoint(details.globalPosition);
+      final imagePoint = _toImagePoint(details.focalPoint);
       setState(() {
         _drawStartPoint = imagePoint;
         _tempRect = null;
@@ -301,7 +355,7 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
 
     if (_selectedIndex == null || _selectedIndex! >= _textBlocks.length) return;
     
-    final imagePoint = _toImagePoint(details.globalPosition);
+    final imagePoint = _toImagePoint(details.focalPoint);
     final selectedBlock = _textBlocks[_selectedIndex!];
     
     final handle = _getHandleAtPoint(imagePoint, selectedBlock.boundingBox);
@@ -325,9 +379,18 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
     }
   }
 
-  void _handlePanUpdate(DragUpdateDetails details) {
+  void _handleScaleUpdate(ScaleUpdateDetails details) {
+    if (_isTwoFingerPan && _panStartFocalPoint != null && _panStartMatrix != null) {
+      final delta = details.focalPoint - _panStartFocalPoint!;
+      final currentScale = _controller.value.getMaxScaleOnAxis();
+      final newMatrix = _panStartMatrix!.clone();
+      newMatrix.translate(delta.dx / currentScale, delta.dy / currentScale);
+      _controller.value = newMatrix;
+      return;
+    }
+
     if (_drawMode && _drawStartPoint != null) {
-      final imagePoint = _toImagePoint(details.globalPosition);
+      final imagePoint = _toImagePoint(details.focalPoint);
       final rect = Rect.fromLTRB(
         _drawStartPoint!.dx.clamp(0.0, _imageSize.width),
         _drawStartPoint!.dy.clamp(0.0, _imageSize.height),
@@ -342,7 +405,7 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
 
     if (_selectedIndex == null || _selectedIndex! >= _textBlocks.length) return;
     
-    final imagePoint = _toImagePoint(details.globalPosition);
+    final imagePoint = _toImagePoint(details.focalPoint);
 
     if (_isResizing && _resizeHandle != null && _dragStartRect != null) {
       final delta = imagePoint - _dragStartPoint!;
@@ -444,7 +507,16 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
     }
   }
 
-  void _handlePanEnd(DragEndDetails details) {
+  void _handleScaleEnd(ScaleEndDetails details) {
+    if (_isTwoFingerPan) {
+      setState(() {
+        _isTwoFingerPan = false;
+        _panStartFocalPoint = null;
+        _panStartMatrix = null;
+      });
+      return;
+    }
+
     if (_drawMode && _tempRect != null) {
       final rect = _tempRect!;
       if (rect.width > 10 && rect.height > 10) {
@@ -550,12 +622,6 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
     });
   }
 
-  void _toggleEnglishFilter() {
-    setState(() {
-      _showOnlyEnglish = !_showOnlyEnglish;
-      _selectedIndex = null;
-    });
-  }
 
   Future<void> _showReRecognizeDialog() async {
     if (_selectedIndex == null || _selectedIndex! >= _textBlocks.length) return;
@@ -1309,9 +1375,6 @@ child: const Text('关闭'),
               tooltip: '更多操作',
               onSelected: (value) {
                 switch (value) {
-                  case 'toggle_language':
-                    _toggleEnglishFilter();
-                    break;
                   case 'restore':
                     _restoreAllBlocks();
                     break;
@@ -1339,16 +1402,6 @@ child: const Text('关闭'),
                 }
               },
               itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: 'toggle_language',
-                  child: Row(
-                    children: [
-                      Icon(_showOnlyEnglish ? Icons.language : Icons.translate, size: 20),
-                      const SizedBox(width: 8),
-                      Text(_showOnlyEnglish ? '显示全部' : '只显示英文'),
-                    ],
-                  ),
-                ),
                 if (_textBlocks.any((block) => block.isDeleted))
                   const PopupMenuItem(
                     value: 'restore',
@@ -1464,23 +1517,6 @@ child: const Text('关闭'),
                     const SizedBox(height: 16),
                     const Text('请选择或拍摄图片'),
                     const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.language, size: 16, color: Colors.blue),
-                        const SizedBox(width: 4),
-                        Text(
-                          '当前模式: ${_showOnlyEnglish ? "只识别英文" : "识别全部"}',
-                          style: const TextStyle(color: Colors.blue, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    TextButton.icon(
-                      onPressed: _toggleEnglishFilter,
-                      icon: Icon(_showOnlyEnglish ? Icons.translate : Icons.language),
-                      label: Text(_showOnlyEnglish ? '切换到识别全部' : '切换到只识别英文'),
-                    ),
                     const SizedBox(height: 20),
                     ElevatedButton.icon(
                       onPressed: () => _pickImage(ImageSource.gallery),
@@ -1510,13 +1546,13 @@ child: const Text('关闭'),
                           minScale: 0.5,
                           maxScale: 4.0,
                           panEnabled: false,
-                          scaleEnabled: true,
+                          scaleEnabled: false,
                           constrained: false,
                           child: GestureDetector(
                             onTapDown: _handleTapDown,
-                            onPanStart: _handlePanStart,
-                            onPanUpdate: _handlePanUpdate,
-                            onPanEnd: _handlePanEnd,
+                            onScaleStart: _handleScaleStart,
+                            onScaleUpdate: _handleScaleUpdate,
+                            onScaleEnd: _handleScaleEnd,
                             child: SizedBox(
                               width: _displaySize.width,
                               height: _displaySize.height,
@@ -1532,7 +1568,6 @@ child: const Text('关闭'),
                                       textBlocks: _textBlocks,
                                       selectedIndex: _selectedIndex,
                                       scale: _getScale(),
-                                      showOnlyEnglish: _showOnlyEnglish,
                                       imageSize: _imageSize,
                                       tempRect: _tempRect,
                                       drawMode: _drawMode,
@@ -1663,13 +1698,13 @@ child: const Text('关闭'),
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
-                                      _showOnlyEnglish ? Icons.language : Icons.translate,
+                                      Icons.language,
                                       size: 16,
                                       color: Colors.white,
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      '识别到 ${visibleBlocks.length} 个${_showOnlyEnglish ? "英文" : ""}文字区域，点击选择',
+                                      '识别到 ${visibleBlocks.length} 个英文文字区域，点击选择',
                                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                                     ),
                                   ],
@@ -1698,7 +1733,7 @@ child: const Text('关闭'),
                                     const Icon(Icons.info_outline, size: 16, color: Colors.white),
                                     const SizedBox(width: 4),
                                     Text(
-                                      '未找到${_showOnlyEnglish ? "英文" : ""}文字，点击右上角切换',
+                                      '未找到英文文字',
                                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                                     ),
                                   ],
@@ -1750,6 +1785,48 @@ child: const Text('关闭'),
                               ),
                             ),
                           ),
+                        Positioned(
+                          left: 8,
+                          bottom: 70,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.add, color: Colors.white, size: 20),
+                                  onPressed: _zoomIn,
+                                  padding: const EdgeInsets.all(4),
+                                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                                  child: Text(
+                                    '${(_controller.value.getMaxScaleOnAxis() * 100).toInt()}%',
+                                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.remove, color: Colors.white, size: 20),
+                                  onPressed: _zoomOut,
+                                  padding: const EdgeInsets.all(4),
+                                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                ),
+                                const Divider(color: Colors.white38, height: 1, indent: 6, endIndent: 6),
+                                IconButton(
+                                  icon: const Icon(Icons.fit_screen, color: Colors.white, size: 18),
+                                  onPressed: _resetZoom,
+                                  padding: const EdgeInsets.all(4),
+                                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                  tooltip: '重置缩放',
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     );
 },
@@ -1812,7 +1889,6 @@ class TextBlockPainter extends CustomPainter {
   final List<TextBlockData> textBlocks;
   final int? selectedIndex;
   final double scale;
-  final bool showOnlyEnglish;
   final Size imageSize;
   final Rect? tempRect;
   final bool drawMode;
@@ -1821,7 +1897,6 @@ class TextBlockPainter extends CustomPainter {
     required this.textBlocks,
     required this.selectedIndex,
     required this.scale,
-    required this.showOnlyEnglish,
     required this.imageSize,
     this.tempRect,
     this.drawMode = false,
@@ -1852,7 +1927,7 @@ class TextBlockPainter extends CustomPainter {
       final block = textBlocks[i];
       
       if (block.isDeleted) continue;
-      if (showOnlyEnglish && !_isEnglishText(block.text)) continue;
+      if (!_isEnglishText(block.text)) continue;
       
       final rect = block.boundingBox;
       final isSelected = i == selectedIndex;
@@ -1976,7 +2051,6 @@ class TextBlockPainter extends CustomPainter {
     return oldDelegate.textBlocks != textBlocks ||
         oldDelegate.selectedIndex != selectedIndex ||
         oldDelegate.scale != scale ||
-        oldDelegate.showOnlyEnglish != showOnlyEnglish ||
         oldDelegate.imageSize != imageSize ||
         oldDelegate.tempRect != tempRect ||
         oldDelegate.drawMode != drawMode;

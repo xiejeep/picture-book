@@ -2,10 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../data/models/text_block_model.dart';
-import '../../data/repositories/service_repositories.dart';
 import '../providers/repository_providers.dart';
-import '../providers/settings_provider.dart';
 import '../../core/constants/constants.dart';
 
 class TextBlockData {
@@ -28,7 +25,6 @@ class TextDetectionState {
   final bool isProcessing;
   final bool isAiEnhancing;
   final String? errorMessage;
-  final bool showOnlyEnglish;
   final bool drawMode;
   final Rect? tempRect;
   final bool hasChanges;
@@ -47,7 +43,6 @@ class TextDetectionState {
     this.isProcessing = false,
     this.isAiEnhancing = false,
     this.errorMessage,
-    this.showOnlyEnglish = true,
     this.drawMode = false,
     this.tempRect,
     this.hasChanges = false,
@@ -67,7 +62,6 @@ class TextDetectionState {
     bool? isProcessing,
     bool? isAiEnhancing,
     String? errorMessage,
-    bool? showOnlyEnglish,
     bool? drawMode,
     Rect? tempRect,
     bool? hasChanges,
@@ -92,7 +86,6 @@ class TextDetectionState {
       isProcessing: isProcessing ?? this.isProcessing,
       isAiEnhancing: isAiEnhancing ?? this.isAiEnhancing,
       errorMessage: clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
-      showOnlyEnglish: showOnlyEnglish ?? this.showOnlyEnglish,
       drawMode: drawMode ?? this.drawMode,
       tempRect: clearTempRect ? null : (tempRect ?? this.tempRect),
       hasChanges: hasChanges ?? this.hasChanges,
@@ -108,7 +101,7 @@ class TextDetectionState {
   List<TextBlockData> getVisibleBlocks() {
     return textBlocks.where((block) {
       if (block.isDeleted) return false;
-      if (showOnlyEnglish && !_isEnglishText(block.text)) return false;
+      if (!_isEnglishText(block.text)) return false;
       return true;
     }).toList();
   }
@@ -232,13 +225,6 @@ class TextDetectionNotifier extends Notifier<TextDetectionState> {
     
     state = state.copyWith(
       textBlocks: newBlocks,
-      clearSelectedIndex: true,
-    );
-  }
-
-  void toggleEnglishFilter() {
-    state = state.copyWith(
-      showOnlyEnglish: !state.showOnlyEnglish,
       clearSelectedIndex: true,
     );
   }
