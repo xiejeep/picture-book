@@ -73,8 +73,16 @@ class BooksNotifier extends Notifier<BooksState> {
           isDeleted: block['isDeleted'] as bool? ?? false,
         );
       }
-      return block as TextBlockModel;
-    }).cast<TextBlockModel>().toList();
+      final dynamic b = block;
+      if (b.boundingBox is Rect && b.text is String) {
+        return TextBlockModel.fromData(
+          boundingBox: b.boundingBox as Rect,
+          text: b.text as String,
+          isDeleted: (b.isDeleted as bool?) ?? false,
+        );
+      }
+      throw ArgumentError('Invalid text block type: ${block.runtimeType}');
+    }).toList();
     
     await ref.read(bookRepositoryProvider).addPageToBook(
       bookId,
