@@ -6,6 +6,7 @@ import '../../data/services/ai_service.dart';
 import '../../data/services/tts_service.dart';
 import '../../core/constants/constants.dart';
 import '../../core/theme/app_theme.dart';
+import 'ocr_results_table_page.dart';
 
 enum HandlePosition {
   topLeft,
@@ -22,11 +23,15 @@ class TextBlockData {
   Rect boundingBox;
   String text;
   bool isDeleted;
+  String? originalText;
+  String? aiEnhancedText;
 
   TextBlockData({
     required this.boundingBox,
     required this.text,
     this.isDeleted = false,
+    this.originalText,
+    this.aiEnhancedText,
   });
 }
 
@@ -177,6 +182,14 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
         _isProcessing = false;
         _hasChanges = true;
       });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('识别到 ${blocks.length} 个英文文字区域'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 2),
+        ),
+      );
     } catch (e) {
       setState(() {
         _errorMessage = '文字识别失败: $e';
@@ -580,12 +593,32 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
 
   void _deleteSelectedBlock() {
     if (_selectedIndex == null || _selectedIndex! >= _textBlocks.length) return;
-    
-    setState(() {
-      _textBlocks[_selectedIndex!].isDeleted = true;
-      _hasChanges = true;
-      _selectedIndex = null;
-    });
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('删除'),
+        content: const Text('确定要删除此文字块吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _textBlocks[_selectedIndex!].isDeleted = true;
+                _hasChanges = true;
+                _selectedIndex = null;
+              });
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _editSelectedBlock() {
@@ -626,6 +659,140 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
           ],
         );
       },
+    );
+  }
+
+  void _showHelpDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.help_outline, color: AppTheme.primaryColor),
+            const SizedBox(width: 8),
+            const Text('操作指南'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildHelpSection(
+                icon: Icons.zoom_in,
+                color: Colors.blue,
+                title: '缩放图片',
+                items: [
+                  '点击左侧 +/- 按钮放大/缩小',
+                  '双指拖动：平移图片位置',
+                  '点击适配按钮恢复原始大小',
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildHelpSection(
+                icon: Icons.open_with,
+                color: Colors.orange,
+                title: '移动文字块',
+                items: [
+                  '点击选中文字块',
+                  '切换到"拖动"模式',
+                  '单指在文字块内拖动即可移动',
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildHelpSection(
+                icon: Icons.open_in_full,
+                color: Colors.green,
+                title: '调整文字块大小',
+                items: [
+                  '选中文字块后默认为调整模式',
+                  '拖动边角的控制点调整大小',
+                  '拖动边缘中点调整单边',
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildHelpSection(
+                icon: Icons.edit,
+                color: Colors.purple,
+                title: '编辑文字',
+                items: [
+                  '点击右下角编辑按钮修改文字',
+                  '使用菜单可重新识别或AI强化',
+                  '点击删除按钮移除文字块',
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildHelpSection(
+                icon: Icons.draw,
+                color: Colors.red,
+                title: '添加新文字块',
+                items: [
+                  '点击顶部绘制按钮进入绘制模式',
+                  '在图片上拖动绘制矩形区域',
+                  '松开后输入文字内容',
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('知道了'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHelpSection({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required List<String> items,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                  fontSize: 15,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...items.map((item) => Padding(
+            padding: const EdgeInsets.only(left: 28, top: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('• ', style: TextStyle(fontSize: 13)),
+                Expanded(
+                  child: Text(
+                    item,
+                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                  ),
+                ),
+              ],
+            ),
+          )),
+        ],
+      ),
     );
   }
 
@@ -808,8 +975,10 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
       );
 
       final correctedText = correctedBlocks[0];
-      if (correctedText != null && correctedText != block.text) {
+      if (correctedText != null) {
         setState(() {
+          _textBlocks[_selectedIndex!].originalText ??= _textBlocks[_selectedIndex!].text;
+          _textBlocks[_selectedIndex!].aiEnhancedText = correctedText;
           _textBlocks[_selectedIndex!].text = correctedText;
           _hasChanges = true;
           _isAiEnhancing = false;
@@ -1069,10 +1238,13 @@ final confirm = await showDialog<bool>(
       for (int i = 0; i < visibleBlocks.length; i++) {
         final correctedText = correctedBlocks[i];
         debugPrint('处理visibleBlocks[$i]: 原文="${visibleBlocks[i].text}", AI修正="$correctedText"');
-        if (correctedText != null && correctedText != visibleBlocks[i].text) {
-          debugPrint('  更新visibleBlocks[$i].text: "${visibleBlocks[i].text}" -> "$correctedText"');
-          visibleBlocks[i].text = correctedText;
-          updatedCount++;
+        if (correctedText != null) {
+          visibleBlocks[i].originalText ??= visibleBlocks[i].text;
+          visibleBlocks[i].aiEnhancedText = correctedText;
+          if (correctedText != visibleBlocks[i].text) {
+            visibleBlocks[i].text = correctedText;
+            updatedCount++;
+          }
         }
       }
 
@@ -1203,6 +1375,43 @@ child: const Text('关闭'),
       _loadInitialData();
     }
     _loadCurrentModel();
+  }
+
+  Future<void> _navigateToResultsTable() async {
+    final visibleBlocks = _getVisibleBlocks();
+    if (visibleBlocks.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('没有可展示的文字块')),
+      );
+      return;
+    }
+
+    final result = await Navigator.push<List<TextBlockData>>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OcrResultsTablePage(
+          textBlocks: visibleBlocks,
+          imageFile: _imageFile,
+        ),
+      ),
+    );
+
+    if (result != null) {
+      setState(() {
+        for (final updated in result) {
+          final idx = _textBlocks.indexWhere((b) =>
+              !b.isDeleted &&
+              b.boundingBox == updated.boundingBox);
+          if (idx != -1) {
+            _textBlocks[idx].text = updated.text;
+            _textBlocks[idx].originalText = updated.originalText;
+            _textBlocks[idx].aiEnhancedText = updated.aiEnhancedText;
+            _textBlocks[idx].isDeleted = updated.isDeleted;
+          }
+        }
+        _hasChanges = true;
+      });
+    }
   }
 
   void _loadCurrentModel() {
@@ -1336,7 +1545,7 @@ child: const Text('关闭'),
         appBar: AppBar(
           title: Row(
             children: [
-              const Text('文字识别标注'),
+              const Text('识别'),
               if (_drawMode)
                 Container(
                   margin: const EdgeInsets.only(left: 8),
@@ -1365,6 +1574,18 @@ child: const Text('关闭'),
             ),
           ),
           actions: [
+            if (_imageFile != null)
+              IconButton(
+                icon: const Icon(Icons.help_outline),
+                onPressed: _showHelpDialog,
+                tooltip: '操作指南',
+              ),
+            if (_imageFile != null && visibleBlocks.isNotEmpty)
+              IconButton(
+                icon: const Icon(Icons.table_chart),
+                onPressed: _navigateToResultsTable,
+                tooltip: '查看结果表格',
+              ),
             if (_imageFile != null)
               IconButton(
                 icon: Icon(_drawMode ? Icons.touch_app : Icons.draw),
@@ -1675,38 +1896,7 @@ child: const Text('关闭'),
                             ),
                           ),
                         if (!_isProcessing && !_showAiBanner && !_drawMode && visibleBlocks.isNotEmpty)
-                          Positioned(
-                            top: 16,
-                            left: 0,
-                            right: 0,
-                            child: Center(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withOpacity(0.9),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.language,
-                                      size: 16,
-                                      color: Colors.white,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '识别到 ${visibleBlocks.length} 个英文文字区域，点击选择',
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
+                          const SizedBox.shrink(),
                         if (!_isProcessing && visibleBlocks.isEmpty && _textBlocks.isNotEmpty)
                           Positioned(
                             top: 16,
@@ -1765,42 +1955,67 @@ child: const Text('关闭'),
                             right: 0,
                             child: Center(
                               child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
+                                padding: const EdgeInsets.all(4),
                                 decoration: BoxDecoration(
-                                  color: Colors.purple.withOpacity(0.9),
+                                  color: Colors.black.withOpacity(0.7),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Text(
-                                      _editModeResize ? '调整大小' : '移动位置',
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                    ),
-                                    const SizedBox(width: 8),
                                     GestureDetector(
-                                      onTap: _toggleEditMode,
+                                      onTap: _editModeResize ? null : _toggleEditMode,
                                       child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                         decoration: BoxDecoration(
-                                          color: _editModeResize ? Colors.blue : Colors.orange,
-                                          borderRadius: BorderRadius.circular(12),
+                                          color: _editModeResize ? Colors.green : Colors.transparent,
+                                          borderRadius: BorderRadius.circular(16),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Icon(
-                                              _editModeResize ? Icons.open_in_full : Icons.open_with,
-                                              color: Colors.white,
-                                              size: 14,
+                                              Icons.open_in_full,
+                                              color: _editModeResize ? Colors.white : Colors.white54,
+                                              size: 16,
                                             ),
                                             const SizedBox(width: 4),
                                             Text(
-                                              _editModeResize ? '拖动' : '调整',
-                                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                              '调整大小',
+                                              style: TextStyle(
+                                                color: _editModeResize ? Colors.white : Colors.white54,
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    GestureDetector(
+                                      onTap: _editModeResize ? _toggleEditMode : null,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        decoration: BoxDecoration(
+                                          color: !_editModeResize ? Colors.orange : Colors.transparent,
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.open_with,
+                                              color: !_editModeResize ? Colors.white : Colors.white54,
+                                              size: 16,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              '移动位置',
+                                              style: TextStyle(
+                                                color: !_editModeResize ? Colors.white : Colors.white54,
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                             ),
                                           ],
                                         ),

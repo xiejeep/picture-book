@@ -148,62 +148,85 @@ class AiService {
     final base64Image = await _imageToBase64(imageFile);
 
     final blocksDescription = blocks.map((b) {
-      return '[${b.keys.first}] ${b.values.first}';
+      final text = b.values.first.replaceAll('\n', '\\n');
+      return '{"index":${b.keys.first},"text":"$text"}';
     }).join('\n');
 
     debugPrint('发送给AI的blocksDescription:\n$blocksDescription');
 
-    final prompt = '''You are cleaning text from a children's picture book. This is a TEXT PROCESSING task - you are NOT re-analyzing the image.
+    final prompt = '''TASK: Clean OCR text from children's picture book.
 
-Input blocks (${blocks.length} total, index 0-${blocks.length - 1}):
+INPUT COUNT: ${blocks.length} blocks (indices: 0, 1, 2, ... ${blocks.length - 1})
+OUTPUT COUNT: MUST be exactly ${blocks.length} blocks
+
+INPUT BLOCKS:
 $blocksDescription
 
-⚠️ IMAGE IS FOR REFERENCE ONLY:
-- The image helps you understand the visual context (e.g., this is a Minecraft book)
-- DO NOT let visual positions override the INPUT TEXT INDEX ORDER
-- DO NOT re-identify text from image - trust the INPUT blocks as authoritative
-- Your task: clean INPUT text blocks, NOT re-recognize from image
-- INPUT index sequence (0→1→2→...) is the ABSOLUTE AUTHORITY, not visual layout
+=== STRICT RULES ===
 
-🚨🚨🚨 ABSOLUTE NON-NEGOTIABLE RULES 🚨🚨🚨
+1. ONE-TO-ONE MAPPING (CRITICAL):
+   - Input has ${blocks.length} blocks → Output MUST have ${blocks.length} blocks
+   - Input index 0 → Output index 0
+   - Input index ${blocks.length - 1} → Output index ${blocks.length - 1}
+   - MISSING ANY INDEX = FAILURE
 
-1. ZERO MERGING/SKIPPING POLICY:
-   - Output EXACTLY ${blocks.length} items - count must be identical
-   - Each input block[i] MUST produce output block[i] at the SAME index
-   - Missing ANY index = INVALID response (even if content is duplicate)
+2. MULTI-LINE TEXT IS ONE BLOCK (CRITICAL):
+   - A block with multiple lines (shown as \\n in text) is ONE SINGLE BLOCK
+   - Example: {"index":5,"text":"sharpness\\nMore damage\\nMore drops"} is ONE block at index 5
+   - DO NOT split it into multiple indices
+   - DO NOT merge it with adjacent blocks
+   - Keep all \\n line breaks inside the block
 
-2. DUPLICATE CONTENT IS NORMAL - DO NOT SKIP:
-   - If block[34] and block[35] have identical text, output BOTH at their indices
-   - Example: Input block[34]="hello", block[35]="hello" → Output [{"index":34,"corrected":"hello"}, {"index":35,"corrected":"hello"}]
-   - NEVER merge identical blocks - they are separate visual regions
+3. NO MERGING, NO SKIPPING (CRITICAL):
+   - Each input block → ONE output block at same index
+   - Never combine two blocks into one
+   - NEVER skip any block
+   - If a block is meaningless (just "#", garbage text, etc.), output it with corrected="" (empty string)
+   - NEVER re-number indices - keep original index even if content is empty
+   - Example: If input has indices 0,1,2,3,4 and index 2 is "#", output MUST be 0,1,2,3,4 (not 0,1,3,4)
+
+=== CLEANING RULES ===
+1. Extract meaningful content:
+   - Identify actual sentences/words, ignore OCR noise
+   - Noise examples: "F#At", "FRA", "FAABMA!", "60t9!", "#7NNRHo" (random letters/symbols)
+   - Keep real words: "Netherite is super strong!" from "F#At\nNetherite is\nsuper strong!\nFAABMA!"
    
-3. INDEX SEQUENCE MUST BE CONTINUOUS:
-   - Indices must be: 0, 1, 2, 3, ... ${blocks.length - 1} in exact order
-   - NO gaps allowed: 0→1→2→...→${blocks.length - 1} (all present)
-   - NO reordering: output index must match input index precisely
+2. Remove decorative symbols: #, |, **, phonetic marks (/æ/), numbering
+   
+3. Remove meaningless line breaks:
+   - "Diamond is\nthe best!" → "Diamond is the best!" (one sentence)
+   - But keep meaningful structure: "sharpness\nMore damage" if they are list items
+   
+4. Remove Chinese characters - keep ONLY English
+   
+5. Trim whitespace. Empty result → return ""
 
-4. MULTI-LINE BLOCKS ARE SINGLE UNITS:
-   - block[4] "#\\nEnchanting Words |" = ONE block, NOT two
-   - Preserve \\n within blocks, but output at the SAME index
-   - Do NOT split multi-line blocks into multiple indices
+=== EXAMPLE (5 blocks shown, your actual input has ${blocks.length} blocks) ===
+{"index":0,"text":"Title"}
+{"index":1,"text":"First line\\nSecond line\\nThird line"}
+{"index":2,"text":"#"}
+{"index":3,"text":"Diamond is\\nthe best!"}
+{"index":4,"text":"netherite\\nF#At\\nFRA\\nNetherite is\\nsuper strong!\\nFAABMA!"}
 
-Cleaning rules (apply to each block independently):
-- Remove: ##, ||, |, **, decorative symbols, phonetic marks (/æ/), numbering (1., ②)
-- Remove Chinese text - keep ONLY English
-- Preserve \\n (line breaks) in multi-line blocks
-- Empty result → return ""
+Correct Output (5 items, indices 0-4):
+[{"index":0,"corrected":"Title"},{"index":1,"corrected":"First line\\nSecond line\\nThird line"},{"index":2,"corrected":""},{"index":3,"corrected":"Diamond is the best!"},{"index":4,"corrected":"Netherite is super strong!"}]
 
-CRITICAL EXAMPLES:
-✅ CORRECT: Input block[25]="#", block[26]="Title" → Output [{"index":25,"corrected":""}, {"index":26,"corrected":"Title"}]
-❌ WRONG: Input block[25]="#", block[26]="Title" → Output [{"index":25,"corrected":"#Title"}] ← MERGED!
+Note:
+- index 1: distinct lines → keep them
+- index 3: one sentence → remove line break
+- index 4: contains noise (F#At, FRA, FAABMA!) → extract only "Netherite is super strong!"
 
-✅ CORRECT: Input block[34]="same", block[35]="same" → Output [{"index":34,"corrected":"same"}, {"index":35,"corrected":"same"}]
-❌ WRONG: Input block[34]="same", block[35]="same" → Output [{"index":34,"corrected":"same"}] ← SKIPPED 35!
+WRONG Output (only 4 items, skipped index 2):
+[{"index":0,"corrected":"Title"},{"index":1,"corrected":"First line Second line Third line"},{"index":3,"corrected":"Diamond is the best!"},{"index":4,"corrected":"netherite FAt FRA Netherite is super strong FAABMA"}]
+↑ WRONG: skipped index 2, and kept noise in index 4
 
-Return ONLY JSON array with EXACTLY ${blocks.length} consecutive items:
-[{"index":0,"corrected":"..."},{"index":1,"corrected":"..."},...{"index":${blocks.length - 1},"corrected":"..."}]
+=== FINAL CHECK ===
+Before outputting, COUNT your results:
+- You MUST have exactly ${blocks.length} items
+- Indices MUST be: 0, 1, 2, 3, ... ${blocks.length - 1} (all present, no gaps)
 
-COUNT CHECK: Your array MUST have ${blocks.length} items. Count them before responding!''';
+Return ONLY this JSON object (no markdown, no explanation):
+{"blocks":[{"index":0,"corrected":"..."},{"index":1,"corrected":"..."},...{"index":${blocks.length - 1},"corrected":"..."}]}''';
 
     try {
       final response = await http.post(
@@ -226,6 +249,7 @@ COUNT CHECK: Your array MUST have ${blocks.length} items. Count them before resp
               ]
             }
           ],
+          'response_format': {'type': 'json_object'},
         }),
       );
 
@@ -239,39 +263,46 @@ COUNT CHECK: Your array MUST have ${blocks.length} items. Count them before resp
       
       debugPrint('AI返回的原始content: $content');
 
-final result = _parseResponse(content);
+final rawResult = _parseResponse(content);
       
 debugPrint('解析后的结果:');
-result.forEach((key, value) {
-debugPrint('  result[$key]: "$value"');
+rawResult.forEach((key, value) {
+  debugPrint('  result[$key]: "$value"');
 });
 
-if (result.length != blocks.length) {
-final missingIndices = <int>[];
-for (int i = 0; i < blocks.length; i++) {
-if (!result.containsKey(i)) {
-missingIndices.add(i);
-}
-}
+final result = <int, String>{};
 
-final inputExample = missingIndices.take(3).map((i) {
-final block = blocks[i];
-return 'block[$i]: "${block.values.first}"';
-}).join('\n');
+final isConsecutiveFromZero = () {
+  if (rawResult.length == 0) return false;
+  for (int i = 0; i < rawResult.length; i++) {
+    if (!rawResult.containsKey(i)) return false;
+  }
+  return true;
+}();
 
-throw Exception(
-'AI返回${result.length}个结果，需要${blocks.length}个\n'
-'缺失的index: ${missingIndices.join(', ')}\n'
-'缺失block示例:\n$inputExample\n'
-'可能原因: AI错误合并了多行文本块\n'
-'解决方法: 点击重试按钮重新处理'
-);
-}
-
-for (int i = 0; i < blocks.length; i++) {
-if (!result.containsKey(i)) {
-throw Exception('缺少index $i，请重新识别');
-}
+if (isConsecutiveFromZero && rawResult.length < blocks.length) {
+  debugPrint('检测到AI重新编号了index（连续0-${rawResult.length-1}），需要按顺序映射');
+  for (int i = 0; i < blocks.length; i++) {
+    final originalIndex = blocks[i].keys.first;
+    final originalText = blocks[i].values.first;
+    if (i < rawResult.length) {
+      result[originalIndex] = rawResult[i]!;
+    } else {
+      result[originalIndex] = originalText;
+      debugPrint('  填充超出范围的位置$i (原始index $originalIndex): "$originalText"');
+    }
+  }
+} else {
+  for (int i = 0; i < blocks.length; i++) {
+    final originalIndex = blocks[i].keys.first;
+    final originalText = blocks[i].values.first;
+    if (rawResult.containsKey(originalIndex)) {
+      result[originalIndex] = rawResult[originalIndex]!;
+    } else {
+      result[originalIndex] = originalText;
+      debugPrint('  填充缺失index $originalIndex: "$originalText"');
+    }
+  }
 }
 
 return result;
@@ -314,7 +345,21 @@ return result;
 
       final result = <int, String>{};
       for (final block in blocksList) {
-        final index = block['index'] as int;
+        final indexValue = block['index'];
+        int index;
+        if (indexValue is int) {
+          index = indexValue;
+        } else if (indexValue is String) {
+          final match = RegExp(r'\d+').firstMatch(indexValue);
+          if (match == null) {
+            debugPrint('无法解析index: $indexValue');
+            continue;
+          }
+          index = int.parse(match.group(0)!);
+        } else {
+          debugPrint('index类型错误: ${indexValue.runtimeType}');
+          continue;
+        }
         final corrected = block['corrected'] as String;
         result[index] = corrected;
       }

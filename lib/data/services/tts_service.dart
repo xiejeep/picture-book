@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -32,6 +33,7 @@ class TtsService {
   bool _isInitialized = false;
   bool _isSpeaking = false;
   String? _currentText;
+  Completer<void>? _speakCompleter;
 
   Future<void> initialize() async {
     if (_isInitialized) {
@@ -69,24 +71,32 @@ class TtsService {
       debugPrint('播放完成');
       _isSpeaking = false;
       _currentText = null;
+      _speakCompleter?.complete();
+      _speakCompleter = null;
     });
     
     _flutterTts.setCancelHandler(() {
       debugPrint('播放取消');
       _isSpeaking = false;
       _currentText = null;
+      _speakCompleter?.complete();
+      _speakCompleter = null;
     });
     
     _flutterTts.setErrorHandler((message) {
       debugPrint('播放错误: $message');
       _isSpeaking = false;
       _currentText = null;
+      _speakCompleter?.completeError(Exception(message));
+      _speakCompleter = null;
     });
 
     _audioPlayer.onPlayerComplete.listen((event) {
       debugPrint('GLM-TTS播放完成');
       _isSpeaking = false;
       _currentText = null;
+      _speakCompleter?.complete();
+      _speakCompleter = null;
       _cleanupAudioFile();
     });
 
@@ -112,6 +122,7 @@ class TtsService {
     }
 
     _currentText = text;
+    _speakCompleter = Completer<void>();
     
     final settings = StorageService.instance.getAiSettings();
     final speechRate = settings?.speechRate ?? AppConstants.systemTtsDefaultSpeed;
@@ -121,17 +132,23 @@ class TtsService {
     if (settings?.useGlmTts ?? false) {
       try {
         await _speakWithGlmTts(text, speechRate);
+        await _speakCompleter?.future;
       } catch (e) {
         if (e is GlmTtsException) {
           debugPrint('GLM-TTS失败，自动回退到Flutter TTS');
+          _speakCompleter = Completer<void>();
           await _speakWithFlutterTts(text);
+          await _speakCompleter?.future;
           rethrow;
         }
         debugPrint('GLM-TTS播放错误: $e，回退到Flutter TTS');
+        _speakCompleter = Completer<void>();
         await _speakWithFlutterTts(text);
+        await _speakCompleter?.future;
       }
     } else {
       await _speakWithFlutterTts(text);
+      await _speakCompleter?.future;
     }
   }
 
@@ -200,6 +217,8 @@ class TtsService {
       await _audioPlayer.stop();
       _isSpeaking = false;
       _currentText = null;
+      _speakCompleter?.complete();
+      _speakCompleter = null;
       await _cleanupAudioFile();
     }
   }
@@ -239,6 +258,8 @@ class TtsService {
     _isInitialized = false;
     _isSpeaking = false;
     _currentText = null;
+    _speakCompleter?.complete();
+    _speakCompleter = null;
     _flutterTts = FlutterTts();
     _audioPlayer = AudioPlayer();
   }

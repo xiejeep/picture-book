@@ -26,9 +26,9 @@ class OcrService {
     return true;
   }
 
-  Future<OcrResult?> recognizeText(File imageFile, {String script = 'latin'}) async {
+  Future<OcrResult?> recognizeText(File imageFile) async {
     try {
-      _recognizer ??= TextRecognizer(script: script == 'chinese' ? TextRecognitionScript.chinese : TextRecognitionScript.latin);
+      _recognizer ??= TextRecognizer(script: TextRecognitionScript.latin);
       
       final inputImage = InputImage.fromFile(imageFile);
       final recognizedText = await _recognizer!.processImage(inputImage);

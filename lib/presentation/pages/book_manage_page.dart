@@ -277,31 +277,6 @@ class _BookManagePageState extends State<BookManagePage> {
       appBar: AppBar(
         title: const Text('编辑点读本'),
         actions: [
-          IconButton(
-            icon: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: _isSaving
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(
-                      Icons.save_rounded,
-                      size: 18,
-                      color: Colors.white,
-                    ),
-            ),
-            onPressed: _isSaving ? null : _saveTitle,
-            tooltip: '保存名称',
-          ),
           const SizedBox(width: 8),
         ],
         flexibleSpace: Container(
@@ -331,17 +306,62 @@ class _BookManagePageState extends State<BookManagePage> {
                     boxShadow: AppTheme.playfulShadow,
                   ),
                   padding: const EdgeInsets.all(16),
-                  child: TextField(
-                    controller: _titleController,
-                    decoration: InputDecoration(
-                      labelText: '点读本名称',
-                      hintText: '输入点读本名称',
-                      prefixIcon: Icon(
-                        Icons.edit_note_rounded,
-                        color: AppTheme.primaryColor.withOpacity(0.7),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _titleController,
+                          decoration: InputDecoration(
+                            labelText: '点读本名称',
+                            hintText: '输入点读本名称',
+                            prefixIcon: Icon(
+                              Icons.edit_note_rounded,
+                              color: AppTheme.primaryColor.withOpacity(0.7),
+                            ),
+                          ),
+                          onSubmitted: (_) => _saveTitle(),
+                        ),
                       ),
-                    ),
-                    onSubmitted: (_) => _saveTitle(),
+                      const SizedBox(width: 12),
+                      Material(
+                        color: AppTheme.primaryColor,
+                        borderRadius: BorderRadius.circular(16),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: _isSaving ? null : _saveTitle,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            child: _isSaving
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.save_rounded,
+                                        size: 18,
+                                        color: Colors.white,
+                                      ),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        '保存',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),

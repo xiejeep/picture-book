@@ -194,7 +194,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                       color: Colors.white.withOpacity(0.25),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Row(
+                    child:const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
@@ -202,8 +202,8 @@ class _BookDetailPageState extends State<BookDetailPage> {
                           size: 14,
                           color: Colors.white,
                         ),
-                        const SizedBox(width: 4),
-                        const Text(
+                         SizedBox(width: 4),
+                         Text(
                           '阅读',
                           style: TextStyle(fontSize: 12, color: Colors.white),
                         ),
@@ -681,31 +681,6 @@ class TextBlockPainter extends CustomPainter {
         RRect.fromRectAndRadius(displayRect, const Radius.circular(4)),
         borderPaint,
       );
-
-      if (isPlaying) {
-        final indicatorPaint = Paint()
-          ..color = AppTheme.honeyYellow.withOpacity(0.8)
-          ..style = PaintingStyle.fill;
-
-        canvas.drawCircle(
-          Offset(displayRect.right - 12, displayRect.top + 12),
-          10,
-          indicatorPaint,
-        );
-
-        final iconPaint = Paint()
-          ..color = Colors.white
-          ..style = PaintingStyle.fill;
-        
-        final iconPath = Path();
-        final cx = displayRect.right - 12;
-        final cy = displayRect.top + 12;
-        iconPath.moveTo(cx - 3, cy - 4);
-        iconPath.lineTo(cx + 2, cy);
-        iconPath.lineTo(cx - 3, cy + 4);
-        iconPath.close();
-        canvas.drawPath(iconPath, iconPaint);
-      }
     }
   }
 
