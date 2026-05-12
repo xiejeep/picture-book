@@ -71,6 +71,8 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
   Offset? _dragStartPoint;
   Rect? _dragStartRect;
 
+  bool _editModeResize = true;
+
   bool _isTwoFingerPan = false;
   Offset? _panStartFocalPoint;
   Matrix4? _panStartMatrix;
@@ -254,18 +256,31 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
   }
 
   HandlePosition? _getHandleAtPoint(Offset point, Rect rect) {
-    if (rect.contains(point)) return null;
-    
+    if (!_editModeResize) return null;
+
     final double handleThreshold = _handleSize / _getScale();
     
-    final handles = _getHandlePositions(rect);
-    for (final entry in handles.entries) {
-      if ((entry.value - point).distance <= handleThreshold) {
-        return entry.key;
+    final positions = {
+      HandlePosition.topLeft: rect.topLeft,
+      HandlePosition.topRight: rect.topRight,
+      HandlePosition.bottomLeft: rect.bottomLeft,
+      HandlePosition.bottomRight: rect.bottomRight,
+      HandlePosition.top: Offset(rect.center.dx, rect.top),
+      HandlePosition.bottom: Offset(rect.center.dx, rect.bottom),
+      HandlePosition.left: Offset(rect.left, rect.center.dy),
+      HandlePosition.right: Offset(rect.right, rect.center.dy),
+    };
+
+    HandlePosition? closest;
+    double closestDist = double.infinity;
+    for (final entry in positions.entries) {
+      final dist = (entry.value - point).distance;
+      if (dist <= handleThreshold && dist < closestDist) {
+        closestDist = dist;
+        closest = entry.key;
       }
     }
-    
-    return null;
+    return closest;
   }
 
   bool _isDeleteButtonAtPoint(Offset point, Rect rect) {
@@ -273,20 +288,6 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
     final double buttonSize = 24.0 / scale;
     final Offset deletePos = Offset(rect.right + buttonSize / 2, rect.top - buttonSize / 2);
     return (point - deletePos).distance <= buttonSize;
-  }
-
-  Map<HandlePosition, Offset> _getHandlePositions(Rect rect) {
-    final double offset = _handleSize * 0.5 / _getScale();
-    return {
-      HandlePosition.topLeft: rect.topLeft.translate(-offset, -offset),
-      HandlePosition.topRight: rect.topRight.translate(offset, -offset),
-      HandlePosition.bottomLeft: rect.bottomLeft.translate(-offset, offset),
-      HandlePosition.bottomRight: rect.bottomRight.translate(offset, offset),
-      HandlePosition.top: Offset(rect.center.dx, rect.top - offset),
-      HandlePosition.bottom: Offset(rect.center.dx, rect.bottom + offset),
-      HandlePosition.left: Offset(rect.left - offset, rect.center.dy),
-      HandlePosition.right: Offset(rect.right + offset, rect.center.dy),
-    };
   }
 
   int? _findBlockAtPoint(Offset point) {
@@ -323,15 +324,26 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
         return;
       }
       
-      final handle = _getHandleAtPoint(imagePoint, selectedBlock.boundingBox);
-      if (handle != null) {
-        return;
+      if (_editModeResize) {
+        final handle = _getHandleAtPoint(imagePoint, selectedBlock.boundingBox);
+        if (handle != null) {
+          return;
+        }
       }
     }
     
     final blockIndex = _findBlockAtPoint(imagePoint);
     setState(() {
+      if (blockIndex != _selectedIndex) {
+        _editModeResize = true;
+      }
       _selectedIndex = blockIndex;
+    });
+  }
+
+  void _toggleEditMode() {
+    setState(() {
+      _editModeResize = !_editModeResize;
     });
   }
 
@@ -360,17 +372,18 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
     
     final imagePoint = _toImagePoint(details.focalPoint);
     final selectedBlock = _textBlocks[_selectedIndex!];
-    
-    final handle = _getHandleAtPoint(imagePoint, selectedBlock.boundingBox);
-    
-    if (handle != null) {
-      setState(() {
-        _isResizing = true;
-        _resizeHandle = handle;
-        _dragStartPoint = imagePoint;
-        _dragStartRect = selectedBlock.boundingBox;
-      });
-      return;
+
+    if (_editModeResize) {
+      final handle = _getHandleAtPoint(imagePoint, selectedBlock.boundingBox);
+      if (handle != null) {
+        setState(() {
+          _isResizing = true;
+          _resizeHandle = handle;
+          _dragStartPoint = imagePoint;
+          _dragStartRect = selectedBlock.boundingBox;
+        });
+        return;
+      }
     }
 
     if (selectedBlock.boundingBox.contains(imagePoint)) {
@@ -1552,6 +1565,7 @@ child: const Text('关闭'),
                                       imageSize: _imageSize,
                                       tempRect: _tempRect,
                                       drawMode: _drawMode,
+                                      editModeResize: _editModeResize,
                                     ),
                                   ),
                                 ],
@@ -1752,16 +1766,47 @@ child: const Text('关闭'),
                             child: Center(
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
+                                  horizontal: 12,
+                                  vertical: 6,
                                 ),
                                 decoration: BoxDecoration(
                                   color: Colors.purple.withOpacity(0.9),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
-                                child: const Text(
-                                  '拖动控制点调整大小，拖动矩形内部移动位置，点击喇叭试听朗读',
-                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      _editModeResize ? '调整大小' : '移动位置',
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    GestureDetector(
+                                      onTap: _toggleEditMode,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: _editModeResize ? Colors.blue : Colors.orange,
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              _editModeResize ? Icons.open_in_full : Icons.open_with,
+                                              color: Colors.white,
+                                              size: 14,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              _editModeResize ? '拖动' : '调整',
+                                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -1873,6 +1918,7 @@ class TextBlockPainter extends CustomPainter {
   final Size imageSize;
   final Rect? tempRect;
   final bool drawMode;
+  final bool editModeResize;
 
   TextBlockPainter({
     required this.textBlocks,
@@ -1881,6 +1927,7 @@ class TextBlockPainter extends CustomPainter {
     required this.imageSize,
     this.tempRect,
     this.drawMode = false,
+    this.editModeResize = true,
   });
 
   bool _isEnglishText(String text) {
@@ -1914,11 +1961,17 @@ class TextBlockPainter extends CustomPainter {
       final isSelected = i == selectedIndex;
       
       final fillPaint = Paint()
-        ..color = isSelected ? Colors.green.withOpacity(0.3) : Colors.blue.withOpacity(0.2)
+        ..color = isSelected
+            ? (editModeResize
+                ? Colors.green.withOpacity(0.3)
+                : Colors.orange.withOpacity(0.3))
+            : Colors.blue.withOpacity(0.2)
         ..style = PaintingStyle.fill;
       
       final borderPaint = Paint()
-        ..color = isSelected ? Colors.green : Colors.blue
+        ..color = isSelected
+            ? (editModeResize ? Colors.green : Colors.orange)
+            : Colors.blue
         ..style = PaintingStyle.stroke
         ..strokeWidth = isSelected ? strokeWidth * 1.5 : strokeWidth;
       
@@ -1926,7 +1979,11 @@ class TextBlockPainter extends CustomPainter {
       canvas.drawRect(rect, borderPaint);
       
       if (isSelected) {
-        _drawHandles(canvas, rect, handleSize, strokeWidth);
+        if (editModeResize) {
+          _drawHandles(canvas, rect, handleSize, strokeWidth);
+        } else {
+          _drawMoveIcon(canvas, rect, handleSize);
+        }
         _drawDeleteButton(canvas, rect);
       }
       
@@ -1995,6 +2052,30 @@ class TextBlockPainter extends CustomPainter {
     }
   }
 
+  void _drawMoveIcon(Canvas canvas, Rect rect, double handleSize) {
+    final iconPaint = Paint()
+      ..color = Colors.orange
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0
+      ..strokeCap = StrokeCap.round;
+
+    final cx = rect.center.dx;
+    final cy = rect.center.dy;
+    final len = handleSize * 0.4;
+
+    canvas.drawLine(Offset(cx, cy - len), Offset(cx, cy + len), iconPaint);
+    canvas.drawLine(Offset(cx - len, cy), Offset(cx + len, cy), iconPaint);
+    final a = len * 0.45;
+    canvas.drawLine(Offset(cx, cy - len), Offset(cx - a, cy - len + a), iconPaint);
+    canvas.drawLine(Offset(cx, cy - len), Offset(cx + a, cy - len + a), iconPaint);
+    canvas.drawLine(Offset(cx, cy + len), Offset(cx - a, cy + len - a), iconPaint);
+    canvas.drawLine(Offset(cx, cy + len), Offset(cx + a, cy + len - a), iconPaint);
+    canvas.drawLine(Offset(cx - len, cy), Offset(cx - len + a, cy - a), iconPaint);
+    canvas.drawLine(Offset(cx - len, cy), Offset(cx - len + a, cy + a), iconPaint);
+    canvas.drawLine(Offset(cx + len, cy), Offset(cx + len - a, cy - a), iconPaint);
+    canvas.drawLine(Offset(cx + len, cy), Offset(cx + len - a, cy + a), iconPaint);
+  }
+
   void _drawDeleteButton(Canvas canvas, Rect rect) {
     final deletePaint = Paint()
       ..color = Colors.red
@@ -2034,6 +2115,7 @@ class TextBlockPainter extends CustomPainter {
         oldDelegate.scale != scale ||
         oldDelegate.imageSize != imageSize ||
         oldDelegate.tempRect != tempRect ||
-        oldDelegate.drawMode != drawMode;
+        oldDelegate.drawMode != drawMode ||
+        oldDelegate.editModeResize != editModeResize;
   }
 }
