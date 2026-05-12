@@ -254,6 +254,8 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
   }
 
   HandlePosition? _getHandleAtPoint(Offset point, Rect rect) {
+    if (rect.contains(point)) return null;
+    
     final double handleThreshold = _handleSize / _getScale();
     
     final handles = _getHandlePositions(rect);
@@ -274,15 +276,16 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
   }
 
   Map<HandlePosition, Offset> _getHandlePositions(Rect rect) {
+    final double offset = _handleSize * 0.5 / _getScale();
     return {
-      HandlePosition.topLeft: rect.topLeft,
-      HandlePosition.topRight: rect.topRight,
-      HandlePosition.bottomLeft: rect.bottomLeft,
-      HandlePosition.bottomRight: rect.bottomRight,
-      HandlePosition.top: Offset(rect.center.dx, rect.top),
-      HandlePosition.bottom: Offset(rect.center.dx, rect.bottom),
-      HandlePosition.left: Offset(rect.left, rect.center.dy),
-      HandlePosition.right: Offset(rect.right, rect.center.dy),
+      HandlePosition.topLeft: rect.topLeft.translate(-offset, -offset),
+      HandlePosition.topRight: rect.topRight.translate(offset, -offset),
+      HandlePosition.bottomLeft: rect.bottomLeft.translate(-offset, offset),
+      HandlePosition.bottomRight: rect.bottomRight.translate(offset, offset),
+      HandlePosition.top: Offset(rect.center.dx, rect.top - offset),
+      HandlePosition.bottom: Offset(rect.center.dx, rect.bottom + offset),
+      HandlePosition.left: Offset(rect.left - offset, rect.center.dy),
+      HandlePosition.right: Offset(rect.right + offset, rect.center.dy),
     };
   }
 
@@ -369,7 +372,7 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
       });
       return;
     }
-    
+
     if (selectedBlock.boundingBox.contains(imagePoint)) {
       setState(() {
         _isDragging = true;
@@ -492,15 +495,15 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
     } else if (_isDragging && _dragStartRect != null) {
       final delta = imagePoint - _dragStartPoint!;
       final original = _dragStartRect!;
-      
+
       double newLeft = original.left + delta.dx;
       double newTop = original.top + delta.dy;
-      
+
       newLeft = newLeft.clamp(0.0, _imageSize.width - original.width);
       newTop = newTop.clamp(0.0, _imageSize.height - original.height);
-      
+
       final newRect = Rect.fromLTWH(newLeft, newTop, original.width, original.height);
-      
+
       setState(() {
         _textBlocks[_selectedIndex!].boundingBox = newRect;
       });
@@ -613,14 +616,6 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
     );
   }
 
-  void _restoreAllBlocks() {
-    setState(() {
-      for (final block in _textBlocks) {
-        block.isDeleted = false;
-      }
-      _selectedIndex = null;
-    });
-  }
 
 
   Future<void> _showReRecognizeDialog() async {
@@ -1375,9 +1370,6 @@ child: const Text('关闭'),
               tooltip: '更多操作',
               onSelected: (value) {
                 switch (value) {
-                  case 'restore':
-                    _restoreAllBlocks();
-                    break;
                   case 'ai_enhance_all':
                     _showAiEnhanceAllDialog();
                     break;
@@ -1402,17 +1394,6 @@ child: const Text('关闭'),
                 }
               },
               itemBuilder: (context) => [
-                if (_textBlocks.any((block) => block.isDeleted))
-                  const PopupMenuItem(
-                    value: 'restore',
-                    child: Row(
-                      children: [
-                        Icon(Icons.restore, size: 20),
-                        SizedBox(width: 8),
-                        Text('恢复已删除'),
-                      ],
-                    ),
-                  ),
                 if (!_isAiEnhancing && _imageFile != null && visibleBlocks.isNotEmpty)
                   const PopupMenuItem(
                     value: 'ai_enhance_all',
@@ -1779,7 +1760,7 @@ child: const Text('关闭'),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: const Text(
-                                  '拖动控制点调整大小，拖动矩形移动位置，点击喇叭试听朗读',
+                                  '拖动控制点调整大小，拖动矩形内部移动位置，点击喇叭试听朗读',
                                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                                 ),
                               ),
