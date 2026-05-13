@@ -141,14 +141,6 @@ class AppTheme {
           color: warmBrown.withOpacity(0.8),
         ),
       ),
-      snackBarTheme: SnackBarThemeData(
-        backgroundColor: warmBrown,
-        contentTextStyle: const TextStyle(color: Colors.white, fontSize: 14),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        behavior: SnackBarBehavior.floating,
-      ),
       bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: surfaceColor,
         shape: RoundedRectangleBorder(

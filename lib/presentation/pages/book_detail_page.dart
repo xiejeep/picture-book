@@ -10,6 +10,7 @@ import '../../data/models/ai_settings_model.dart';
 import '../../core/constants/constants.dart';
 import '../widgets/page_indicator.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/toast_util.dart';
 import 'voice_settings_page.dart';
 
 class BookDetailPage extends StatefulWidget {
@@ -212,13 +213,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                             setState(() {});
                             Navigator.pop(context);
                             
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('语速已调整'),
-                                backgroundColor: AppTheme.gentleGreen,
-                                duration: Duration(seconds: 1),
-                              ),
-                            );
+                            ToastUtil.success('语速已调整');
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.gentleGreen,

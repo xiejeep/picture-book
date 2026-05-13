@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../data/services/ai_service.dart';
 import '../../data/services/storage_service.dart';
 import '../../data/models/ai_settings_model.dart';
 import '../../core/constants/constants.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/toast_util.dart';
+import '../providers/settings_provider.dart';
 
-class AiSettingsPage extends StatefulWidget {
+class AiSettingsPage extends ConsumerStatefulWidget {
   const AiSettingsPage({super.key});
 
   @override
-  State<AiSettingsPage> createState() => _AiSettingsPageState();
+  ConsumerState<AiSettingsPage> createState() => _AiSettingsPageState();
 }
 
-class _AiSettingsPageState extends State<AiSettingsPage> {
+class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
   final TextEditingController _apiKeyController = TextEditingController();
   String _selectedModel = AppConstants.defaultModel;
   bool _obscureApiKey = true;
@@ -46,12 +49,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
 
   Future<void> _saveSettings() async {
     if (_apiKeyController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('请输入API Key'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      ToastUtil.error('请输入API Key');
       return;
     }
 
@@ -68,22 +66,13 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
         speechRate: currentSettings?.speechRate ?? AppConstants.systemTtsDefaultSpeed,
       );
       await StorageService.instance.saveAiSettings(settings);
+      await ref.read(settingsProvider.notifier).refresh();
 
       setState(() => _hasExistingKey = true);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('设置已保存'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      ToastUtil.success('设置已保存');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('保存失败: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      ToastUtil.error('保存失败: $e');
     } finally {
       setState(() => _isSaving = false);
     }
@@ -91,12 +80,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
 
   Future<void> _testConnection() async {
     if (_apiKeyController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('请先输入API Key'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      ToastUtil.warning('请先输入API Key');
       return;
     }
 
@@ -108,19 +92,13 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
         _selectedModel,
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(success ? '连接成功！' : '连接失败，请检查API Key'),
-          backgroundColor: success ? Colors.green : Colors.red,
-        ),
-      );
+      if (success) {
+        ToastUtil.success('连接成功！');
+      } else {
+        ToastUtil.error('连接失败，请检查API Key');
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('测试失败: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      ToastUtil.error('测试失败: $e');
     } finally {
       setState(() => _isTesting = false);
     }
@@ -149,6 +127,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
     if (confirm == true) {
       await AiService.instance.deleteApiKey();
       await StorageService.instance.deleteAiSettings();
+      await ref.read(settingsProvider.notifier).refresh();
 
       setState(() {
         _apiKeyController.clear();
@@ -156,12 +135,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
         _selectedModel = AppConstants.defaultModel;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('API Key已删除'),
-          backgroundColor: Colors.blue,
-        ),
-      );
+      ToastUtil.info('API Key已删除');
     }
   }
 

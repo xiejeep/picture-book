@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/toast_util.dart';
 import '../../core/constants/constants.dart';
 import '../../data/services/ai_service.dart';
 import '../features/text_detection/text_detection.dart';
@@ -242,9 +243,7 @@ class _OcrResultsTablePageState extends State<OcrResultsTablePage> {
   Future<void> _showAiEnhanceDialog(int visibleIndex) async {
     final hasApiKey = await AiService.instance.hasApiKey();
     if (!hasApiKey) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先在设置中配置API Key'), backgroundColor: Colors.orange),
-      );
+      ToastUtil.warning('请先在设置中配置API Key');
       return;
     }
 
@@ -318,9 +317,7 @@ class _OcrResultsTablePageState extends State<OcrResultsTablePage> {
   Future<void> _aiEnhanceBlock(int visibleIndex) async {
     final realIndex = _findRealIndex(visibleIndex);
     if (widget.imageFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('没有图片文件，无法进行AI强化'), backgroundColor: Colors.red),
-      );
+      ToastUtil.error('没有图片文件，无法进行AI强化');
       return;
     }
 
@@ -347,45 +344,31 @@ class _OcrResultsTablePageState extends State<OcrResultsTablePage> {
           _blocks[realIndex].text = correctedText;
           _isAiEnhancing = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('AI强化完成'), backgroundColor: Colors.green),
-        );
+        ToastUtil.success('AI强化完成');
       } else {
         setState(() {
           _isAiEnhancing = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('AI强化完成，无需修改'), backgroundColor: Colors.blue),
-        );
+        ToastUtil.info('AI强化完成，无需修改');
       }
     } catch (e) {
       setState(() {
         _isAiEnhancing = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('AI强化失败: $e'), backgroundColor: Colors.red),
-      );
+      ToastUtil.error('AI强化失败: $e');
     }
   }
 
   Future<void> _showAiEnhanceAllDialog() async {
     final hasApiKey = await AiService.instance.hasApiKey();
     if (!hasApiKey) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('请先在首页AI设置中配置API Key'),
-          backgroundColor: Colors.orange,
-          duration: Duration(seconds: 3),
-        ),
-      );
+      ToastUtil.warning('请先在首页AI设置中配置API Key');
       return;
     }
 
     final visibleBlocks = _blocks.where((b) => !b.isDeleted).toList();
     if (visibleBlocks.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('没有可优化的文字块')),
-      );
+      ToastUtil.warning('没有可优化的文字块');
       return;
     }
 
@@ -458,9 +441,7 @@ class _OcrResultsTablePageState extends State<OcrResultsTablePage> {
 
   Future<void> _aiEnhanceAllBlocks() async {
     if (widget.imageFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('没有图片文件，无法进行AI强化'), backgroundColor: Colors.red),
-      );
+      ToastUtil.error('没有图片文件，无法进行AI强化');
       return;
     }
 
@@ -498,23 +479,12 @@ class _OcrResultsTablePageState extends State<OcrResultsTablePage> {
         _isAiEnhancing = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('AI强化识别完成，已优化 $updatedCount 个文字块'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      ToastUtil.success('AI强化识别完成，已优化 $updatedCount 个文字块');
     } catch (e) {
       setState(() {
         _isAiEnhancing = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('AI强化失败: ${e.toString().split('\n').first}'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 4),
-        ),
-      );
+      ToastUtil.error('AI强化失败: ${e.toString().split('\n').first}');
     }
   }
 

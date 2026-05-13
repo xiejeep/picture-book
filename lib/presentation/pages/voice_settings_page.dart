@@ -3,6 +3,7 @@ import '../../data/services/storage_service.dart';
 import '../../data/models/ai_settings_model.dart';
 import '../../core/constants/constants.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/toast_util.dart';
 
 class VoiceSettingsPage extends StatefulWidget {
   const VoiceSettingsPage({super.key});
@@ -55,19 +56,9 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
       );
       await StorageService.instance.saveAiSettings(settings);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('语音设置已保存'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      ToastUtil.success('语音设置已保存');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('保存失败: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      ToastUtil.error('保存失败: $e');
     } finally {
       setState(() => _isSaving = false);
     }

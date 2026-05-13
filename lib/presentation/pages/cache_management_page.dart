@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/services/tts_cache_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/toast_util.dart';
 
 class CacheManagementPage extends StatefulWidget {
   const CacheManagementPage({super.key});
@@ -58,12 +59,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
       await _loadCacheInfo();
       setState(() => _isClearing = false);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('TTS缓存已清空'),
-          backgroundColor: Colors.blue,
-        ),
-      );
+      ToastUtil.info('TTS缓存已清空');
     }
   }
 

@@ -47,39 +47,12 @@ class SettingsNotifier extends Notifier<SettingsState> {
     );
   }
 
-  Future<void> saveApiKey(String apiKey) async {
-    await ref.read(aiRepositoryProvider).saveApiKey(apiKey);
-    await _loadSettings();
-  }
-
-  Future<void> deleteApiKey() async {
-    await ref.read(aiRepositoryProvider).deleteApiKey();
+  Future<void> refresh() async {
     await _loadSettings();
   }
 
   Future<bool> testConnection(String apiKey, String model) async {
     return await ref.read(aiRepositoryProvider).testConnection(apiKey, model);
-  }
-
-  Future<void> saveSettings(AiSettingsModel settings) async {
-    await StorageService.instance.saveAiSettings(settings);
-    await _loadSettings();
-  }
-
-  String getSelectedModel() {
-    return state.settings?.selectedModel ?? AppConstants.defaultModel;
-  }
-
-  String getTtsVoice() {
-    return state.settings?.ttsVoice ?? AppConstants.defaultTtsVoice;
-  }
-
-  double getSpeechRate() {
-    return state.settings?.speechRate ?? AppConstants.systemTtsDefaultSpeed;
-  }
-
-  bool useGlmTts() {
-    return state.settings?.useGlmTts ?? false;
   }
 }
 
@@ -92,5 +65,5 @@ final hasApiKeyProvider = Provider<bool>((ref) {
 });
 
 final selectedModelProvider = Provider<String>((ref) {
-  return ref.read(settingsProvider.notifier).getSelectedModel();
+  return ref.watch(settingsProvider).settings?.selectedModel ?? AppConstants.defaultModel;
 });

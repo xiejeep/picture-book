@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/toast_util.dart';
 import '../../../../data/services/tts_service.dart';
 import '../../../../data/services/ocr_service.dart';
 import '../../../pages/ocr_results_table_page.dart';
@@ -522,9 +523,7 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
     
     final visibleBlocks = notifier.getBlocksForSave();
     if (visibleBlocks.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('没有可保存的文字块')),
-      );
+      ToastUtil.warning('没有可保存的文字块');
       return;
     }
     
@@ -713,13 +712,9 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
     if (confirm == true) {
       try {
         await notifier.aiEnhanceAll();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('AI强化完成'), backgroundColor: Colors.green),
-        );
+        ToastUtil.success('AI强化完成');
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-        );
+        ToastUtil.error(e.toString());
       }
     }
   }
@@ -751,13 +746,9 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
     if (confirm == true) {
       try {
         await notifier.aiEnhanceSelectedBlock();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('AI强化完成'), backgroundColor: Colors.green),
-        );
+        ToastUtil.success('AI强化完成');
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-        );
+        ToastUtil.error(e.toString());
       }
     }
   }

@@ -1,21 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'ai_settings_page.dart';
 import 'voice_settings_page.dart';
 import 'cache_management_page.dart';
 import 'tutorial_page.dart';
-import '../../data/services/ai_service.dart';
 import '../../data/services/tts_cache_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../providers/settings_provider.dart';
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
 
-  Future<bool> _hasApiKeyConfigured() async {
-    return await AiService.instance.hasApiKey();
-  }
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('设置'),
@@ -40,7 +37,7 @@ class SettingsPage extends StatelessWidget {
             children: [
               _buildTutorialSection(context),
               const SizedBox(height: 16),
-              _buildAiSettingsSection(context),
+              _buildAiSettingsSection(context, ref),
               const SizedBox(height: 16),
               _buildAboutSection(context),
             ],
@@ -127,74 +124,69 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildAiSettingsSection(BuildContext context) {
-    return FutureBuilder<bool>(
-      future: _hasApiKeyConfigured(),
-      builder: (context, snapshot) {
-        final hasApiKey = snapshot.data ?? false;
+  Widget _buildAiSettingsSection(BuildContext context, WidgetRef ref) {
+    final hasApiKey = ref.watch(hasApiKeyProvider);
 
-        return Container(
-          decoration: AppTheme.playfulCardDecoration,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.auto_fix_high_rounded,
-                      size: 18,
-                      color: AppTheme.gentleGreen,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'AI功能',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.warmBrown.withOpacity(0.7),
-                      ),
-                    ),
-                  ],
+    return Container(
+      decoration: AppTheme.playfulCardDecoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.auto_fix_high_rounded,
+                  size: 18,
+                  color: AppTheme.gentleGreen,
                 ),
-              ),
-              _buildSettingTile(
-                context: context,
-                icon: Icons.auto_fix_high_rounded,
-                iconColors: [AppTheme.gentleGreen, AppTheme.calmBlue],
-                title: 'AI设置',
-                subtitle: hasApiKey ? '已配置智谱AI' : '未配置，点击设置',
-                subtitleColor: hasApiKey ? AppTheme.gentleGreen : AppTheme.softOrange,
-                badge: hasApiKey ? '已启用' : null,
-                badgeColor: AppTheme.gentleGreen,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const AiSettingsPage()),
-                  );
-                },
-              ),
-              Divider(height: 1, indent: 76, endIndent: 20, color: Colors.grey.shade200),
-              _buildSettingTile(
-                context: context,
-                icon: Icons.record_voice_over_rounded,
-                iconColors: [AppTheme.honeyYellow, AppTheme.softOrange],
-                title: '语音设置',
-                subtitle: 'TTS音色、语速调节',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const VoiceSettingsPage()),
-                  );
-                },
-              ),
-              Divider(height: 1, indent: 76, endIndent: 20, color: Colors.grey.shade200),
-              _buildCacheTile(context),
-            ],
+                const SizedBox(width: 8),
+                Text(
+                  'AI功能',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.warmBrown.withOpacity(0.7),
+                  ),
+                ),
+              ],
+            ),
           ),
-        );
-      },
+          _buildSettingTile(
+            context: context,
+            icon: Icons.auto_fix_high_rounded,
+            iconColors: [AppTheme.gentleGreen, AppTheme.calmBlue],
+            title: 'AI设置',
+            subtitle: hasApiKey ? '已配置智谱AI' : '未配置，点击设置',
+            subtitleColor: hasApiKey ? AppTheme.gentleGreen : AppTheme.softOrange,
+            badge: hasApiKey ? '已启用' : null,
+            badgeColor: AppTheme.gentleGreen,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AiSettingsPage()),
+              );
+            },
+          ),
+          Divider(height: 1, indent: 76, endIndent: 20, color: Colors.grey.shade200),
+          _buildSettingTile(
+            context: context,
+            icon: Icons.record_voice_over_rounded,
+            iconColors: [AppTheme.honeyYellow, AppTheme.softOrange],
+            title: '语音设置',
+            subtitle: 'TTS音色、语速调节',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const VoiceSettingsPage()),
+              );
+            },
+          ),
+          Divider(height: 1, indent: 76, endIndent: 20, color: Colors.grey.shade200),
+          _buildCacheTile(context),
+        ],
+      ),
     );
   }
 
