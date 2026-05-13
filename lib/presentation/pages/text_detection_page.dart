@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import '../../data/services/ocr_service.dart';
@@ -400,18 +399,18 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
     });
   }
 
-  void _handleScaleStart(ScaleStartDetails details) {
+  void _handleDragStart(DragStartDetails details) {
     if (_panMode) {
       setState(() {
         _isPanning = true;
-        _panStartPoint = details.focalPoint;
+        _panStartPoint = details.globalPosition;
         _panStartMatrix = _controller.value.clone();
       });
       return;
     }
 
     if (_drawMode) {
-      final imagePoint = _toImagePoint(details.focalPoint);
+      final imagePoint = _toImagePoint(details.globalPosition);
       setState(() {
         _drawStartPoint = imagePoint;
         _tempRect = null;
@@ -421,7 +420,7 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
 
     if (_selectedIndex == null || _selectedIndex! >= _textBlocks.length) return;
     
-    final imagePoint = _toImagePoint(details.focalPoint);
+    final imagePoint = _toImagePoint(details.globalPosition);
     final selectedBlock = _textBlocks[_selectedIndex!];
 
     if (_editModeResize) {
@@ -446,9 +445,9 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
     }
   }
 
-  void _handleScaleUpdate(ScaleUpdateDetails details) {
+  void _handleDragUpdate(DragUpdateDetails details) {
     if (_isPanning && _panStartPoint != null && _panStartMatrix != null) {
-      final delta = details.focalPoint - _panStartPoint!;
+      final delta = details.globalPosition - _panStartPoint!;
       final currentScale = _controller.value.getMaxScaleOnAxis();
       final newMatrix = _panStartMatrix!.clone();
       newMatrix.translate(delta.dx / currentScale, delta.dy / currentScale);
@@ -457,7 +456,7 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
     }
 
     if (_drawMode && _drawStartPoint != null) {
-      final imagePoint = _toImagePoint(details.focalPoint);
+      final imagePoint = _toImagePoint(details.globalPosition);
       final rect = Rect.fromLTRB(
         _drawStartPoint!.dx.clamp(0.0, _imageSize.width),
         _drawStartPoint!.dy.clamp(0.0, _imageSize.height),
@@ -472,7 +471,7 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
 
     if (_selectedIndex == null || _selectedIndex! >= _textBlocks.length) return;
     
-    final imagePoint = _toImagePoint(details.focalPoint);
+    final imagePoint = _toImagePoint(details.globalPosition);
 
     if (_isResizing && _resizeHandle != null && _dragStartRect != null) {
       final delta = imagePoint - _dragStartPoint!;
@@ -574,7 +573,7 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
     }
   }
 
-  void _handleScaleEnd(ScaleEndDetails details) {
+  void _handleDragEnd(DragEndDetails details) {
     if (_isPanning) {
       setState(() {
         _isPanning = false;
@@ -2071,10 +2070,9 @@ child: const Text('关闭'),
                           alignment: Alignment.topLeft,
                           child: GestureDetector(
                             onTapDown: _handleTapDown,
-                            onScaleStart: _handleScaleStart,
-                            onScaleUpdate: _handleScaleUpdate,
-                            onScaleEnd: _handleScaleEnd,
-                            dragStartBehavior: DragStartBehavior.down,
+                            onPanStart: _handleDragStart,
+                            onPanUpdate: _handleDragUpdate,
+                            onPanEnd: _handleDragEnd,
                             child: SizedBox(
                               width: _displaySize.width,
                               height: _displaySize.height,
