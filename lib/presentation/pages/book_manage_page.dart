@@ -418,14 +418,6 @@ class _BookManagePageState extends State<BookManagePage> {
                               motion: const DrawerMotion(),
                               children: [
                                 SlidableAction(
-                                  onPressed: (_) => _editPage(index),
-                                  backgroundColor: AppTheme.honeyYellow,
-                                  foregroundColor: Colors.white,
-                                  icon: Icons.edit_rounded,
-                                  label: '编辑',
-                                  borderRadius: BorderRadius.zero,
-                                ),
-                                SlidableAction(
                                   onPressed: (_) => _deletePage(index),
                                   backgroundColor: const Color(0xFFFF6B6B),
                                   foregroundColor: Colors.white,
