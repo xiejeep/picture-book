@@ -386,8 +386,9 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
     
     final blockIndex = _findBlockAtPoint(imagePoint);
     setState(() {
-      if (blockIndex != _selectedIndex) {
+      if (blockIndex != null && blockIndex != _selectedIndex) {
         _editModeResize = true;
+        _panMode = false;
       }
       _selectedIndex = blockIndex;
     });
