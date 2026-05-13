@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import '../../data/models/book_model.dart';
 import '../../data/models/page_model.dart';
 import '../../data/models/text_block_model.dart';
@@ -26,6 +28,7 @@ class _BookManagePageState extends State<BookManagePage> {
   late TextEditingController _titleController;
   late List<PageModel> _pages;
   bool _isSaving = false;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -271,6 +274,133 @@ class _BookManagePageState extends State<BookManagePage> {
     }
   }
 
+  Future<void> _editCover() async {
+    final result = await showModalBottomSheet<String?>(
+      context: context,
+      backgroundColor: AppTheme.surfaceColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.softGray.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              '选择封面',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.warmBrown,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppTheme.calmBlue.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.pages_rounded,
+                  color: AppTheme.calmBlue,
+                ),
+              ),
+              title: const Text('使用第一页'),
+              subtitle: const Text('默认使用第一页作为封面'),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              onTap: () => Navigator.pop(context, 'default'),
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppTheme.gentleGreen.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.add_photo_alternate_rounded,
+                  color: AppTheme.gentleGreen,
+                ),
+              ),
+              title: const Text('自定义封面'),
+              subtitle: const Text('选择图片作为封面'),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              onTap: () => Navigator.pop(context, 'custom'),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+
+    if (result == null) return;
+
+    if (result == 'default') {
+      await BookService.instance.updateBookCover(widget.book.id, null);
+      setState(() {});
+      ToastUtil.success('已设置为第一页作为封面');
+    } else if (result == 'custom') {
+      final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+      if (pickedFile == null) return;
+
+      final File imageFile = File(pickedFile.path);
+      
+      final croppedFile = await ImageCropper().cropImage(
+        sourcePath: imageFile.path,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: '编辑封面',
+            toolbarColor: AppTheme.honeyYellow,
+            toolbarWidgetColor: Colors.white,
+            aspectRatioPresets: [
+              CropAspectRatioPreset.original,
+              CropAspectRatioPreset.square,
+              CropAspectRatioPreset.ratio4x3,
+              CropAspectRatioPreset.ratio16x9,
+            ],
+            lockAspectRatio: false,
+          ),
+          IOSUiSettings(
+            title: '编辑封面',
+            aspectRatioPresets: [
+              CropAspectRatioPreset.original,
+              CropAspectRatioPreset.square,
+              CropAspectRatioPreset.ratio4x3,
+              CropAspectRatioPreset.ratio16x9,
+            ],
+            rotateButtonsHidden: false,
+            resetButtonHidden: false,
+          ),
+        ],
+      );
+
+      if (croppedFile == null) return;
+
+      final coverPath = await BookService.instance.saveCoverImage(File(croppedFile.path), widget.book.id);
+      await BookService.instance.updateBookCover(widget.book.id, coverPath);
+      setState(() {});
+      ToastUtil.success('封面已更新');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -306,58 +436,137 @@ class _BookManagePageState extends State<BookManagePage> {
                     boxShadow: AppTheme.playfulShadow,
                   ),
                   padding: const EdgeInsets.all(16),
-                  child: Row(
+                  child: Column(
                     children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _titleController,
-                          decoration: InputDecoration(
-                            labelText: '点读本名称',
-                            hintText: '输入点读本名称',
-                            prefixIcon: Icon(
-                              Icons.edit_note_rounded,
-                              color: AppTheme.primaryColor.withOpacity(0.7),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _titleController,
+                              decoration: InputDecoration(
+                                labelText: '点读本名称',
+                                hintText: '输入点读本名称',
+                                prefixIcon: Icon(
+                                  Icons.edit_note_rounded,
+                                  color: AppTheme.primaryColor.withOpacity(0.7),
+                                ),
+                              ),
+                              onSubmitted: (_) => _saveTitle(),
                             ),
                           ),
-                          onSubmitted: (_) => _saveTitle(),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Material(
-                        color: AppTheme.primaryColor,
-                        borderRadius: BorderRadius.circular(16),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: _isSaving ? null : _saveTitle,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            child: _isSaving
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.save_rounded,
-                                        size: 18,
-                                        color: Colors.white,
-                                      ),
-                                      SizedBox(width: 6),
-                                      Text(
-                                        '保存',
-                                        style: TextStyle(
+                          const SizedBox(width: 12),
+                          Material(
+                            color: AppTheme.primaryColor,
+                            borderRadius: BorderRadius.circular(16),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: _isSaving ? null : _saveTitle,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                child: _isSaving
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
                                           color: Colors.white,
-                                          fontWeight: FontWeight.w600,
                                         ),
+                                      )
+                                    : const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.save_rounded,
+                                            size: 18,
+                                            color: Colors.white,
+                                          ),
+                                          SizedBox(width: 6),
+                                          Text(
+                                            '保存',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: _editCover,
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppTheme.honeyYellow.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppTheme.honeyYellow.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 60,
+                                height: 60,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppTheme.warmBrown.withOpacity(0.1),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: _buildCoverPreview(),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '封面图片',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppTheme.warmBrown,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      widget.book.customCoverPath != null 
+                                          ? '自定义封面'
+                                          : (_pages.isEmpty ? '暂无页面' : '使用第一页'),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppTheme.warmBrown.withOpacity(0.6),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.honeyYellow.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  Icons.edit_rounded,
+                                  size: 18,
+                                  color: AppTheme.honeyYellow,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -591,6 +800,52 @@ class _BookManagePageState extends State<BookManagePage> {
         Icons.image_not_supported_rounded,
         size: 24,
         color: AppTheme.softGray,
+      ),
+    );
+  }
+
+  Widget _buildCoverPreview() {
+    if (widget.book.customCoverPath != null) {
+      final imageFile = ImageService.instance.getImageFile(widget.book.customCoverPath!);
+      if (imageFile != null) {
+        return Image.file(
+          imageFile,
+          width: 60,
+          height: 60,
+          fit: BoxFit.cover,
+        );
+      }
+    }
+
+    if (_pages.isNotEmpty) {
+      final imageFile = ImageService.instance.getImageFile(_pages.first.imagePath);
+      if (imageFile != null) {
+        return Image.file(
+          imageFile,
+          width: 60,
+          height: 60,
+          fit: BoxFit.cover,
+        );
+      }
+    }
+
+    return Container(
+      width: 60,
+      height: 60,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppTheme.calmBlue.withOpacity(0.3),
+            AppTheme.gentleGreen.withOpacity(0.3),
+          ],
+        ),
+      ),
+      child: Icon(
+        Icons.book_rounded,
+        size: 24,
+        color: AppTheme.warmBrown.withOpacity(0.5),
       ),
     );
   }

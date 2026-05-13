@@ -38,6 +38,26 @@ class ImageService {
     return relativePath;
   }
 
+  Future<String> saveCoverImage(File imageFile, String bookId) async {
+    if (!_isInitialized) {
+      await initialize();
+    }
+
+    final bookDir = Directory('${_appDir.path}/${AppConstants.booksDirectoryName}/$bookId');
+    if (!bookDir.existsSync()) {
+      bookDir.createSync(recursive: true);
+    }
+
+    final extension = imageFile.path.split('.').last.toLowerCase();
+    final coverFileName = 'cover_$bookId';
+    final newImagePath = '${bookDir.path}/$coverFileName.$extension';
+    
+    await imageFile.copy(newImagePath);
+    
+    final relativePath = '${AppConstants.booksDirectoryName}/$bookId/$coverFileName.$extension';
+    return relativePath;
+  }
+
   String _resolveImagePath(String imagePath) {
     if (imagePath.startsWith(AppConstants.booksDirectoryName) || 
         imagePath.startsWith('/${AppConstants.booksDirectoryName}')) {

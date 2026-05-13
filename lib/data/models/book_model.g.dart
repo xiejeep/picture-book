@@ -23,13 +23,14 @@ class BookModelAdapter extends TypeAdapter<BookModel> {
       updatedAt: fields[3] as DateTime,
       pages: (fields[4] as List).cast<PageModel>(),
       currentPageIndex: fields[5] as int,
+      customCoverPath: fields[6] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, BookModel obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -41,7 +42,9 @@ class BookModelAdapter extends TypeAdapter<BookModel> {
       ..writeByte(4)
       ..write(obj.pages)
       ..writeByte(5)
-      ..write(obj.currentPageIndex);
+      ..write(obj.currentPageIndex)
+      ..writeByte(6)
+      ..write(obj.customCoverPath);
   }
 
   @override

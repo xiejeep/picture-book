@@ -24,6 +24,9 @@ class BookModel extends HiveObject {
   @HiveField(5)
   int currentPageIndex;
 
+  @HiveField(6)
+  String? customCoverPath;
+
   BookModel({
     required this.id,
     required this.title,
@@ -31,9 +34,11 @@ class BookModel extends HiveObject {
     required this.updatedAt,
     required this.pages,
     this.currentPageIndex = 0,
+    this.customCoverPath,
   });
 
   String? get coverImagePath {
+    if (customCoverPath != null) return customCoverPath;
     if (pages.isEmpty) return null;
     return pages.first.imagePath;
   }
@@ -47,6 +52,8 @@ class BookModel extends HiveObject {
     DateTime? updatedAt,
     List<PageModel>? pages,
     int? currentPageIndex,
+    String? customCoverPath,
+    bool clearCustomCover = false,
   }) {
     return BookModel(
       id: id ?? this.id,
@@ -55,6 +62,7 @@ class BookModel extends HiveObject {
       updatedAt: updatedAt ?? this.updatedAt,
       pages: pages ?? this.pages,
       currentPageIndex: currentPageIndex ?? this.currentPageIndex,
+      customCoverPath: clearCustomCover ? null : (customCoverPath ?? this.customCoverPath),
     );
   }
 
@@ -109,6 +117,7 @@ class BookModel extends HiveObject {
       'updatedAt': updatedAt.toIso8601String(),
       'pages': pages.map((page) => page.toJson()).toList(),
       'currentPageIndex': currentPageIndex,
+      'customCoverPath': customCoverPath,
     };
   }
 
@@ -122,6 +131,7 @@ class BookModel extends HiveObject {
         return PageModel.fromJson(pageJson as Map<String, dynamic>);
       }).toList(),
       currentPageIndex: json['currentPageIndex'] as int,
+      customCoverPath: json['customCoverPath'] as String?,
     );
   }
 }

@@ -157,6 +157,21 @@ class BookService {
     book.save();
   }
 
+  Future<void> updateBookCover(String bookId, String? customCoverPath) async {
+    final book = StorageService.instance.getBook(bookId);
+    if (book == null) {
+      throw Exception('Book not found: $bookId');
+    }
+
+    book.customCoverPath = customCoverPath;
+    book.updatedAt = DateTime.now();
+    book.save();
+  }
+
+  Future<String?> saveCoverImage(File imageFile, String bookId) async {
+    return await ImageService.instance.saveCoverImage(imageFile, bookId);
+  }
+
   Future<void> deleteBook(String bookId) async {
     final book = StorageService.instance.getBook(bookId);
     if (book == null) return;

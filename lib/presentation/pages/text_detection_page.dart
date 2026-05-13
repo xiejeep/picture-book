@@ -109,7 +109,6 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
             CropAspectRatioPreset.square,
             CropAspectRatioPreset.ratio4x3,
             CropAspectRatioPreset.ratio16x9,
-            _BookPageRatioPreset(),
           ],
         ),
         IOSUiSettings(
@@ -119,7 +118,6 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
             CropAspectRatioPreset.square,
             CropAspectRatioPreset.ratio4x3,
             CropAspectRatioPreset.ratio16x9,
-            _BookPageRatioPreset(),
           ],
           rotateButtonsHidden: false,
           resetButtonHidden: false,
@@ -2368,12 +2366,4 @@ class TextBlockPainter extends CustomPainter {
         oldDelegate.drawMode != drawMode ||
         oldDelegate.editModeResize != editModeResize;
   }
-}
-
-class _BookPageRatioPreset implements CropAspectRatioPresetData {
-  @override
-  (int, int)? get data => (3, 4);
-
-  @override
-  String get name => '书籍页面 (3:4)';
 }
