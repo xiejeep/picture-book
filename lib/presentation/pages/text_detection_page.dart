@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import '../../data/services/ocr_service.dart';
 import '../../data/services/ai_service.dart';
 import '../../data/services/tts_service.dart';
@@ -95,10 +96,44 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
     if (pickedFile == null) return;
 
     final File imageFile = File(pickedFile.path);
-    final decodedImage = await decodeImageFromList(imageFile.readAsBytesSync());
+    
+    final croppedFile = await ImageCropper().cropImage(
+      sourcePath: imageFile.path,
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: '编辑图片',
+          toolbarColor: AppTheme.calmBlue,
+          toolbarWidgetColor: Colors.white,
+          aspectRatioPresets: [
+            CropAspectRatioPreset.original,
+            CropAspectRatioPreset.square,
+            CropAspectRatioPreset.ratio4x3,
+            CropAspectRatioPreset.ratio16x9,
+            _BookPageRatioPreset(),
+          ],
+        ),
+        IOSUiSettings(
+          title: '编辑图片',
+          aspectRatioPresets: [
+            CropAspectRatioPreset.original,
+            CropAspectRatioPreset.square,
+            CropAspectRatioPreset.ratio4x3,
+            CropAspectRatioPreset.ratio16x9,
+            _BookPageRatioPreset(),
+          ],
+          rotateButtonsHidden: false,
+          resetButtonHidden: false,
+        ),
+      ],
+    );
+
+    if (croppedFile == null) return;
+
+    final croppedImageFile = File(croppedFile.path);
+    final decodedImage = await decodeImageFromList(croppedImageFile.readAsBytesSync());
     
     setState(() {
-      _imageFile = imageFile;
+      _imageFile = croppedImageFile;
       _imageSize = Size(
         decodedImage.width.toDouble(),
         decodedImage.height.toDouble(),
@@ -2333,4 +2368,12 @@ class TextBlockPainter extends CustomPainter {
         oldDelegate.drawMode != drawMode ||
         oldDelegate.editModeResize != editModeResize;
   }
+}
+
+class _BookPageRatioPreset implements CropAspectRatioPresetData {
+  @override
+  (int, int)? get data => (3, 4);
+
+  @override
+  String get name => '书籍页面 (3:4)';
 }
