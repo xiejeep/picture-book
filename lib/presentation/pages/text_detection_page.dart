@@ -1855,12 +1855,6 @@ child: const Text('关闭'),
           actions: [
             if (_imageFile != null)
               IconButton(
-                icon: const Icon(Icons.record_voice_over_rounded),
-                onPressed: _showVoiceSettingsDialog,
-                tooltip: '语音设置',
-              ),
-            if (_imageFile != null)
-              IconButton(
                 icon: const Icon(Icons.help_outline),
                 onPressed: _showHelpDialog,
                 tooltip: '操作指南',
@@ -1894,6 +1888,9 @@ child: const Text('关闭'),
                     break;
                   case 'select_model':
                     _showModelSelectionDialog();
+                    break;
+                  case 'voice_settings':
+                    _showVoiceSettingsDialog();
                     break;
                   case 'play':
                     _playSelectedBlock();
@@ -1947,6 +1944,17 @@ child: const Text('关闭'),
                             ],
                           ),
                         ),
+                      ],
+                    ),
+                  ),
+                if (_imageFile != null)
+                  const PopupMenuItem(
+                    value: 'voice_settings',
+                    child: Row(
+                      children: [
+                        Icon(Icons.record_voice_over_rounded, size: 20),
+                        SizedBox(width: 8),
+                        Text('语音设置'),
                       ],
                     ),
                   ),
