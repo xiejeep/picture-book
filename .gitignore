@@ -63,3 +63,13 @@ macos/Flutter/ephemeral/
 # Generated plugin registrant
 android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
 ios/Runner/GeneratedPluginRegistrant.m
+
+# Android Gradle cache
+android/.gradle/
+
+# Android local properties (machine-specific)
+android/local.properties
+
+# macOS Pods
+macos/Pods/
+macos/Podfile.lock
