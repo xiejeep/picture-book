@@ -191,7 +191,8 @@ $blocksDescription
    - Noise examples: "F#At", "FRA", "FAABMA!", "60t9!", "#7NNRHo" (random letters/symbols)
    - Keep real words: "Netherite is super strong!" from "F#At\nNetherite is\nsuper strong!\nFAABMA!"
    
-2. Remove decorative symbols: #, |, **, phonetic marks (/æ/), numbering
+2. Remove decorative symbols: #, |, **, numbering
+   Remove ALL phonetic transcriptions (IPA) — any text enclosed in slashes like /ˈpɪkæks/, /hoʊ/, /sɔːrd/, /ˈwʊdn/, /boʊ/, /ækz/, /ˈærəʊ/, /ˈʃoʊvəl/, /ʃiːld/, /stoʊn/, /ˈaɪərn/, /ˈdaɪəmənd/, /ˈneðəraɪt/, /hau/, etc. Remove the entire "/.../" pattern including the slashes.
    
 3. Remove meaningless line breaks:
    - "Diamond is\nthe best!" → "Diamond is the best!" (one sentence)
@@ -203,22 +204,22 @@ $blocksDescription
 
 === EXAMPLE (5 blocks shown, your actual input has ${blocks.length} blocks) ===
 {"index":0,"text":"Title"}
-{"index":1,"text":"First line\\nSecond line\\nThird line"}
+{"index":1,"text":"pickaxe /ˈpɪkæks/"}
 {"index":2,"text":"#"}
 {"index":3,"text":"Diamond is\\nthe best!"}
-{"index":4,"text":"netherite\\nF#At\\nFRA\\nNetherite is\\nsuper strong!\\nFAABMA!"}
+{"index":4,"text":"netherite /ˈneðəraɪt/\\nF#At\\nFRA\\nNetherite is\\nsuper strong!\\nFAABMA!"}
 
 Correct Output (5 items, indices 0-4):
-[{"index":0,"corrected":"Title"},{"index":1,"corrected":"First line\\nSecond line\\nThird line"},{"index":2,"corrected":""},{"index":3,"corrected":"Diamond is the best!"},{"index":4,"corrected":"Netherite is super strong!"}]
+[{"index":0,"corrected":"Title"},{"index":1,"corrected":"pickaxe"},{"index":2,"corrected":""},{"index":3,"corrected":"Diamond is the best!"},{"index":4,"corrected":"Netherite is super strong!"}]
 
 Note:
-- index 1: distinct lines → keep them
+- index 1: word + phonetic /ˈpɪkæks/ → keep only "pickaxe"
 - index 3: one sentence → remove line break
-- index 4: contains noise (F#At, FRA, FAABMA!) → extract only "Netherite is super strong!"
+- index 4: remove phonetic /ˈneðəraɪt/ and noise → extract only "Netherite is super strong!"
 
-WRONG Output (only 4 items, skipped index 2):
-[{"index":0,"corrected":"Title"},{"index":1,"corrected":"First line Second line Third line"},{"index":3,"corrected":"Diamond is the best!"},{"index":4,"corrected":"netherite FAt FRA Netherite is super strong FAABMA"}]
-↑ WRONG: skipped index 2, and kept noise in index 4
+WRONG Output (kept phonetics):
+[{"index":0,"corrected":"Title"},{"index":1,"corrected":"pickaxe /ˈpɪkæks/"},{"index":3,"corrected":"Diamond is the best!"},{"index":4,"corrected":"netherite /ˈneðəraɪt/ Netherite is super strong FAABMA"}]
+↑ WRONG: kept phonetics, skipped index 2
 
 === FINAL CHECK ===
 Before outputting, COUNT your results:
