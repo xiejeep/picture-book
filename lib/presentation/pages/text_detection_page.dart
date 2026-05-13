@@ -82,8 +82,8 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
 
   bool _editModeResize = true;
 
-  bool _panMode = false;
-  bool _isPanning = false;
+  bool _isPanning = true;
+  bool _isActivelyPanning = false;
   Offset? _panStartPoint;
   Matrix4? _panStartMatrix;
 
@@ -386,9 +386,11 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
     
     final blockIndex = _findBlockAtPoint(imagePoint);
     setState(() {
-      if (blockIndex != null && blockIndex != _selectedIndex) {
+      if (blockIndex != null) {
         _editModeResize = true;
-        _panMode = false;
+        _isPanning = false;
+      } else {
+        _isPanning = true;
       }
       _selectedIndex = blockIndex;
     });
@@ -401,9 +403,9 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
   }
 
   void _handleDragStart(DragStartDetails details) {
-    if (_panMode) {
+    if (_isPanning && !_drawMode) {
       setState(() {
-        _isPanning = true;
+        _isActivelyPanning = true;
         _panStartPoint = details.globalPosition;
         _panStartMatrix = _controller.value.clone();
       });
@@ -447,7 +449,7 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
   }
 
   void _handleDragUpdate(DragUpdateDetails details) {
-    if (_isPanning && _panStartPoint != null && _panStartMatrix != null) {
+    if (_isActivelyPanning && _panStartPoint != null && _panStartMatrix != null) {
       final delta = details.globalPosition - _panStartPoint!;
       final currentScale = _controller.value.getMaxScaleOnAxis();
       final newMatrix = _panStartMatrix!.clone();
@@ -575,9 +577,9 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
   }
 
   void _handleDragEnd(DragEndDetails details) {
-    if (_isPanning) {
+    if (_isActivelyPanning) {
       setState(() {
-        _isPanning = false;
+        _isActivelyPanning = false;
         _panStartPoint = null;
         _panStartMatrix = null;
       });
@@ -622,20 +624,12 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
     setState(() {
       _drawMode = !_drawMode;
       if (_drawMode) {
-        _panMode = false;
+        _isPanning = false;
         _selectedIndex = null;
         _tempRect = null;
         _drawStartPoint = null;
-      }
-    });
-  }
-
-  void _togglePanMode() {
-    setState(() {
-      _panMode = !_panMode;
-      if (_panMode) {
-        _drawMode = false;
-        _selectedIndex = null;
+      } else {
+        _isPanning = true;
       }
     });
   }
@@ -2201,36 +2195,7 @@ child: const Text('关闭'),
                               ),
                             ),
                           ),
-                        if (!_isProcessing && !_showAiBanner && !_drawMode && _panMode)
-                          Positioned(
-                            top: 16,
-                            left: 0,
-                            right: 0,
-                            child: Center(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.withOpacity(0.9),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.open_with, size: 16, color: Colors.white),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      '平移模式：拖动调整图片位置',
-                                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        if (!_isProcessing && !_showAiBanner && !_drawMode && !_panMode && visibleBlocks.isNotEmpty)
+                        if (!_isProcessing && !_showAiBanner && !_drawMode && !_isPanning && visibleBlocks.isNotEmpty)
                           const SizedBox.shrink(),
                         if (!_isProcessing && visibleBlocks.isEmpty && _textBlocks.isNotEmpty)
                           Positioned(
@@ -2398,18 +2363,6 @@ child: const Text('关闭'),
                                   padding: const EdgeInsets.all(4),
                                   constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                                   tooltip: '重置缩放',
-                                ),
-                                const Divider(color: Colors.white38, height: 1, indent: 6, endIndent: 6),
-                                IconButton(
-                                  icon: Icon(
-                                    Icons.open_with,
-                                    color: _panMode ? Colors.orange : Colors.white,
-                                    size: 18,
-                                  ),
-                                  onPressed: _togglePanMode,
-                                  padding: const EdgeInsets.all(4),
-                                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                                  tooltip: _panMode ? '选择模式' : '平移模式',
                                 ),
                               ],
                             ),
