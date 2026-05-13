@@ -46,3 +46,20 @@ app.*.map.json
 
 # FVM Version Cache
 .fvm/
+
+# iOS Pods
+ios/Pods/
+ios/.symlinks/
+
+# iOS/macOS user data
+ios/Runner.xcworkspace/xcuserdata/
+ios/Runner.xcodeproj/xcuserdata/
+macos/Runner.xcworkspace/xcuserdata/
+macos/Runner.xcodeproj/xcuserdata/
+
+# macOS ephemeral
+macos/Flutter/ephemeral/
+
+# Generated plugin registrant
+android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+ios/Runner/GeneratedPluginRegistrant.m
