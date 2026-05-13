@@ -5,8 +5,12 @@ import '../../data/models/page_model.dart';
 import '../../data/models/text_block_model.dart';
 import '../../data/services/tts_service.dart';
 import '../../data/services/image_service.dart';
+import '../../data/services/storage_service.dart';
+import '../../data/models/ai_settings_model.dart';
+import '../../core/constants/constants.dart';
 import '../widgets/page_indicator.dart';
 import '../../core/theme/app_theme.dart';
+import 'voice_settings_page.dart';
 
 class BookDetailPage extends StatefulWidget {
   final BookModel book;
@@ -28,6 +32,8 @@ class _BookDetailPageState extends State<BookDetailPage> {
   String? _playingText;
   int? _playingBlockIndex;
   int? _tappedBlockIndex;
+  double _currentSpeechRate = AppConstants.systemTtsDefaultSpeed;
+  bool _currentUseGlmTts = false;
 
   @override
   void initState() {
@@ -36,6 +42,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
     _currentPageIndex = _book.currentPageIndex;
 
     _initTts();
+    _loadVoiceSettings();
 
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
@@ -48,10 +55,191 @@ class _BookDetailPageState extends State<BookDetailPage> {
     await TtsService.instance.initialize();
   }
 
+  void _loadVoiceSettings() {
+    final settings = StorageService.instance.getAiSettings();
+    setState(() {
+      _currentUseGlmTts = settings?.useGlmTts ?? false;
+      if (settings?.speechRate != null && settings!.speechRate > 0) {
+        _currentSpeechRate = settings.speechRate;
+      } else {
+        _currentSpeechRate = _currentUseGlmTts
+            ? AppConstants.glmTtsDefaultSpeed
+            : AppConstants.systemTtsDefaultSpeed;
+      }
+    });
+  }
+
   @override
   void dispose() {
     TtsService.instance.stop();
     super.dispose();
+  }
+
+  void _showVoiceSettingsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.gentleGreen.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.record_voice_over_rounded,
+                          color: AppTheme.gentleGreen,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        '语音设置',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.warmBrown,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '当前语速',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        Text(
+                          '${(_currentSpeechRate * 100).toInt()}%',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.gentleGreen,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Slider(
+                    value: _currentSpeechRate,
+                    min: _currentUseGlmTts ? AppConstants.glmTtsMinSpeed : AppConstants.systemTtsMinSpeed,
+                    max: _currentUseGlmTts ? AppConstants.glmTtsMaxSpeed : AppConstants.systemTtsMaxSpeed,
+                    divisions: _currentUseGlmTts ? AppConstants.glmTtsSpeedDivisions : AppConstants.systemTtsSpeedDivisions,
+                    activeColor: AppTheme.gentleGreen,
+                    onChanged: (value) {
+                      setDialogState(() {
+                        _currentSpeechRate = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _currentUseGlmTts ? '慢速' : '最慢',
+                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                      Text(
+                        _currentUseGlmTts ? '快速' : '最快',
+                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const VoiceSettingsPage()),
+                            ).then((_) {
+                              _loadVoiceSettings();
+                            });
+                          },
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          child: Text(
+                            '更多设置',
+                            style: TextStyle(color: Colors.grey.shade600),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            final currentSettings = StorageService.instance.getAiSettings();
+                            final settings = AiSettingsModel(
+                              selectedModel: currentSettings?.selectedModel ?? AppConstants.defaultModel,
+                              useGlmTts: _currentUseGlmTts,
+                              ttsVoice: currentSettings?.ttsVoice ?? AppConstants.defaultTtsVoice,
+                              speechRate: _currentSpeechRate,
+                            );
+                            await StorageService.instance.saveAiSettings(settings);
+                            
+                            setState(() {});
+                            Navigator.pop(context);
+                            
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('语速已调整'),
+                                backgroundColor: AppTheme.gentleGreen,
+                                duration: Duration(seconds: 1),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.gentleGreen,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text('确定'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   void _goToPreviousPage() {
@@ -213,6 +401,22 @@ class _BookDetailPageState extends State<BookDetailPage> {
                 ],
               ),
               actions: [
+                IconButton(
+                  icon: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.record_voice_over_rounded,
+                      size: 18,
+                      color: Colors.white,
+                    ),
+                  ),
+                  onPressed: _showVoiceSettingsDialog,
+                  tooltip: '语音设置',
+                ),
                 IconButton(
                   icon: Container(
                     padding: const EdgeInsets.all(6),
