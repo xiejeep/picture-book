@@ -418,6 +418,14 @@ class _BookManagePageState extends State<BookManagePage> {
                               motion: const DrawerMotion(),
                               children: [
                                 SlidableAction(
+                                  onPressed: (_) => _editPage(index),
+                                  backgroundColor: AppTheme.honeyYellow,
+                                  foregroundColor: Colors.white,
+                                  icon: Icons.edit_rounded,
+                                  label: '编辑',
+                                  borderRadius: BorderRadius.zero,
+                                ),
+                                SlidableAction(
                                   onPressed: (_) => _deletePage(index),
                                   backgroundColor: const Color(0xFFFF6B6B),
                                   foregroundColor: Colors.white,
@@ -481,27 +489,9 @@ class _BookManagePageState extends State<BookManagePage> {
                                     ),
                                   ),
                                 ),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.honeyYellow.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Icon(
-                                        Icons.edit_rounded,
-                                        size: 20,
-                                        color: AppTheme.honeyYellow,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Icon(
-                                      Icons.drag_handle_rounded,
-                                      color: AppTheme.softGray,
-                                    ),
-                                  ],
+                                trailing: Icon(
+                                  Icons.drag_handle_rounded,
+                                  color: AppTheme.softGray,
                                 ),
                                 onTap: () => _editPage(index),
                               ),
