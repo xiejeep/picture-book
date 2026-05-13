@@ -8,7 +8,7 @@ import '../../core/utils/toast_util.dart';
 import '../../core/theme/app_theme.dart';
 import 'book_detail_page.dart';
 import 'book_manage_page.dart';
-import 'text_detection_page.dart';
+import '../features/text_detection/text_detection.dart';
 import 'settings_page.dart';
 
 class HomePage extends ConsumerStatefulWidget {
