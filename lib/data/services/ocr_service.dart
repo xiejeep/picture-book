@@ -37,11 +37,17 @@ class OcrService {
       
       final blocks = <OcrBlock>[];
       for (final block in recognizedText.blocks) {
+        final langs = block.recognizedLanguages.toList();
+        final nonLatin = langs.where((l) => l != 'en' && l != 'und').toList();
+        if (nonLatin.isNotEmpty) {
+          debugPrint('OCR过滤: "${block.text}" recognizedLanguages=$langs (非英文, 跳过)');
+          continue;
+        }
         blocks.add(_OcrBlockImpl(
           text: block.text,
           boundingBox: block.boundingBox,
           cornerPoints: block.cornerPoints.map((p) => Point<int>(p.x.toInt(), p.y.toInt())).toList(),
-          recognizedLanguages: block.recognizedLanguages.toList(),
+          recognizedLanguages: langs,
         ));
       }
       

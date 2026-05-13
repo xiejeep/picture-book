@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/toast_util.dart';
+import '../../../../data/services/ai_service.dart';
 import '../../../../data/services/tts_service.dart';
 import '../../../../data/services/ocr_service.dart';
 import '../../../pages/ocr_results_table_page.dart';
@@ -513,7 +514,12 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
     if (result != null) {
       final notifier = ref.read(textDetectionProvider.notifier);
       for (final updated in result) {
-        notifier.updateBlockText(updated.id, updated.text);
+        notifier.updateBlockText(
+          updated.id,
+          updated.text,
+          originalText: updated.originalText,
+          aiEnhancedText: updated.aiEnhancedText,
+        );
       }
     }
   }
@@ -691,11 +697,68 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
   }
 
   Future<void> _showAiEnhanceAllDialog(TextDetectionNotifier notifier) async {
+    final hasApiKey = await AiService.instance.hasApiKey();
+    if (!hasApiKey) {
+      ToastUtil.warning('请先在设置中配置API Key');
+      return;
+    }
+
+    final state = ref.read(textDetectionProvider);
+    final visibleBlocks = state.textBlocks.where((b) => !b.isDeleted).toList();
+    if (visibleBlocks.isEmpty) {
+      ToastUtil.warning('没有可优化的文字块');
+      return;
+    }
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('AI强化全部'),
-        content: const Text('确定要对所有文字块进行AI强化识别吗？'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.withOpacity(0.5)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.warning_amber, color: Colors.orange, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        '隐私提示',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '使用AI功能时，您的文本和图片将发送给第三方AI服务商（智谱AI）进行处理。',
+                    style: TextStyle(fontSize: 13, color: Colors.black87),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    '提示：AI识别结果可能不完全准确，建议手动检查和修改。',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text('确定要对所有${visibleBlocks.length}个文字块进行AI强化识别吗？'),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -711,10 +774,12 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
 
     if (confirm == true) {
       try {
-        await notifier.aiEnhanceAll();
-        ToastUtil.success('AI强化完成');
+        final count = await notifier.aiEnhanceAll();
+        if (!mounted) return;
+        ToastUtil.success('AI强化识别完成，已优化 $count 个文字块');
       } catch (e) {
-        ToastUtil.error(e.toString());
+        if (!mounted) return;
+        ToastUtil.error('AI强化失败: ${e.toString().replaceAll('Exception: ', '')}');
       }
     }
   }
@@ -724,12 +789,67 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
     TextDetectionNotifier notifier,
   ) async {
     if (state.selectedBlockId == null) return;
-    
+
+    final hasApiKey = await AiService.instance.hasApiKey();
+    if (!hasApiKey) {
+      ToastUtil.warning('请先在设置中配置API Key');
+      return;
+    }
+
+    if (state.imageFile == null) {
+      ToastUtil.error('没有图片文件，无法进行AI强化');
+      return;
+    }
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('AI强化识别'),
-        content: const Text('确定要对选中区域进行AI强化识别吗？'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.withOpacity(0.5)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.warning_amber, color: Colors.orange, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        '隐私提示',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '使用AI功能时，您的文本和图片将发送给第三方AI服务商（智谱AI）进行处理。',
+                    style: TextStyle(fontSize: 13, color: Colors.black87),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    '提示：AI识别结果可能不完全准确，建议手动检查和修改。',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text('确定要对此文字块进行AI强化识别吗？'),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -745,10 +865,16 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
 
     if (confirm == true) {
       try {
-        await notifier.aiEnhanceSelectedBlock();
-        ToastUtil.success('AI强化完成');
+        final hasChanges = await notifier.aiEnhanceSelectedBlock();
+        if (!mounted) return;
+        if (hasChanges) {
+          ToastUtil.success('AI强化完成');
+        } else {
+          ToastUtil.info('AI强化完成，无需修改');
+        }
       } catch (e) {
-        ToastUtil.error(e.toString());
+        if (!mounted) return;
+        ToastUtil.error('AI强化失败: ${e.toString().replaceAll('Exception: ', '')}');
       }
     }
   }

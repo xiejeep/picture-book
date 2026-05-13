@@ -14,7 +14,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../data/services/ocr_service.dart';
 import '../../../../data/services/ai_service.dart';
 import '../../../../data/services/storage_service.dart';
-import '../../../providers/repository_providers.dart';
+
 
 class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
   final TransformationController transformController = TransformationController();
@@ -31,8 +31,10 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
     });
     
     final settings = StorageService.instance.getAiSettings();
+    final savedModel = settings?.selectedModel ?? AppConstants.defaultModel;
+    final modelExists = AppConstants.availableModels.any((m) => m['name'] == savedModel);
     return TextDetectionState(
-      currentAiModel: settings?.selectedModel ?? AppConstants.defaultModel,
+      currentAiModel: modelExists ? savedModel : AppConstants.defaultModel,
       speechRate: settings?.speechRate ?? AppConstants.systemTtsDefaultSpeed,
       useGlmTts: settings?.useGlmTts ?? false,
     );
@@ -518,11 +520,13 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
     );
   }
 
-  void updateBlockText(String blockId, String newText) {
+  void updateBlockText(String blockId, String newText, {String? originalText, String? aiEnhancedText}) {
     final newBlocks = List<TextBlockData>.from(state.textBlocks);
     final index = newBlocks.indexWhere((b) => b.id == blockId);
     if (index != -1) {
       newBlocks[index].text = newText;
+      if (originalText != null) newBlocks[index].originalText = originalText;
+      if (aiEnhancedText != null) newBlocks[index].aiEnhancedText = aiEnhancedText;
     }
     state = state.copyWith(textBlocks: newBlocks, hasChanges: true);
   }
@@ -566,90 +570,90 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
     }
   }
 
-  Future<void> aiEnhanceAll() async {
-    final visibleBlocks = state.getVisibleBlocks();
-    if (visibleBlocks.isEmpty || state.imageFile == null) return;
-
-    final hasApiKey = await AiService.instance.hasApiKey();
-    if (!hasApiKey) throw Exception('请先在设置中配置API Key');
+  Future<int> aiEnhanceAll() async {
+    final visibleBlocks = state.textBlocks.where((b) => !b.isDeleted).toList();
+    if (visibleBlocks.isEmpty || state.imageFile == null) return 0;
 
     state = state.copyWith(isAiEnhancing: true, showAiBanner: true);
 
     try {
       final blocksData = <Map<int, String>>[];
       for (int i = 0; i < visibleBlocks.length; i++) {
+        visibleBlocks[i].originalText ??= visibleBlocks[i].text;
         blocksData.add({i: visibleBlocks[i].text});
       }
 
-      final correctedBlocks = await ref.read(aiRepositoryProvider).enhanceTextBlocks(
+      final correctedBlocks = await AiService.instance.enhanceTextBlocks(
         state.imageFile!,
         blocksData,
         state.currentAiModel,
       );
 
-      final newBlocks = List<TextBlockData>.from(state.textBlocks);
       int updatedCount = 0;
-      
       for (int i = 0; i < visibleBlocks.length; i++) {
         final correctedText = correctedBlocks[i];
         if (correctedText != null) {
-          final index = newBlocks.indexWhere((b) => b.id == visibleBlocks[i].id);
-          if (index != -1) {
-            newBlocks[index].originalText ??= newBlocks[index].text;
-            newBlocks[index].aiEnhancedText = correctedText;
-            if (correctedText != newBlocks[index].text) {
-              newBlocks[index].text = correctedText;
-              updatedCount++;
-            }
-          }
+          visibleBlocks[i].aiEnhancedText = correctedText;
+          visibleBlocks[i].text = correctedText;
+          updatedCount++;
         }
       }
 
       state = state.copyWith(
-        textBlocks: newBlocks,
+        textBlocks: List<TextBlockData>.from(state.textBlocks),
         isAiEnhancing: false,
         showAiBanner: false,
         hasChanges: true,
       );
-      
-      return;
+
+      return updatedCount;
     } catch (e) {
       state = state.copyWith(isAiEnhancing: false, showAiBanner: false);
-      throw Exception('AI强化失败: $e');
+      throw Exception('AI强化失败: ${e.toString().split('\n').first}');
     }
   }
 
-  Future<void> aiEnhanceSelectedBlock() async {
-    if (state.selectedBlockId == null || state.imageFile == null) return;
-
-    final hasApiKey = await AiService.instance.hasApiKey();
-    if (!hasApiKey) throw Exception('请先在设置中配置API Key');
+  Future<bool> aiEnhanceSelectedBlock() async {
+    if (state.selectedBlockId == null || state.imageFile == null) return false;
 
     state = state.copyWith(isAiEnhancing: true, showAiBanner: true);
 
     try {
       final block = state.selectedBlock!;
+      block.originalText ??= block.text;
+
       final blocksData = [{0: block.text}];
 
-      final correctedBlocks = await ref.read(aiRepositoryProvider).enhanceTextBlocks(
+      final correctedBlocks = await AiService.instance.enhanceTextBlocks(
         state.imageFile!,
         blocksData,
         state.currentAiModel,
       );
 
       final correctedText = correctedBlocks[0];
+      final newBlocks = List<TextBlockData>.from(state.textBlocks);
+      final index = newBlocks.indexWhere((b) => b.id == state.selectedBlockId);
+
       if (correctedText != null) {
-        final newBlocks = List<TextBlockData>.from(state.textBlocks);
-        final index = newBlocks.indexWhere((b) => b.id == state.selectedBlockId);
         if (index != -1) {
           newBlocks[index].originalText ??= newBlocks[index].text;
           newBlocks[index].aiEnhancedText = correctedText;
           newBlocks[index].text = correctedText;
         }
-        state = state.copyWith(textBlocks: newBlocks, hasChanges: true);
+        state = state.copyWith(
+          textBlocks: newBlocks,
+          isAiEnhancing: false,
+          showAiBanner: false,
+          hasChanges: true,
+        );
+        return true;
+      } else {
+        state = state.copyWith(
+          isAiEnhancing: false,
+          showAiBanner: false,
+        );
+        return false;
       }
-
-      state = state.copyWith(isAiEnhancing: false, showAiBanner: false);
     } catch (e) {
       state = state.copyWith(isAiEnhancing: false, showAiBanner: false);
       throw Exception('AI强化失败: $e');
