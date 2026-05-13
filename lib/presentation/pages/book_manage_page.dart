@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import '../../data/models/book_model.dart';
 import '../../data/models/page_model.dart';
 import '../../data/models/text_block_model.dart';
@@ -412,94 +412,99 @@ class _BookManagePageState extends State<BookManagePage> {
                         onReorder: _reorderPages,
                         itemBuilder: (context, index) {
                           final page = _pages[index];
-                          return Container(
+                          return Slidable(
                             key: ValueKey(page.id),
-                            margin: const EdgeInsets.only(bottom: 12),
-                            decoration: BoxDecoration(
-                              color: AppTheme.cardColor,
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: AppTheme.playfulShadow,
+                            endActionPane: ActionPane(
+                              motion: const DrawerMotion(),
+                              children: [
+                                SlidableAction(
+                                  onPressed: (_) => _deletePage(index),
+                                  backgroundColor: const Color(0xFFFF6B6B),
+                                  foregroundColor: Colors.white,
+                                  icon: Icons.delete_rounded,
+                                  label: '删除',
+                                  borderRadius: const BorderRadius.only(
+                                    topRight: Radius.circular(20),
+                                    bottomRight: Radius.circular(20),
+                                  ),
+                                ),
+                              ],
                             ),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              leading: _buildThumbnail(page),
-                              title: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.honeyYellow.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              decoration: BoxDecoration(
+                                color: AppTheme.cardColor,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: AppTheme.playfulShadow,
+                              ),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                leading: _buildThumbnail(page),
+                                title: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.honeyYellow.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        '${index + 1}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppTheme.warmBrown,
+                                        ),
+                                      ),
                                     ),
-                                    child: Text(
-                                      '${index + 1}',
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      '第 ${index + 1} 页',
                                       style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
+                                        fontWeight: FontWeight.w500,
                                         color: AppTheme.warmBrown,
                                       ),
                                     ),
+                                  ],
+                                ),
+                                subtitle: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.calmBlue.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '第 ${index + 1} 页',
+                                  child: Text(
+                                    '${page.textBlocks.where((b) => !b.isDeleted).length} 个文字块',
                                     style: TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                      color: AppTheme.warmBrown,
+                                      fontSize: 12,
+                                      color: AppTheme.warmBrown.withOpacity(0.7),
                                     ),
-                                  ),
-                                ],
-                              ),
-                              subtitle: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.calmBlue.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  '${page.textBlocks.where((b) => !b.isDeleted).length} 个文字块',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppTheme.warmBrown.withOpacity(0.7),
                                   ),
                                 ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.honeyYellow.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(
+                                        Icons.edit_rounded,
+                                        size: 20,
+                                        color: AppTheme.honeyYellow,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Icon(
+                                      Icons.drag_handle_rounded,
+                                      color: AppTheme.softGray,
+                                    ),
+                                  ],
+                                ),
+                                onTap: () => _editPage(index),
                               ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.honeyYellow.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Icon(
-                                      Icons.edit_rounded,
-                                      size: 20,
-                                      color: AppTheme.honeyYellow,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: Color(0xFFFF6B6B).withOpacity(0.15),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Icon(
-                                      Icons.delete_rounded,
-                                      size: 20,
-                                      color: Color(0xFFFF6B6B),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Icon(
-                                    Icons.drag_handle_rounded,
-                                    color: AppTheme.softGray,
-                                  ),
-                                ],
-                              ),
-                              onTap: () => _editPage(index),
                             ),
                           );
                         },
