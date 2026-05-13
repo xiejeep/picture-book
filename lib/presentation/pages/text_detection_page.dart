@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import '../../data/services/ocr_service.dart';
@@ -2073,6 +2074,7 @@ child: const Text('关闭'),
                             onScaleStart: _handleScaleStart,
                             onScaleUpdate: _handleScaleUpdate,
                             onScaleEnd: _handleScaleEnd,
+                            dragStartBehavior: DragStartBehavior.down,
                             child: SizedBox(
                               width: _displaySize.width,
                               height: _displaySize.height,
