@@ -3,6 +3,8 @@ import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:image/image.dart' as img;
+import 'package:path_provider/path_provider.dart';
 
 abstract class OcrResult {
   String get text;
@@ -49,6 +51,53 @@ class OcrService {
       );
     } catch (e) {
       debugPrint('OCR recognizeText failed: $e');
+      return null;
+    }
+  }
+
+  Future<String?> recognizeTextInRegion(File imageFile, Rect region) async {
+    try {
+      final bytes = await imageFile.readAsBytes();
+      final originalImage = img.decodeImage(bytes);
+      if (originalImage == null) {
+        debugPrint('OCR recognizeTextInRegion: Failed to decode image');
+        return null;
+      }
+
+      final left = region.left.toInt().clamp(0, originalImage.width);
+      final top = region.top.toInt().clamp(0, originalImage.height);
+      final right = region.right.toInt().clamp(0, originalImage.width);
+      final bottom = region.bottom.toInt().clamp(0, originalImage.height);
+      
+      final width = right - left;
+      final height = bottom - top;
+      
+      if (width <= 0 || height <= 0) {
+        debugPrint('OCR recognizeTextInRegion: Invalid region size');
+        return null;
+      }
+
+      final croppedImage = img.copyCrop(originalImage, x: left, y: top, width: width, height: height);
+      
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/ocr_region_${DateTime.now().millisecondsSinceEpoch}.png');
+      await tempFile.writeAsBytes(img.encodePng(croppedImage));
+      
+      _recognizer ??= TextRecognizer(script: TextRecognitionScript.latin);
+      final inputImage = InputImage.fromFile(tempFile);
+      final recognizedText = await _recognizer!.processImage(inputImage);
+      
+      await tempFile.delete();
+      
+      final text = recognizedText.text.trim();
+      if (text.isEmpty) {
+        debugPrint('OCR recognizeTextInRegion: No text found in region');
+        return null;
+      }
+      
+      return text;
+    } catch (e) {
+      debugPrint('OCR recognizeTextInRegion failed: $e');
       return null;
     }
   }

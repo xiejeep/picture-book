@@ -5,9 +5,12 @@ import 'package:image_cropper/image_cropper.dart';
 import '../../data/services/ocr_service.dart';
 import '../../data/services/ai_service.dart';
 import '../../data/services/tts_service.dart';
+import '../../data/services/storage_service.dart';
+import '../../data/models/ai_settings_model.dart';
 import '../../core/constants/constants.dart';
 import '../../core/theme/app_theme.dart';
 import 'ocr_results_table_page.dart';
+import 'voice_settings_page.dart';
 
 enum HandlePosition {
   topLeft,
@@ -88,6 +91,8 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
   Offset? _drawStartPoint;
 
   bool _hasChanges = false;
+  double _currentSpeechRate = AppConstants.systemTtsDefaultSpeed;
+  bool _currentUseGlmTts = false;
 
   static const double _handleSize = 40.0;
 
@@ -663,33 +668,92 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
       context: context,
       builder: (context) {
         final TextEditingController controller = TextEditingController(text: block.text);
+        bool isRecognizing = false;
+        String? errorMessage;
         
-        return AlertDialog(
-          title: const Text('编辑文字'),
-          content: TextField(
-            controller: controller,
-            maxLines: null,
-            decoration: const InputDecoration(
-              labelText: '文字内容',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  _textBlocks[_selectedIndex!].text = controller.text;
-                  _hasChanges = true;
-                });
-                Navigator.pop(context);
-              },
-              child: const Text('保存'),
-            ),
-          ],
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('编辑文字'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: controller,
+                    maxLines: null,
+                    decoration: const InputDecoration(
+                      labelText: '文字内容',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  if (errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        errorMessage!,
+                        style: const TextStyle(color: Colors.red, fontSize: 12),
+                      ),
+                    ),
+                  if (isRecognizing)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          SizedBox(width: 8),
+                          Text('正在识别...', style: TextStyle(fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isRecognizing ? null : () => Navigator.pop(context),
+                  child: const Text('取消'),
+                ),
+                if (_imageFile != null && !isRecognizing)
+                  TextButton(
+                    onPressed: () async {
+                      setDialogState(() {
+                        isRecognizing = true;
+                        errorMessage = null;
+                      });
+                      
+                      final recognizedText = await _ocrService.recognizeTextInRegion(
+                        _imageFile!,
+                        block.boundingBox,
+                      );
+                      
+                      setDialogState(() {
+                        isRecognizing = false;
+                        if (recognizedText != null && recognizedText.isNotEmpty) {
+                          controller.text = recognizedText;
+                        } else {
+                          errorMessage = '该区域未识别到文字，请手动输入';
+                        }
+                      });
+                    },
+                    child: const Text('识别此区域'),
+                  ),
+                TextButton(
+                  onPressed: isRecognizing ? null : () {
+                    setState(() {
+                      _textBlocks[_selectedIndex!].text = controller.text;
+                      _hasChanges = true;
+                    });
+                    Navigator.pop(context);
+                  },
+                  child: const Text('保存'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -774,6 +838,173 @@ class _TextDetectionPageState extends State<TextDetectionPage> {
             child: const Text('知道了'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showVoiceSettingsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.gentleGreen.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.record_voice_over_rounded,
+                          color: AppTheme.gentleGreen,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        '语音设置',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.warmBrown,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '当前语速',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        Text(
+                          '${(_currentSpeechRate * 100).toInt()}%',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.gentleGreen,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Slider(
+                    value: _currentSpeechRate,
+                    min: _currentUseGlmTts ? AppConstants.glmTtsMinSpeed : AppConstants.systemTtsMinSpeed,
+                    max: _currentUseGlmTts ? AppConstants.glmTtsMaxSpeed : AppConstants.systemTtsMaxSpeed,
+                    divisions: _currentUseGlmTts ? AppConstants.glmTtsSpeedDivisions : AppConstants.systemTtsSpeedDivisions,
+                    activeColor: AppTheme.gentleGreen,
+                    onChanged: (value) {
+                      setDialogState(() {
+                        _currentSpeechRate = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _currentUseGlmTts ? '慢速' : '最慢',
+                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                      Text(
+                        _currentUseGlmTts ? '快速' : '最快',
+                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const VoiceSettingsPage()),
+                            ).then((_) {
+                              _loadVoiceSettings();
+                            });
+                          },
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          child: Text(
+                            '更多设置',
+                            style: TextStyle(color: Colors.grey.shade600),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            final currentSettings = StorageService.instance.getAiSettings();
+                            final settings = AiSettingsModel(
+                              selectedModel: currentSettings?.selectedModel ?? AppConstants.defaultModel,
+                              useGlmTts: _currentUseGlmTts,
+                              ttsVoice: currentSettings?.ttsVoice ?? AppConstants.defaultTtsVoice,
+                              speechRate: _currentSpeechRate,
+                            );
+                            await StorageService.instance.saveAiSettings(settings);
+                            
+                            setState(() {});
+                            Navigator.pop(context);
+                            
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('语速已调整'),
+                                backgroundColor: AppTheme.gentleGreen,
+                                duration: Duration(seconds: 1),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.gentleGreen,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text('确定'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -1404,10 +1635,25 @@ child: const Text('关闭'),
   void initState() {
     super.initState();
     TtsService.instance.initialize();
+    _loadVoiceSettings();
     if (widget.initialImageFile != null) {
       _loadInitialData();
     }
     _loadCurrentModel();
+  }
+
+  void _loadVoiceSettings() {
+    final settings = StorageService.instance.getAiSettings();
+    setState(() {
+      _currentUseGlmTts = settings?.useGlmTts ?? false;
+      if (settings?.speechRate != null && settings!.speechRate > 0) {
+        _currentSpeechRate = settings.speechRate;
+      } else {
+        _currentSpeechRate = _currentUseGlmTts
+            ? AppConstants.glmTtsDefaultSpeed
+            : AppConstants.systemTtsDefaultSpeed;
+      }
+    });
   }
 
   Future<void> _navigateToResultsTable() async {
@@ -1609,6 +1855,12 @@ child: const Text('关闭'),
           actions: [
             if (_imageFile != null)
               IconButton(
+                icon: const Icon(Icons.record_voice_over_rounded),
+                onPressed: _showVoiceSettingsDialog,
+                tooltip: '语音设置',
+              ),
+            if (_imageFile != null)
+              IconButton(
                 icon: const Icon(Icons.help_outline),
                 onPressed: _showHelpDialog,
                 tooltip: '操作指南',
@@ -1787,6 +2039,7 @@ child: const Text('关闭'),
                     _updateDisplaySize(Size(constraints.maxWidth, constraints.maxHeight));
                     
                     return Stack(
+                      alignment: AlignmentDirectional.topStart,
                       children: [
                         InteractiveViewer(
                           key: _interactiveViewerKey,
@@ -1796,6 +2049,7 @@ child: const Text('关闭'),
                           panEnabled: false,
                           scaleEnabled: false,
                           constrained: false,
+                          alignment: Alignment.topLeft,
                           child: GestureDetector(
                             onTapDown: _handleTapDown,
                             onScaleStart: _handleScaleStart,
