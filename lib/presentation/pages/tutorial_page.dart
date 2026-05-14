@@ -46,29 +46,22 @@ class _TutorialPageState extends State<TutorialPage> {
         title: const Text('使用教程'),
         flexibleSpace: Container(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: const [
-                AppTheme.sweetPink,
-                AppTheme.lavender,
-              ],
-            ),
+            gradient: AppTheme.appBarGradientOf(context),
           ),
         ),
       ),
       body: Container(
-        decoration: AppTheme.warmGradientBox,
+        decoration: AppTheme.gradientBoxOf(context),
         child: SafeArea(
           child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? Center(child: CircularProgressIndicator(color: AppTheme.primaryOf(context)))
               : _markdownData.isEmpty
                   ? Center(
                       child: Text(
                         '教程加载失败，请稍后重试',
                         style: TextStyle(
                           fontSize: 16,
-                          color: Colors.grey[600],
+                          color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
                         ),
                       ),
                     )
@@ -76,40 +69,44 @@ class _TutorialPageState extends State<TutorialPage> {
                       data: _markdownData,
                       padding: const EdgeInsets.all(16),
                       styleSheet: MarkdownStyleSheet(
-                        h1: const TextStyle(
+                        h1: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
+                          color: AppTheme.onSurfaceOf(context),
                         ),
-                        h2: const TextStyle(
+                        h2: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.softOrange,
+                          color: AppTheme.primaryOf(context),
                         ),
-                        h3: const TextStyle(
+                        h3: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w600,
+                          color: AppTheme.onSurfaceOf(context),
                         ),
-                        p: const TextStyle(
+                        p: TextStyle(
                           fontSize: 15,
                           height: 1.6,
+                          color: AppTheme.onSurfaceOf(context),
                         ),
-                        listBullet: const TextStyle(
+                        listBullet: TextStyle(
                           fontSize: 15,
-                          color: AppTheme.softOrange,
+                          color: AppTheme.primaryOf(context),
                         ),
-                        tableHead: const TextStyle(
+                        tableHead: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
+                          color: AppTheme.onSurfaceOf(context),
                         ),
-                        tableBody: const TextStyle(fontSize: 14),
+                        tableBody: TextStyle(fontSize: 14, color: AppTheme.onSurfaceOf(context)),
                         blockquote: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey[700],
+                          color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
                           height: 1.5,
                         ),
                         code: TextStyle(
                           fontSize: 13,
-                          backgroundColor: Colors.grey[200],
+                          backgroundColor: AppTheme.cardOf(context),
                         ),
                         strong: const TextStyle(fontWeight: FontWeight.w700),
                         em: const TextStyle(fontStyle: FontStyle.italic),
@@ -136,14 +133,14 @@ class _BlockquoteBuilder extends MarkdownElementBuilder {
       margin: const EdgeInsets.symmetric(vertical: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.blue.withValues(alpha: 0.08),
+        color: AppTheme.calmBlue.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue.withValues(alpha: 0.25)),
+        border: Border.all(color: AppTheme.calmBlue.withValues(alpha: 0.25)),
       ),
       child: MarkdownBody(
         data: element.textContent,
         styleSheet: MarkdownStyleSheet(
-          p: TextStyle(fontSize: 14, color: Colors.grey[700]),
+          p: TextStyle(fontSize: 14, color: AppTheme.mutedOf(context)),
         ),
       ),
     );

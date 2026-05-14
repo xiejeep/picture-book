@@ -114,6 +114,7 @@ class AiService {
           'response_format': 'wav',
           'speed': ttsSpeed,
           'volume': ttsVolume,
+          'watermark_enabled': false,
         }),
       );
 

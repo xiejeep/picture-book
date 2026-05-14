@@ -1,5 +1,5 @@
 class AppConstants {
-  static const String appName = 'Picture Book App';
+  static const String appName = '点读鸭';
   static const String hiveBoxName = 'books';
   static const String aiSettingsBoxName = 'ai_settings';
   
@@ -8,7 +8,7 @@ class AppConstants {
   static const int maxPageSize = 100;
   static const int thumbnailSize = 200;
   
-  static const String defaultBookTitle = '新点读本';
+  static const String defaultBookTitle = '新读本';
   
   static const String zhipuApiEndpoint = 
       'https://open.bigmodel.cn/api/paas/v4/chat/completions';

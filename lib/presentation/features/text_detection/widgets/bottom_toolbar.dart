@@ -42,7 +42,7 @@ class BottomToolbar extends StatelessWidget {
                 borderRadius:
                     BorderRadius.vertical(top: Radius.circular(16)),
               ),
-              child: _buildContent(state),
+              child: _buildContent(context, state),
             ),
           ),
         );
@@ -50,28 +50,29 @@ class BottomToolbar extends StatelessWidget {
     );
   }
 
-  Widget _buildContent(TextDetectionState state) {
+  Widget _buildContent(BuildContext context, TextDetectionState state) {
     final hasSelection =
         state.selectedBlockId != null && state.mode == CanvasMode.edit;
     final isDrawMode = state.mode == CanvasMode.draw;
     final visibleBlocks = state.getVisibleBlocks();
 
     if (hasSelection) {
-      return _buildSelectedBlockContent(state);
+      return _buildSelectedBlockContent(context, state);
     }
     if (isDrawMode) {
-      return _buildDrawModeContent(state);
+      return _buildDrawModeContent(context, state);
     }
-    return _buildDefaultContent(state, visibleBlocks);
+    return _buildDefaultContent(context, state, visibleBlocks);
   }
 
   Widget _buildDefaultContent(
+    BuildContext context,
     TextDetectionState state,
     List visibleBlocks,
   ) {
     return Row(
       children: [
-        _buildModeSegment(state),
+        _buildModeSegment(context, state),
         const Spacer(),
         if (visibleBlocks.isNotEmpty && !state.isAiEnhancing) ...[
           _buildCompactButton(
@@ -91,10 +92,10 @@ class BottomToolbar extends StatelessWidget {
     );
   }
 
-  Widget _buildDrawModeContent(TextDetectionState state) {
+  Widget _buildDrawModeContent(BuildContext context, TextDetectionState state) {
     return Row(
       children: [
-        _buildModeSegment(state),
+        _buildModeSegment(context, state),
         const Spacer(),
         Padding(
           padding: const EdgeInsets.only(right: 4),
@@ -114,7 +115,7 @@ class BottomToolbar extends StatelessWidget {
     );
   }
 
-  Widget _buildSelectedBlockContent(TextDetectionState state) {
+  Widget _buildSelectedBlockContent(BuildContext context, TextDetectionState state) {
     final isResize = state.editSubMode == EditSubMode.resize;
 
     return Column(
@@ -122,25 +123,25 @@ class BottomToolbar extends StatelessWidget {
       children: [
         Row(
           children: [
-            _buildModeSegment(state),
+            _buildModeSegment(context, state),
           ],
         ),
         const SizedBox(height: 6),
         Row(
           children: [
             _buildSubModeButton(
+              context: context,
               icon: Icons.open_in_full,
               label: '调整大小',
               isActive: isResize,
-              activeColor: AppTheme.calmBlue,
               onTap: isResize ? null : () => notifier.toggleEditSubMode(),
             ),
             const SizedBox(width: 4),
             _buildSubModeButton(
+              context: context,
               icon: Icons.open_with,
               label: '移动位置',
               isActive: !isResize,
-              activeColor: AppTheme.softOrange,
               onTap: isResize ? () => notifier.toggleEditSubMode() : null,
             ),
             const Spacer(),
@@ -168,7 +169,7 @@ class BottomToolbar extends StatelessWidget {
     );
   }
 
-  Widget _buildModeSegment(TextDetectionState state) {
+  Widget _buildModeSegment(BuildContext context, TextDetectionState state) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white12,
@@ -178,18 +179,21 @@ class BottomToolbar extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildModeButton(
+            context,
             Icons.visibility,
             '查看',
             CanvasMode.view,
             state,
           ),
           _buildModeButton(
+            context,
             Icons.draw,
             '绘制',
             CanvasMode.draw,
             state,
           ),
           _buildModeButton(
+            context,
             Icons.edit,
             '编辑',
             CanvasMode.edit,
@@ -201,6 +205,7 @@ class BottomToolbar extends StatelessWidget {
   }
 
   Widget _buildModeButton(
+    BuildContext context,
     IconData icon,
     String label,
     CanvasMode mode,
@@ -214,7 +219,7 @@ class BottomToolbar extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: isActive ? AppTheme.calmBlue : Colors.transparent,
+          color: isActive ? AppTheme.primaryOf(context) : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
@@ -242,10 +247,10 @@ class BottomToolbar extends StatelessWidget {
   }
 
   Widget _buildSubModeButton({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required bool isActive,
-    required Color activeColor,
     required VoidCallback? onTap,
   }) {
     return GestureDetector(
@@ -254,7 +259,7 @@ class BottomToolbar extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: isActive ? activeColor.withOpacity(0.8) : Colors.white12,
+          color: isActive ? AppTheme.primaryOf(context) : Colors.white12,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
@@ -297,7 +302,7 @@ class BottomToolbar extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               label,
-              style: TextStyle(fontSize: 11, color: color.withOpacity(0.8)),
+              style: TextStyle(fontSize: 11, color: color.withValues(alpha: 0.8)),
             ),
           ],
         ),

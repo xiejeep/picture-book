@@ -4,35 +4,36 @@ import 'package:fluttertoast/fluttertoast.dart';
 class ToastUtil {
   static void show(
     String message, {
-    Color backgroundColor = Colors.black87,
+    Color? backgroundColor,
     Color textColor = Colors.white,
     ToastGravity gravity = ToastGravity.BOTTOM,
-    int duration = 2,
+    int duration = 4,
+    double fontSize = 18.0,
   }) {
     Fluttertoast.showToast(
       msg: message,
-      toastLength: Toast.LENGTH_SHORT,
+      toastLength: Toast.LENGTH_LONG,
       gravity: gravity,
       timeInSecForIosWeb: duration,
-      backgroundColor: backgroundColor,
+      backgroundColor: backgroundColor ?? Colors.black87,
       textColor: textColor,
-      fontSize: 16.0,
+      fontSize: fontSize,
     );
   }
 
   static void success(String message) {
-    show(message, backgroundColor: Colors.green);
+    show(message, backgroundColor: Colors.green.shade600);
   }
 
   static void error(String message) {
-    show(message, backgroundColor: Colors.red);
+    show(message, backgroundColor: const Color(0xFFDC2626));
   }
 
   static void warning(String message) {
-    show(message, backgroundColor: Colors.orange);
+    show(message, backgroundColor: Colors.orange.shade600);
   }
 
   static void info(String message) {
-    show(message, backgroundColor: Colors.blue);
+    show(message, backgroundColor: Colors.blue.shade600);
   }
 }

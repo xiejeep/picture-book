@@ -71,19 +71,12 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
         title: const Text('语音设置'),
         flexibleSpace: Container(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [
-                AppTheme.gentleGreen,
-                AppTheme.calmBlue,
-              ],
-            ),
+            gradient: AppTheme.appBarGradientOf(context),
           ),
         ),
       ),
       body: Container(
-        decoration: AppTheme.warmGradientBox,
+        decoration: AppTheme.gradientBoxOf(context),
         child: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(20),
@@ -116,7 +109,7 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
         const SizedBox(height: 12),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppTheme.cardOf(context),
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
@@ -134,7 +127,7 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
                 value: false,
                 icon: Icons.record_voice_over,
               ),
-              Divider(height: 1, color: Colors.grey.shade200),
+              Divider(height: 1, color: AppTheme.dividerColorOf(context)),
               _buildTtsOption(
                 title: 'GLM-TTS高质量语音',
                 subtitle: 'AI合成语音，效果更自然',
@@ -145,29 +138,6 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
             ],
           ),
         ),
-        if (_useGlmTts) ...[
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.orange.withOpacity(0.5)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.warning_amber, color: Colors.orange, size: 18),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    '使用AI语音时，您的文本将发送给第三方AI服务商（智谱AI）进行处理。',
-                    style: TextStyle(fontSize: 12, color: Colors.black87),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ],
     );
   }
@@ -199,13 +169,13 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
               height: 40,
               decoration: BoxDecoration(
                 color: isSelected
-                    ? AppTheme.gentleGreen.withOpacity(0.2)
-                    : Colors.grey.withOpacity(0.1),
+                    ? AppTheme.primaryOf(context).withValues(alpha: 0.2)
+                    : AppTheme.onSurfaceOf(context).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 icon,
-                color: isSelected ? AppTheme.gentleGreen : Colors.grey,
+                color: isSelected ? AppTheme.primaryOf(context) : AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
               ),
             ),
             const SizedBox(width: 12),
@@ -220,7 +190,7 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w500,
-                          color: isSelected ? Colors.black : Colors.grey,
+                          color: isSelected ? AppTheme.onSurfaceOf(context) : AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
                         ),
                       ),
                       if (recommended) ...[
@@ -228,12 +198,12 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.orange.withOpacity(0.2),
+                            color: AppTheme.accentOf(context).withOpacity(0.2),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Text(
+                          child: Text(
                             '推荐',
-                            style: TextStyle(color: Colors.orange, fontSize: 10),
+                            style: TextStyle(color: AppTheme.accentOf(context), fontSize: 10),
                           ),
                         ),
                       ],
@@ -244,7 +214,7 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
                     subtitle,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey.shade600,
+                      color: AppTheme.mutedOf(context),
                     ),
                   ),
                 ],
@@ -261,7 +231,7 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
                       : AppConstants.systemTtsDefaultSpeed;
                 });
               },
-              activeColor: AppTheme.gentleGreen,
+              activeColor: AppTheme.primaryOf(context),
             ),
           ],
         ),
@@ -280,11 +250,11 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
           value: _selectedTtsVoice,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
             contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: AppTheme.cardOf(context),
           ),
           items: AppConstants.ttsVoices.map((voice) {
             return DropdownMenuItem(
@@ -314,7 +284,7 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppTheme.cardOf(context),
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
@@ -331,15 +301,15 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
                 children: [
                   Text(
                     '当前语速',
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+                    style: TextStyle(fontSize: 14, color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6)),
                   ),
                   Text(
                     '${(_speechRate * 100).toInt()}%',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.gentleGreen,
-                    ),
+style: TextStyle(
+                     fontSize: 18,
+                     fontWeight: FontWeight.bold,
+                     color: AppTheme.primaryOf(context),
+                   ),
                   ),
                 ],
               ),
@@ -353,18 +323,18 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
                 onChanged: (value) {
                   setState(() => _speechRate = value);
                 },
-                activeColor: AppTheme.gentleGreen,
+activeColor: AppTheme.primaryOf(context),
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     _useGlmTts ? '慢速' : '最慢',
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6), fontSize: 12),
                   ),
                   Text(
                     _useGlmTts ? '快速' : '最快',
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6), fontSize: 12),
                   ),
                 ],
               ),
@@ -376,12 +346,12 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
           _useGlmTts
               ? 'GLM-TTS语速范围: 50%-150%'
               : '系统TTS语速范围: 30%-100%',
-          style: const TextStyle(color: Colors.grey, fontSize: 12),
+          style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6), fontSize: 12),
         ),
         const SizedBox(height: 4),
-        const Text(
+        Text(
           '不同语速会分别缓存音频',
-          style: TextStyle(color: Colors.grey, fontSize: 12),
+          style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6), fontSize: 12),
         ),
       ],
     );
@@ -401,8 +371,8 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
             : const Icon(Icons.save),
         label: Text(_isSaving ? '保存中...' : '保存设置'),
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.gentleGreen,
-          foregroundColor: Colors.white,
+          backgroundColor: AppTheme.primaryOf(context).withValues(alpha: 0.85),
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
           padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),

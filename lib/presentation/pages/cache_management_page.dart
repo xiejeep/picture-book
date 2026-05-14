@@ -128,22 +128,15 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
         title: const Text('缓存管理'),
         flexibleSpace: Container(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [
-                AppTheme.gentleGreen,
-                AppTheme.calmBlue,
-              ],
-            ),
+            gradient: AppTheme.appBarGradientOf(context),
           ),
         ),
       ),
       body: Container(
-        decoration: AppTheme.warmGradientBox,
+        decoration: AppTheme.gradientBoxOf(context),
         child: SafeArea(
           child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? Center(child: CircularProgressIndicator(color: AppTheme.primaryOf(context)))
               : SingleChildScrollView(
                   padding: const EdgeInsets.all(20),
                   child: Column(
@@ -174,8 +167,8 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppTheme.gentleGreen.withOpacity(0.8),
-            AppTheme.calmBlue.withOpacity(0.8),
+AppTheme.primaryOf(context).withValues(alpha: 0.8),
+             AppTheme.calmBlue.withValues(alpha: 0.8),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
@@ -208,7 +201,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
             '缓存占用空间',
             style: TextStyle(
               fontSize: 14,
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withValues(alpha: 0.9),
             ),
           ),
         ],
@@ -219,7 +212,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
   Widget _buildCacheDetailCard() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardOf(context),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -236,13 +229,13 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
             title: '缓存文件数量',
             value: '$_fileCount 个',
           ),
-          Divider(height: 1, color: Colors.grey.shade200),
+          Divider(height: 1, color: AppTheme.dividerColorOf(context)),
           _buildDetailItem(
             icon: Icons.storage_rounded,
             title: '缓存总大小',
             value: _formatSize(_cacheSize),
           ),
-          Divider(height: 1, color: Colors.grey.shade200),
+          Divider(height: 1, color: AppTheme.dividerColorOf(context)),
           _buildDetailItem(
             icon: Icons.info_outline_rounded,
             title: '缓存状态',
@@ -251,13 +244,13 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                 ? Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppTheme.gentleGreen.withOpacity(0.2),
+                      color: AppTheme.secondaryOf(context).withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       '正常',
                       style: TextStyle(
-                        color: AppTheme.gentleGreen,
+                        color: AppTheme.secondaryOf(context),
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),
@@ -273,7 +266,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
   Widget _buildTranslationModelCard() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardOf(context),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -294,7 +287,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: AppTheme.calmBlue.withOpacity(0.1),
+color: AppTheme.calmBlue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(Icons.translate, color: AppTheme.calmBlue, size: 20),
@@ -309,6 +302,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
+                          color: AppTheme.onSurfaceOf(context),
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -320,7 +314,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                                 : '未下载',
                         style: TextStyle(
                           fontSize: 13,
-                          color: Colors.grey.shade600,
+                          color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
                         ),
                       ),
                     ],
@@ -329,7 +323,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                 if (_isTranslationModelDownloaded && !_isDeletingModel)
                   TextButton(
                     onPressed: _deleteTranslationModel,
-                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    style: TextButton.styleFrom(foregroundColor: AppTheme.errorOf(context)),
                     child: const Text('删除', style: TextStyle(fontSize: 13)),
                   ),
                 if (_isDeletingModel)
@@ -338,7 +332,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                     child: SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryOf(context)),
                     ),
                   ),
               ],
@@ -349,17 +343,17 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.08),
+                color: AppTheme.accentOf(context).withOpacity(0.08),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, size: 16, color: Colors.orange),
+                  Icon(Icons.info_outline, size: 16, color: AppTheme.accentOf(context)),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       '删除后下次翻译时会自动重新下载',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      style: TextStyle(fontSize: 12, color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6)),
                     ),
                   ),
                 ],
@@ -385,10 +379,10 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppTheme.gentleGreen.withOpacity(0.1),
+              color: AppTheme.secondaryOf(context).withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: AppTheme.gentleGreen, size: 20),
+            child: Icon(icon, color: AppTheme.secondaryOf(context), size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -399,15 +393,16 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                   title,
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.grey.shade600,
+                    color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
+                    color: AppTheme.onSurfaceOf(context),
                   ),
                 ),
               ],
@@ -433,9 +428,9 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
             : const Icon(Icons.delete_sweep),
         label: Text(_isClearing ? '清空中...' : '清空TTS缓存'),
         style: ElevatedButton.styleFrom(
-          backgroundColor: _cacheSize > 0 ? Colors.red : Colors.grey,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: Colors.grey.shade300,
+backgroundColor: _cacheSize > 0 ? AppTheme.errorOf(context) : AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
+           foregroundColor: Theme.of(context).colorScheme.onError,
+           disabledBackgroundColor: AppTheme.onSurfaceOf(context).withValues(alpha: 0.3),
           padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -449,7 +444,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.blue.withOpacity(0.1),
+        color: AppTheme.calmBlue.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -457,14 +452,14 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
         children: [
           Row(
             children: [
-              Icon(Icons.info_outline, color: Colors.blue, size: 20),
+              Icon(Icons.info_outline, color: AppTheme.calmBlue, size: 20),
               const SizedBox(width: 8),
               Text(
                 '缓存说明',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: Colors.blue,
+                  color: AppTheme.calmBlue,
                 ),
               ),
             ],
@@ -491,7 +486,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
           width: 4,
           height: 4,
           decoration: BoxDecoration(
-            color: Colors.blue,
+            color: AppTheme.calmBlue,
             shape: BoxShape.circle,
           ),
         ),
@@ -501,7 +496,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
             text,
             style: TextStyle(
               fontSize: 13,
-              color: Colors.grey.shade700,
+              color: AppTheme.onSurfaceOf(context).withOpacity(0.7),
             ),
           ),
         ),

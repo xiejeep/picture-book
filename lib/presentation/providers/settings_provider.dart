@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/ai_settings_model.dart';
 import '../../data/services/storage_service.dart';
@@ -70,4 +71,20 @@ final selectedModelProvider = Provider<String>((ref) {
 
 final selectedTextModelProvider = Provider<String>((ref) {
   return ref.watch(settingsProvider).settings?.selectedTextModel ?? AppConstants.defaultTextModel;
+});
+
+class ThemeModeNotifier extends Notifier<ThemeMode> {
+  @override
+  ThemeMode build() {
+    return StorageService.instance.getThemeMode();
+  }
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    await StorageService.instance.saveThemeMode(mode);
+    state = mode;
+  }
+}
+
+final themeModeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(() {
+  return ThemeModeNotifier();
 });

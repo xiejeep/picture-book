@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../data/models/book_model.dart';
 import '../../data/models/page_model.dart';
 import '../../data/models/text_block_model.dart';
@@ -10,9 +11,9 @@ import '../../data/services/translation_service.dart';
 import '../../data/models/ai_settings_model.dart';
 import '../../core/constants/constants.dart';
 import '../widgets/page_indicator.dart';
+import '../widgets/reading_text_block_painter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/toast_util.dart';
-import 'voice_settings_page.dart';
 
 class BookDetailPage extends StatefulWidget {
   final BookModel book;
@@ -31,6 +32,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
   int _currentPageIndex = 0;
   bool _showBorders = true;
   bool _showAppBar = true;
+  bool _showTranslation = true;
   String? _playingText;
   int? _playingBlockIndex;
   int? _tappedBlockIndex;
@@ -93,7 +95,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
             child: Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppTheme.surfaceOf(context),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Column(
@@ -104,12 +106,12 @@ class _BookDetailPageState extends State<BookDetailPage> {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: AppTheme.gentleGreen.withOpacity(0.15),
+                          color: AppTheme.primaryOf(context).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(
                           Icons.record_voice_over_rounded,
-                          color: AppTheme.gentleGreen,
+                          color: AppTheme.primaryOf(context),
                           size: 24,
                         ),
                       ),
@@ -119,7 +121,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.warmBrown,
+                          color: AppTheme.onSurfaceOf(context),
                         ),
                       ),
                     ],
@@ -128,7 +130,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
+                      color: AppTheme.cardOf(context),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
@@ -138,44 +140,44 @@ class _BookDetailPageState extends State<BookDetailPage> {
                           '当前语速',
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.grey.shade700,
+                            color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
                           ),
                         ),
-                        Text(
-                          '${(_currentSpeechRate * 100).toInt()}%',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.gentleGreen,
-                          ),
-                        ),
+Text(
+                           '${(_currentSpeechRate * 100).toInt()}%',
+                           style: TextStyle(
+                             fontSize: 20,
+                             fontWeight: FontWeight.bold,
+                             color: AppTheme.primaryOf(context),
+                           ),
+                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Slider(
-                    value: _currentSpeechRate,
-                    min: _currentUseGlmTts ? AppConstants.glmTtsMinSpeed : AppConstants.systemTtsMinSpeed,
-                    max: _currentUseGlmTts ? AppConstants.glmTtsMaxSpeed : AppConstants.systemTtsMaxSpeed,
-                    divisions: _currentUseGlmTts ? AppConstants.glmTtsSpeedDivisions : AppConstants.systemTtsSpeedDivisions,
-                    activeColor: AppTheme.gentleGreen,
-                    onChanged: (value) {
-                      setDialogState(() {
-                        _currentSpeechRate = value;
-                      });
-                    },
-                  ),
+Slider(
+                     value: _currentSpeechRate,
+                     min: _currentUseGlmTts ? AppConstants.glmTtsMinSpeed : AppConstants.systemTtsMinSpeed,
+                     max: _currentUseGlmTts ? AppConstants.glmTtsMaxSpeed : AppConstants.systemTtsMaxSpeed,
+                     divisions: _currentUseGlmTts ? AppConstants.glmTtsSpeedDivisions : AppConstants.systemTtsSpeedDivisions,
+                     activeColor: AppTheme.primaryOf(context),
+                     onChanged: (value) {
+                       setDialogState(() {
+                         _currentSpeechRate = value;
+                       });
+                     },
+                   ),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         _currentUseGlmTts ? '慢速' : '最慢',
-                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                        style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6), fontSize: 12),
                       ),
                       Text(
                         _currentUseGlmTts ? '快速' : '最快',
-                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                        style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6), fontSize: 12),
                       ),
                     ],
                   ),
@@ -186,19 +188,18 @@ class _BookDetailPageState extends State<BookDetailPage> {
                         child: TextButton(
                           onPressed: () {
                             Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const VoiceSettingsPage()),
-                            ).then((_) {
-                              _loadVoiceSettings();
-                            });
+                            context.push('/settings');
                           },
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 12),
+                            backgroundColor: AppTheme.primaryOf(context).withValues(alpha: 0.1),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           child: Text(
                             '更多设置',
-                            style: TextStyle(color: Colors.grey.shade600),
+                            style: TextStyle(color: AppTheme.onSurfaceOf(context).withOpacity(0.6)),
                           ),
                         ),
                       ),
@@ -214,15 +215,15 @@ class _BookDetailPageState extends State<BookDetailPage> {
                               speechRate: _currentSpeechRate,
                             );
                             await StorageService.instance.saveAiSettings(settings);
-                            
+
                             setState(() {});
                             Navigator.pop(context);
-                            
+
                             ToastUtil.success('语速已调整');
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.gentleGreen,
-                            foregroundColor: Colors.white,
+                            backgroundColor: AppTheme.primaryOf(context).withValues(alpha: 0.85),
+                            foregroundColor: Theme.of(context).colorScheme.onPrimary,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -268,6 +269,10 @@ class _BookDetailPageState extends State<BookDetailPage> {
     setState(() => _showBorders = !_showBorders);
   }
 
+  void _toggleTranslation() {
+    setState(() => _showTranslation = !_showTranslation);
+  }
+
   Future<void> _playTextBlock(TextBlockModel block, int blockIndex) async {
     setState(() => _tappedBlockIndex = blockIndex);
     Future.delayed(const Duration(milliseconds: 200), () {
@@ -299,7 +304,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
             child: Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppTheme.surfaceColor,
+                color: AppTheme.surfaceOf(context),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Column(
@@ -308,13 +313,13 @@ class _BookDetailPageState extends State<BookDetailPage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Color(0xFFFF6B6B).withOpacity(0.15),
+                      color: AppTheme.errorOf(context).withOpacity(0.15),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Icon(
                       Icons.volume_off_rounded,
                       size: 32,
-                      color: Color(0xFFFF6B6B),
+                      color: AppTheme.errorOf(context),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -323,7 +328,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
-                      color: AppTheme.warmBrown,
+                      color: AppTheme.onSurfaceOf(context),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -331,7 +336,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                     e.userMessage,
                     style: TextStyle(
                       fontSize: 14,
-                      color: AppTheme.warmBrown.withOpacity(0.7),
+                      color: AppTheme.onSurfaceOf(context).withOpacity(0.7),
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -426,6 +431,17 @@ class _BookDetailPageState extends State<BookDetailPage> {
       _translationStatus = result.status;
       _translatedText = result.translatedText;
     });
+
+    if (result.status == TranslationStatus.done && result.translatedText != null) {
+      final updatedBlock = block.copyWith(aiTranslatedText: result.translatedText);
+      final page = _book.pages[_currentPageIndex];
+      final updatedTextBlocks = List<TextBlockModel>.from(page.textBlocks);
+      updatedTextBlocks[blockIndex] = updatedBlock;
+      final updatedPage = page.copyWith(textBlocks: updatedTextBlocks);
+      _book.pages[_currentPageIndex] = updatedPage;
+      _book.updatedAt = DateTime.now();
+      _book.save();
+    }
   }
 
   void _clearTranslation() {
@@ -439,107 +455,110 @@ class _BookDetailPageState extends State<BookDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDarkMode(context);
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: _showAppBar
           ? AppBar(
-              backgroundColor: AppTheme.softOrange.withOpacity(0.85),
+              backgroundColor: isDark ? AppTheme.darkSurface.withOpacity(0.85) : AppTheme.softOrange.withOpacity(0.85),
               elevation: 0,
-              title: Row(
-                children: [
-                  Text(_book.title),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.25),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child:const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.touch_app_rounded,
-                          size: 14,
-                          color: Colors.white,
-                        ),
-                         SizedBox(width: 4),
-                         Text(
-                          '阅读',
-                          style: TextStyle(fontSize: 12, color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+              title: Text(_book.title),
               actions: [
-                IconButton(
-                  icon: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(8),
+                Semantics(
+                  label: '语音设置',
+                  hint: '调整朗读语速和语音',
+                  button: true,
+                  child: IconButton(
+                    icon: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.record_voice_over_rounded,
+                        size: 18,
+                        color: Colors.white,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.record_voice_over_rounded,
-                      size: 18,
-                      color: Colors.white,
-                    ),
+                    onPressed: _showVoiceSettingsDialog,
+                    tooltip: '语音设置',
                   ),
-                  onPressed: _showVoiceSettingsDialog,
-                  tooltip: '语音设置',
                 ),
-                IconButton(
-                  icon: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(8),
+                Semantics(
+                  label: '隐藏导航栏',
+                  hint: '双击页面可重新显示',
+                  button: true,
+                  child: IconButton(
+                    icon: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.visibility_off_rounded,
+                        size: 18,
+                        color: Colors.white,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.visibility_off_rounded,
-                      size: 18,
-                      color: Colors.white,
-                    ),
+                    onPressed: _toggleAppBar,
+                    tooltip: '隐藏导航栏',
                   ),
-                  onPressed: _toggleAppBar,
-                  tooltip: '隐藏导航栏',
                 ),
-                IconButton(
-                  icon: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(8),
+                Semantics(
+                  label: _showTranslation ? '隐藏翻译' : '显示翻译',
+                  hint: '切换翻译显示状态',
+                  button: true,
+                  child: IconButton(
+                    icon: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        _showTranslation ? Icons.translate_rounded : Icons.translate_outlined,
+                        size: 18,
+                        color: _showTranslation ? Colors.white : Colors.white.withOpacity(0.6),
+                      ),
                     ),
-                    child: Icon(
-                      _showBorders ? Icons.border_color_rounded : Icons.border_clear_rounded,
-                      size: 18,
-                      color: Colors.white,
-                    ),
+                    onPressed: _toggleTranslation,
+                    tooltip: _showTranslation ? '隐藏翻译' : '显示翻译',
                   ),
-                  onPressed: _toggleBorders,
-                  tooltip: _showBorders ? '隐藏边框' : '显示边框',
+                ),
+                Semantics(
+                  label: _showBorders ? '隐藏边框' : '显示边框',
+                  hint: '切换文字块边框显示',
+                  button: true,
+                  child: IconButton(
+                    icon: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        _showBorders ? Icons.border_color_rounded : Icons.border_clear_rounded,
+                        size: 18,
+                        color: Colors.white,
+                      ),
+                    ),
+                    onPressed: _toggleBorders,
+                    tooltip: _showBorders ? '隐藏边框' : '显示边框',
+                  ),
                 ),
                 const SizedBox(width: 8),
               ],
               flexibleSpace: Container(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    colors: [
-                      AppTheme.softOrange,
-                      Color(0xFFFF8C42),
-                    ],
-                  ),
+                  gradient: AppTheme.appBarGradientOf(context),
                 ),
               ),
             )
           : null,
       body: Container(
-        decoration: AppTheme.readingPageGradient,
+        decoration: isDark ? BoxDecoration(color: AppTheme.darkBackground) : AppTheme.readingPageGradient,
         child: Stack(
           children: [
             SafeArea(
@@ -606,30 +625,30 @@ class _BookDetailPageState extends State<BookDetailPage> {
             child: Icon(
               Icons.pages_outlined,
               size: 64,
-              color: AppTheme.primaryColor.withOpacity(0.7),
+              color: AppTheme.primaryOf(context).withOpacity(0.7),
             ),
           ),
           const SizedBox(height: 20),
           Text(
-            '点读本还没有页面',
+            '读本还没有页面',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: AppTheme.warmBrown,
+              color: AppTheme.onSurfaceOf(context),
             ),
           ),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: AppTheme.honeyYellow.withOpacity(0.2),
+              color: AppTheme.accentOf(context).withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              '请在点读本列表长按进入编辑模式',
+              '请在读本列表长按进入编辑模式',
               style: TextStyle(
                 fontSize: 14,
-                color: AppTheme.warmBrown.withOpacity(0.7),
+                color: AppTheme.onSurfaceOf(context).withOpacity(0.7),
               ),
               textAlign: TextAlign.center,
             ),
@@ -655,19 +674,19 @@ class _BookDetailPageState extends State<BookDetailPage> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Color(0xFFFF6B6B).withOpacity(0.15),
+                color: AppTheme.errorOf(context).withOpacity(0.15),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Icon(
                 Icons.image_not_supported_rounded,
                 size: 48,
-                color: Color(0xFFFF6B6B),
+                color: AppTheme.errorOf(context),
               ),
             ),
             const SizedBox(height: 16),
             Text(
               '图片不存在',
-              style: TextStyle(color: AppTheme.softGray),
+              style: TextStyle(color: AppTheme.mutedOf(context)),
             ),
           ],
         ),
@@ -677,6 +696,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         return InteractiveViewer(
+          key: ValueKey(_currentPageIndex),
           minScale: 0.5,
           maxScale: 4.0,
           child: Container(
@@ -688,7 +708,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                 if (!snapshot.hasData) {
                   return Center(
                     child: CircularProgressIndicator(
-                      color: AppTheme.primaryColor,
+                      color: AppTheme.primaryOf(context),
                     ),
                   );
                 }
@@ -720,7 +740,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                             if (page.textBlocks.isNotEmpty && _showBorders)
                               CustomPaint(
                                 size: displaySize,
-                                painter: TextBlockPainter(
+                                painter: ReadingTextBlockPainter(
                                   textBlocks: page.textBlocks,
                                   imageWidth: page.imageWidth > 0
                                       ? page.imageWidth
@@ -771,35 +791,44 @@ class _BookDetailPageState extends State<BookDetailPage> {
 
       final isTapped = _tappedBlockIndex == i;
 
+      final padding = 12.0;
       widgets.add(
         Positioned(
-          left: displayRect.left,
-          top: displayRect.top,
-          width: displayRect.width,
-          height: displayRect.height,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => _playTextBlock(block, i),
-            child: AnimatedScale(
-              scale: isTapped ? 1.08 : 1.0,
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              child: SizedBox(
-                width: displayRect.width,
-                height: displayRect.height,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  decoration: BoxDecoration(
-                    color: isTapped
-                        ? AppTheme.honeyYellow.withOpacity(0.3)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(4),
-                    border: isTapped
-                        ? Border.all(
-                            color: AppTheme.honeyYellow.withOpacity(0.6),
-                            width: 2,
-                          )
-                        : null,
+          left: displayRect.left - padding,
+          top: displayRect.top - padding,
+          width: displayRect.width + padding * 2,
+          height: displayRect.height + padding * 2,
+          child: Semantics(
+            label: block.text,
+            hint: '点击播放朗读',
+            button: true,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _playTextBlock(block, i),
+              child: AnimatedScale(
+                scale: isTapped ? 1.05 : 1.0,
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                child: Padding(
+                  padding: EdgeInsets.all(padding),
+                  child: SizedBox(
+                    width: displayRect.width,
+                    height: displayRect.height,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      decoration: BoxDecoration(
+                        color: isTapped
+                            ? AppTheme.accentOf(context).withOpacity(0.3)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(4),
+                        border: isTapped
+                            ? Border.all(
+                                color: AppTheme.accentOf(context).withOpacity(0.6),
+                                width: 2,
+                              )
+                            : null,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -836,7 +865,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
           constraints: const BoxConstraints(maxWidth: 400),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: Color(0xFF2D2D3A),
+            color: AppTheme.isDarkMode(context) ? AppTheme.darkCard : const Color(0xFF2D2D3A),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
@@ -863,40 +892,50 @@ class _BookDetailPageState extends State<BookDetailPage> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: isPlaying ? _stopPlaying : _replayCurrentBlock,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white12,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        isPlaying ? Icons.stop_rounded : Icons.volume_up_rounded,
-                        size: 20,
-                        color: Colors.white,
+                  Semantics(
+                    label: isPlaying ? '停止朗读' : '重新播放',
+                    hint: '控制朗读播放',
+                    button: true,
+                    child: GestureDetector(
+                      onTap: isPlaying ? _stopPlaying : _replayCurrentBlock,
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white12,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          isPlaying ? Icons.stop_rounded : Icons.volume_up_rounded,
+                          size: 24,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 4),
-                  GestureDetector(
-                    onTap: _clearTranslation,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white12,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.close,
-                        size: 20,
-                        color: Colors.white70,
+                  Semantics(
+                    label: '关闭',
+                    hint: '关闭阅读栏',
+                    button: true,
+                    child: GestureDetector(
+                      onTap: _clearTranslation,
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white12,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          size: 24,
+                          color: Colors.white70,
+                        ),
                       ),
                     ),
                   ),
                 ],
               ),
-              if (_isTranslating)
+              if (_showTranslation && _isTranslating)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Row(
@@ -918,7 +957,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                     ],
                   ),
                 )
-              else if (_translatedText != null)
+              else if (_showTranslation && _translatedText != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Container(
@@ -931,14 +970,14 @@ class _BookDetailPageState extends State<BookDetailPage> {
                     child: Text(
                       _translatedText!,
                       style: TextStyle(
-                        color: AppTheme.honeyYellow,
+                        color: AppTheme.accentOf(context),
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
                 )
-              else if (_translationStatus == TranslationStatus.failed)
+              else if (_showTranslation && _translationStatus == TranslationStatus.failed)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
@@ -954,7 +993,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
   }
 
   Future<Size> _getImageSize(File file) async {
-    final bytes = file.readAsBytesSync();
+    final bytes = await file.readAsBytes();
     final decodedImage = await decodeImageFromList(bytes);
     return Size(
       decodedImage.width.toDouble(),
@@ -971,68 +1010,5 @@ class _BookDetailPageState extends State<BookDetailPage> {
     } else {
       return Size(containerSize.height * imageAspect, containerSize.height);
     }
-  }
-}
-
-class TextBlockPainter extends CustomPainter {
-  final List<TextBlockModel> textBlocks;
-  final double imageWidth;
-  final double imageHeight;
-  final double displayWidth;
-  final double displayHeight;
-  final int? playingBlockIndex;
-
-  TextBlockPainter({
-    required this.textBlocks,
-    required this.imageWidth,
-    required this.imageHeight,
-    required this.displayWidth,
-    required this.displayHeight,
-    this.playingBlockIndex,
-  });
-
-  double get scaleX => displayWidth / imageWidth;
-  double get scaleY => displayHeight / imageHeight;
-
-  Rect _convertRect(Rect originalRect) {
-    return Rect.fromLTRB(
-      originalRect.left * scaleX,
-      originalRect.top * scaleY,
-      originalRect.right * scaleX,
-      originalRect.bottom * scaleY,
-    );
-  }
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    for (int i = 0; i < textBlocks.length; i++) {
-      final block = textBlocks[i];
-      if (block.isDeleted) continue;
-
-      final displayRect = _convertRect(block.boundingBox);
-      final isPlaying = i == playingBlockIndex;
-
-      final borderPaint = Paint()
-        ..color = isPlaying
-            ? AppTheme.honeyYellow.withOpacity(0.9)
-            : AppTheme.gentleGreen.withOpacity(0.6)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = isPlaying ? 3.5 : 2.5;
-
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(displayRect, const Radius.circular(4)),
-        borderPaint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant TextBlockPainter oldDelegate) {
-    return oldDelegate.textBlocks != textBlocks ||
-        oldDelegate.imageWidth != imageWidth ||
-        oldDelegate.imageHeight != imageHeight ||
-        oldDelegate.displayWidth != displayWidth ||
-        oldDelegate.displayHeight != displayHeight ||
-        oldDelegate.playingBlockIndex != playingBlockIndex;
   }
 }

@@ -8,7 +8,7 @@ import '../../../../core/utils/toast_util.dart';
 import '../../../../data/services/ai_service.dart';
 import '../../../../data/services/tts_service.dart';
 import '../../../../data/services/ocr_service.dart';
-import '../../../pages/ocr_results_table_page.dart';
+import '../../../pages/ocr/ocr_results_page.dart';
 import '../../../pages/voice_settings_page.dart';
 import '../models/text_block_data.dart';
 import '../models/canvas_mode.dart';
@@ -113,41 +113,14 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
     List<TextBlockData> visibleBlocks,
   ) {
     return AppBar(
-      title: Row(
-        children: [
-          const Text('识别'),
-          if (state.mode == CanvasMode.draw)
-            Container(
-              margin: const EdgeInsets.only(left: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppTheme.honeyYellow.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text(
-                '绘制模式',
-                style: TextStyle(
-                  color: AppTheme.honeyYellow,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-        ],
-      ),
+      title: const Text('识别'),
       flexibleSpace: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-            colors: [AppTheme.calmBlue, AppTheme.gentleGreen],
-          ),
-        ),
+        decoration: BoxDecoration(gradient: AppTheme.appBarGradientOf(context)),
       ),
       actions: [
         if (state.backgroundImage != null)
           IconButton(
-            icon: const Icon(Icons.help_outline),
+            icon: Icon(Icons.help_outline, color: Theme.of(context).colorScheme.onPrimary),
             onPressed: () => _showHelpDialog(),
             tooltip: '操作指南',
           ),
@@ -156,15 +129,15 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
         else ...[
           if (state.backgroundImage != null && visibleBlocks.isNotEmpty)
             IconButton(
-              icon: const Icon(Icons.table_chart),
+              icon: Icon(Icons.table_chart, color: Theme.of(context).colorScheme.onPrimary),
               onPressed: () => _navigateToResultsTable(state, visibleBlocks),
               tooltip: '查看结果表格',
             ),
           if (widget.onSave != null && state.imageFile != null && visibleBlocks.isNotEmpty)
             IconButton(
-              icon: const Icon(Icons.save),
+              icon: Icon(Icons.save, color: Theme.of(context).colorScheme.onPrimary),
               onPressed: () => _saveToBook(state, notifier),
-              tooltip: '保存到点读本',
+              tooltip: '保存到读本',
             ),
           _buildPopupMenu(state, notifier, visibleBlocks),
         ],
@@ -179,7 +152,7 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
   ) {
     final hasSelectedBlock = state.selectedBlockId != null;
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert),
+      icon: Icon(Icons.more_vert, color: Theme.of(context).colorScheme.onPrimary),
       tooltip: '更多操作',
       onSelected: (value) => _handleMenuAction(value, state, notifier),
       itemBuilder: (context) => [
@@ -188,7 +161,7 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
             value: 'select_model',
             child: Row(
               children: [
-                const Icon(Icons.psychology, size: 20),
+                Icon(Icons.psychology, size: 20, color: AppTheme.primaryOf(context)),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
@@ -201,7 +174,7 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
                           (m) => m['name'] == state.currentAiModel,
                           orElse: () => AppConstants.availableModels.first,
                         )['label']}',
-                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                        style: TextStyle(fontSize: 11, color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6)),
                       ),
                     ],
                   ),
@@ -210,35 +183,35 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
             ),
           ),
         if (state.backgroundImage != null)
-          const PopupMenuItem(
+          PopupMenuItem(
             value: 'voice_settings',
             child: Row(
               children: [
-                Icon(Icons.record_voice_over_rounded, size: 20),
-                SizedBox(width: 8),
-                Text('语音设置'),
+                Icon(Icons.record_voice_over_rounded, size: 20, color: AppTheme.primaryOf(context)),
+                const SizedBox(width: 8),
+                const Text('语音设置'),
               ],
             ),
           ),
         if (hasSelectedBlock) ...[
           const PopupMenuDivider(),
-          const PopupMenuItem(
+          PopupMenuItem(
             value: 're_recognize',
             child: Row(
               children: [
-                Icon(Icons.refresh, size: 20),
-                SizedBox(width: 8),
-                Text('重新识别此区域'),
+                Icon(Icons.refresh, size: 20, color: AppTheme.primaryOf(context)),
+                const SizedBox(width: 8),
+                const Text('重新识别此区域'),
               ],
             ),
           ),
-          const PopupMenuItem(
+          PopupMenuItem(
             value: 'ai_enhance_selected',
             child: Row(
               children: [
-                Icon(Icons.auto_fix_high, size: 20, color: Colors.purple),
-                SizedBox(width: 8),
-                Text('AI强化此区域'),
+                Icon(Icons.auto_fix_high, size: 20, color: AppTheme.accentOf(context)),
+                const SizedBox(width: 8),
+                const Text('AI强化此区域'),
               ],
             ),
           ),
@@ -359,7 +332,7 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.9),
+            color: color.withValues(alpha: 0.9),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(
@@ -394,7 +367,7 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.orange.withOpacity(0.9),
+            color: AppTheme.primaryOf(context),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(
@@ -422,7 +395,7 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.red.withOpacity(0.9),
+            color: Colors.red.withValues(alpha: 0.9),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
@@ -443,7 +416,7 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.blue.withOpacity(0.9),
+            color: Colors.blue.withValues(alpha: 0.9),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(
@@ -738,34 +711,19 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
+                color: Colors.orange.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange.withOpacity(0.5)),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
               ),
-              child: Column(
+              child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.warning_amber, color: Colors.orange, size: 20),
-                      SizedBox(width: 8),
-                      Text(
-                        '隐私提示',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.orange,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     '使用AI功能时，您的文本和图片将发送给第三方AI服务商（智谱AI）进行处理。',
                     style: TextStyle(fontSize: 13, color: Colors.black87),
                   ),
-                  const SizedBox(height: 4),
-                  const Text(
+                  SizedBox(height: 4),
+                  Text(
                     '提示：AI识别结果可能不完全准确，建议手动检查和修改。',
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
@@ -829,34 +787,19 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
+                color: Colors.orange.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange.withOpacity(0.5)),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
               ),
-              child: Column(
+              child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.warning_amber, color: Colors.orange, size: 20),
-                      SizedBox(width: 8),
-                      Text(
-                        '隐私提示',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.orange,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     '使用AI功能时，您的文本和图片将发送给第三方AI服务商（智谱AI）进行处理。',
                     style: TextStyle(fontSize: 13, color: Colors.black87),
                   ),
-                  const SizedBox(height: 4),
-                  const Text(
+                  SizedBox(height: 4),
+                  Text(
                     '提示：AI识别结果可能不完全准确，建议手动检查和修改。',
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
@@ -911,7 +854,7 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
               return ListTile(
                 leading: Icon(
                   isSelected ? Icons.check_circle : Icons.circle_outlined,
-                  color: isSelected ? Colors.green : Colors.grey,
+                  color: isSelected ? AppTheme.primaryOf(context) : Colors.grey,
                 ),
                 title: Text(model['label']!),
                 subtitle: isFree 

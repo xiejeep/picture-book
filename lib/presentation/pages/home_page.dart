@@ -6,10 +6,7 @@ import '../providers/books_provider.dart';
 import '../widgets/book_card.dart';
 import '../../core/utils/toast_util.dart';
 import '../../core/theme/app_theme.dart';
-import 'book_detail_page.dart';
-import 'book_manage_page.dart';
 import '../features/text_detection/text_detection.dart';
-import 'settings_page.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -54,29 +51,29 @@ class _HomePageState extends ConsumerState<HomePage> {
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: AppTheme.surfaceColor,
+            color: AppTheme.surfaceOf(context),
             borderRadius: BorderRadius.circular(24),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                '创建新点读本',
+              Text(
+                '创建新读本',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.warmBrown,
+                  color: AppTheme.onSurfaceOf(context),
                 ),
               ),
               const SizedBox(height: 20),
               TextField(
                 controller: controller,
                 decoration: InputDecoration(
-                  labelText: '点读本名称',
-                  hintText: '给点读本起个名字',
+                  labelText: '读本名称',
+                  hintText: '给读本起个名字',
                   prefixIcon: Icon(
                     Icons.edit_note_rounded,
-                    color: AppTheme.primaryColor.withOpacity(0.7),
+                    color: AppTheme.primaryOf(context).withOpacity(0.7),
                   ),
                 ),
                 autofocus: true,
@@ -89,7 +86,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                     onPressed: () => Navigator.pop(context),
                     child: Text(
                       '取消',
-                      style: TextStyle(color: AppTheme.softGray),
+                      style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6)),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -116,7 +113,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: AppTheme.surfaceColor,
+            color: AppTheme.surfaceOf(context),
             borderRadius: BorderRadius.circular(24),
           ),
           child: Column(
@@ -125,22 +122,22 @@ class _HomePageState extends ConsumerState<HomePage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Color(0xFFFF6B6B).withOpacity(0.15),
+                  color: AppTheme.errorOf(context).withOpacity(0.15),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(
                   Icons.delete_rounded,
                   size: 32,
-                  color: Color(0xFFFF6B6B),
+                  color: AppTheme.errorOf(context),
                 ),
               ),
               const SizedBox(height: 16),
               Text(
-                '删除点读本',
+                '删除读本',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.warmBrown,
+                  color: AppTheme.onSurfaceOf(context),
                 ),
               ),
               const SizedBox(height: 12),
@@ -148,7 +145,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 '确定删除 "${book.title}" 吗？',
                 style: TextStyle(
                   fontSize: 16,
-                  color: AppTheme.warmBrown.withOpacity(0.7),
+                  color: AppTheme.onSurfaceOf(context).withOpacity(0.7),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -157,14 +154,14 @@ class _HomePageState extends ConsumerState<HomePage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Color(0xFFFF6B6B).withOpacity(0.1),
+                  color: AppTheme.errorOf(context).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   '包含 ${book.pageCount} 个页面',
                   style: TextStyle(
                     fontSize: 14,
-                    color: Color(0xFFFF6B6B),
+                    color: AppTheme.errorOf(context),
                   ),
                 ),
               ),
@@ -176,14 +173,14 @@ class _HomePageState extends ConsumerState<HomePage> {
                     onPressed: () => Navigator.pop(context, false),
                     child: Text(
                       '取消',
-                      style: TextStyle(color: AppTheme.softGray),
+                      style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6)),
                     ),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
                     onPressed: () => Navigator.pop(context, true),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFFFF6B6B),
+                      backgroundColor: AppTheme.errorOf(context),
                     ),
                     child: const Text('删除'),
                   ),
@@ -210,7 +207,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   void _showModeSelection(BookModel book) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppTheme.surfaceColor,
+      backgroundColor: AppTheme.surfaceOf(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -223,7 +220,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppTheme.softGray.withOpacity(0.3),
+                color: AppTheme.mutedOf(context).withOpacity(0.3),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -233,12 +230,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: AppTheme.honeyYellow.withOpacity(0.2),
+                  color: AppTheme.accentOf(context).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   Icons.edit_rounded,
-                  color: AppTheme.honeyYellow,
+                  color: AppTheme.accentOf(context),
                 ),
               ),
               title: const Text('编辑'),
@@ -257,15 +254,15 @@ class _HomePageState extends ConsumerState<HomePage> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: Color(0xFFFF6B6B).withOpacity(0.15),
+                  color: AppTheme.errorOf(context).withOpacity(0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   Icons.delete_rounded,
-                  color: Color(0xFFFF6B6B),
+                  color: AppTheme.errorOf(context),
                 ),
               ),
-              title: const Text('删除点读本'),
+              title: const Text('删除读本'),
               subtitle: Text('删除 "${book.title}"'),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -300,74 +297,54 @@ class _HomePageState extends ConsumerState<HomePage> {
       appBar: AppBar(
         title: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.auto_stories_rounded,
-                size: 22,
-                color: Colors.white,
-              ),
-            ),
+Container(
+               padding: const EdgeInsets.all(6),
+               decoration: BoxDecoration(
+                 color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
+                 borderRadius: BorderRadius.circular(8),
+               ),
+               child: Icon(
+                 Icons.auto_stories_rounded,
+                 size: 22,
+                 color: Theme.of(context).colorScheme.onPrimary,
+               ),
+             ),
             const SizedBox(width: 12),
-            const Text('我的点读本'),
-            if (booksState.books.isNotEmpty)
-              Container(
-                margin: const EdgeInsets.only(left: 8),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppTheme.honeyYellow.withOpacity(0.85),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '${booksState.books.length}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
+            const Text('我的读本'),
           ],
         ),
         actions: [
-          IconButton(
-            icon: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
+          Semantics(
+            label: '设置',
+            hint: '打开应用设置页面',
+            button: true,
+            child: IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.settings_rounded,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
               ),
-              child: const Icon(
-                Icons.settings_rounded,
-                size: 20,
-                color: Colors.white,
-              ),
+              onPressed: _openSettings,
+              tooltip: '设置',
             ),
-            onPressed: _openSettings,
-            tooltip: '设置',
           ),
           const SizedBox(width: 8),
         ],
         flexibleSpace: Container(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [
-                AppTheme.softOrange,
-                Color(0xFFFF8C42),
-              ],
-            ),
+            gradient: AppTheme.appBarGradientOf(context),
           ),
         ),
       ),
       body: Container(
-        decoration: AppTheme.warmGradientBox,
+        decoration: AppTheme.gradientBoxOf(context),
         child: SafeArea(
           left: false,
           right: false,
@@ -377,13 +354,13 @@ class _HomePageState extends ConsumerState<HomePage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       CircularProgressIndicator(
-                        color: AppTheme.primaryColor,
+                        color: AppTheme.primaryOf(context),
                       ),
                       const SizedBox(height: 16),
                       Text(
                         '正在加载...',
                         style: TextStyle(
-                          color: AppTheme.warmBrown.withOpacity(0.6),
+color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
                         ),
                       ),
                     ],
@@ -396,24 +373,33 @@ class _HomePageState extends ConsumerState<HomePage> {
       ),
       floatingActionButton: booksState.books.isEmpty
           ? null
-          : FloatingActionButton(
-              onPressed: _createNewBook,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppTheme.softOrange,
-                      Color(0xFFFF8C42),
+          : Semantics(
+              label: '创建新读本',
+              hint: '点击创建一个新的读本',
+              button: true,
+              child: FloatingActionButton(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                onPressed: _createNewBook,
+                child: Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.appBarGradientOf(context),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryOf(context).withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Icon(
-                  Icons.add_rounded,
-                  color: Colors.white,
-                  size: 28,
+                  child: Icon(
+                    Icons.add_rounded,
+                    color: Theme.of(context).colorScheme.onPrimary,
+                    size: 28,
+                  ),
                 ),
               ),
             ),
@@ -442,31 +428,31 @@ class _HomePageState extends ConsumerState<HomePage> {
             child: Icon(
               Icons.auto_stories_rounded,
               size: 64,
-              color: AppTheme.primaryColor.withOpacity(0.7),
+              color: AppTheme.primaryOf(context).withOpacity(0.7),
             ),
           ),
           const SizedBox(height: 24),
           Text(
-            '还没有点读本',
+            '还没有读本',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w600,
-              color: AppTheme.warmBrown,
+              color: AppTheme.onSurfaceOf(context),
             ),
           ),
           const SizedBox(height: 12),
           Text(
-            '创建一个点读本，开始互动阅读吧！',
+            '创建一个读本，开始互动阅读吧！',
             style: TextStyle(
               fontSize: 14,
-              color: AppTheme.warmBrown.withOpacity(0.6),
+              color: AppTheme.onSurfaceOf(context).withOpacity(0.6),
             ),
           ),
           const SizedBox(height: 32),
           ElevatedButton.icon(
             onPressed: _createNewBook,
             icon: const Icon(Icons.add_rounded),
-            label: const Text('创建第一个点读本'),
+            label: const Text('创建第一个读本'),
           ),
         ],
       ),

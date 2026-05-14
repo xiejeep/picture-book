@@ -51,7 +51,7 @@ class _BookManagePageState extends State<BookManagePage> {
     try {
       await BookService.instance.updateBookTitle(widget.book.id, _titleController.text);
 
-      ToastUtil.success('点读本名称已更新');
+      ToastUtil.success('读本名称已更新');
     } catch (e) {
       ToastUtil.error('保存失败: $e');
     } finally {
@@ -69,7 +69,7 @@ class _BookManagePageState extends State<BookManagePage> {
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: AppTheme.surfaceColor,
+            color: AppTheme.surfaceOf(context),
             borderRadius: BorderRadius.circular(24),
           ),
           child: Column(
@@ -78,13 +78,13 @@ class _BookManagePageState extends State<BookManagePage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Color(0xFFFF6B6B).withOpacity(0.15),
+                  color: AppTheme.errorOf(context).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(
                   Icons.delete_rounded,
                   size: 32,
-                  color: Color(0xFFFF6B6B),
+                  color: AppTheme.errorOf(context),
                 ),
               ),
               const SizedBox(height: 16),
@@ -93,7 +93,7 @@ class _BookManagePageState extends State<BookManagePage> {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.warmBrown,
+                  color: AppTheme.onSurfaceOf(context),
                 ),
               ),
               const SizedBox(height: 12),
@@ -101,7 +101,7 @@ class _BookManagePageState extends State<BookManagePage> {
                 '确定删除第${index + 1}页吗？',
                 style: TextStyle(
                   fontSize: 14,
-                  color: AppTheme.warmBrown.withOpacity(0.7),
+                  color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.7),
                 ),
               ),
               const SizedBox(height: 24),
@@ -112,14 +112,14 @@ class _BookManagePageState extends State<BookManagePage> {
                     onPressed: () => Navigator.pop(context, false),
                     child: Text(
                       '取消',
-                      style: TextStyle(color: AppTheme.softGray),
+                      style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6)),
                     ),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
                     onPressed: () => Navigator.pop(context, true),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFFFF6B6B),
+                      backgroundColor: AppTheme.errorOf(context),
                     ),
                     child: const Text('删除'),
                   ),
@@ -164,7 +164,7 @@ class _BookManagePageState extends State<BookManagePage> {
     }
 
     debugPrint('=== _editPage 开始 ===');
-    debugPrint('编辑第${index}页');
+    debugPrint('编辑第$index页');
     debugPrint('当前页textBlocks数: ${page.textBlocks.length}');
     for (int i = 0; i < page.textBlocks.length; i++) {
       debugPrint('  page.textBlocks[$i]: text="${page.textBlocks[i].text}", isDeleted=${page.textBlocks[i].isDeleted}');
@@ -289,7 +289,7 @@ class _BookManagePageState extends State<BookManagePage> {
   Future<void> _editCover() async {
     final result = await showModalBottomSheet<String?>(
       context: context,
-      backgroundColor: AppTheme.surfaceColor,
+      backgroundColor: AppTheme.surfaceOf(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -302,7 +302,7 @@ class _BookManagePageState extends State<BookManagePage> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppTheme.softGray.withOpacity(0.3),
+                color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -312,7 +312,7 @@ class _BookManagePageState extends State<BookManagePage> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.warmBrown,
+                color: AppTheme.onSurfaceOf(context),
               ),
             ),
             const SizedBox(height: 16),
@@ -321,13 +321,10 @@ class _BookManagePageState extends State<BookManagePage> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: AppTheme.calmBlue.withOpacity(0.2),
+                  color: AppTheme.calmBlue.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  Icons.pages_rounded,
-                  color: AppTheme.calmBlue,
-                ),
+                child: const Icon(Icons.pages_rounded, color: AppTheme.calmBlue),
               ),
               title: const Text('使用第一页'),
               subtitle: const Text('默认使用第一页作为封面'),
@@ -342,13 +339,10 @@ class _BookManagePageState extends State<BookManagePage> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: AppTheme.gentleGreen.withOpacity(0.2),
+                  color: AppTheme.primaryOf(context).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  Icons.add_photo_alternate_rounded,
-                  color: AppTheme.gentleGreen,
-                ),
+                child: const Icon(Icons.add_photo_alternate_rounded, color: AppTheme.gentleGreen),
               ),
               title: const Text('自定义封面'),
               subtitle: const Text('选择图片作为封面'),
@@ -417,36 +411,25 @@ class _BookManagePageState extends State<BookManagePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('编辑点读本'),
-        actions: [
-          const SizedBox(width: 8),
+        title: const Text('编辑读本'),
+        actions: const [
+          SizedBox(width: 8),
         ],
         flexibleSpace: Container(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [
-                AppTheme.honeyYellow,
-                AppTheme.softOrange,
-              ],
-            ),
+            gradient: AppTheme.appBarGradientOf(context),
           ),
         ),
       ),
       body: Container(
-        decoration: AppTheme.warmGradientBox,
+        decoration: AppTheme.gradientBoxOf(context),
         child: SafeArea(
           child: Column(
             children: [
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: Container(
-                  decoration: BoxDecoration(
-                    color: AppTheme.cardColor,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: AppTheme.playfulShadow,
-                  ),
+                  decoration: AppTheme.playfulCardDecorationOf(context),
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
@@ -456,11 +439,11 @@ class _BookManagePageState extends State<BookManagePage> {
                             child: TextField(
                               controller: _titleController,
                               decoration: InputDecoration(
-                                labelText: '点读本名称',
-                                hintText: '输入点读本名称',
+                                labelText: '读本名称',
+                                hintText: '输入读本名称',
                                 prefixIcon: Icon(
                                   Icons.edit_note_rounded,
-                                  color: AppTheme.primaryColor.withOpacity(0.7),
+                                  color: AppTheme.primaryOf(context).withValues(alpha: 0.7),
                                 ),
                               ),
                               onSubmitted: (_) => _saveTitle(),
@@ -468,7 +451,7 @@ class _BookManagePageState extends State<BookManagePage> {
                           ),
                           const SizedBox(width: 12),
                           Material(
-                            color: AppTheme.primaryColor,
+                            color: AppTheme.primaryOf(context),
                             borderRadius: BorderRadius.circular(16),
                             child: InkWell(
                               borderRadius: BorderRadius.circular(16),
@@ -514,10 +497,10 @@ class _BookManagePageState extends State<BookManagePage> {
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: AppTheme.honeyYellow.withOpacity(0.1),
+                            color: AppTheme.cardOf(context),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: AppTheme.honeyYellow.withOpacity(0.3),
+                              color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.1),
                             ),
                           ),
                           child: Row(
@@ -529,9 +512,9 @@ class _BookManagePageState extends State<BookManagePage> {
                                   borderRadius: BorderRadius.circular(8),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: AppTheme.warmBrown.withOpacity(0.1),
-                                      blurRadius: 4,
-                                      offset: const Offset(0, 2),
+                                      color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.1),
+                                      blurRadius: 2,
+                                      offset: const Offset(0, 1),
                                     ),
                                   ],
                                 ),
@@ -550,7 +533,7 @@ class _BookManagePageState extends State<BookManagePage> {
                                       style: TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w600,
-                                        color: AppTheme.warmBrown,
+                                        color: AppTheme.onSurfaceOf(context),
                                       ),
                                     ),
                                     const SizedBox(height: 4),
@@ -560,23 +543,16 @@ class _BookManagePageState extends State<BookManagePage> {
                                           : (_pages.isEmpty ? '暂无页面' : '使用第一页'),
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: AppTheme.warmBrown.withOpacity(0.6),
+                                        color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.honeyYellow.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  Icons.edit_rounded,
-                                  size: 18,
-                                  color: AppTheme.honeyYellow,
-                                ),
+                              Icon(
+                                Icons.edit_rounded,
+                                size: 18,
+                                color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.4),
                               ),
                             ],
                           ),
@@ -593,14 +569,14 @@ class _BookManagePageState extends State<BookManagePage> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: AppTheme.gentleGreen.withOpacity(0.2),
+color: AppTheme.primaryOf(context).withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
-                        Icons.pages_rounded,
-                        size: 16,
-                        color: AppTheme.gentleGreen,
-                      ),
+                  Icons.pages_rounded,
+                  size: 16,
+                  color: AppTheme.primaryOf(context),
+                ),
                     ),
                     const SizedBox(width: 8),
                     Text(
@@ -608,7 +584,7 @@ class _BookManagePageState extends State<BookManagePage> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: AppTheme.warmBrown,
+                        color: AppTheme.onSurfaceOf(context),
                       ),
                     ),
                     const Spacer(),
@@ -617,7 +593,7 @@ class _BookManagePageState extends State<BookManagePage> {
                       icon: const Icon(Icons.add_rounded, size: 18),
                       label: const Text('添加页面'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.gentleGreen,
+                        backgroundColor: AppTheme.primaryOf(context),
                       ),
                     ),
                   ],
@@ -640,7 +616,7 @@ class _BookManagePageState extends State<BookManagePage> {
                               children: [
                                 SlidableAction(
                                   onPressed: (_) => _deletePage(index),
-                                  backgroundColor: const Color(0xFFFF6B6B),
+                                  backgroundColor: AppTheme.errorOf(context),
                                   foregroundColor: Colors.white,
                                   icon: Icons.delete_rounded,
                                   label: '删除',
@@ -652,12 +628,8 @@ class _BookManagePageState extends State<BookManagePage> {
                               ],
                             ),
                             child: Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              decoration: BoxDecoration(
-                                color: AppTheme.cardColor,
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: AppTheme.playfulShadow,
-                              ),
+                              margin: const EdgeInsets.only(bottom: 15),
+                              decoration: AppTheme.playfulCardDecorationOf(context),
                               child: ListTile(
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                 leading: _buildThumbnail(page),
@@ -666,7 +638,7 @@ class _BookManagePageState extends State<BookManagePage> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: AppTheme.honeyYellow.withOpacity(0.2),
+color: AppTheme.accentOf(context).withValues(alpha: 0.2),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(
@@ -674,7 +646,7 @@ class _BookManagePageState extends State<BookManagePage> {
                                         style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
-                                          color: AppTheme.warmBrown,
+                                          color: AppTheme.onSurfaceOf(context),
                                         ),
                                       ),
                                     ),
@@ -683,7 +655,7 @@ class _BookManagePageState extends State<BookManagePage> {
                                       '第 ${index + 1} 页',
                                       style: TextStyle(
                                         fontWeight: FontWeight.w500,
-                                        color: AppTheme.warmBrown,
+                                        color: AppTheme.onSurfaceOf(context),
                                       ),
                                     ),
                                   ],
@@ -691,20 +663,20 @@ class _BookManagePageState extends State<BookManagePage> {
                                 subtitle: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.calmBlue.withOpacity(0.2),
+                                    color: AppTheme.calmBlue.withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
                                     '${page.textBlocks.where((b) => !b.isDeleted).length} 个文字块',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: AppTheme.warmBrown.withOpacity(0.7),
+                                      color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.7),
                                     ),
                                   ),
                                 ),
                                 trailing: Icon(
                                   Icons.drag_handle_rounded,
-                                  color: AppTheme.softGray,
+                                  color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
                                 ),
                                 onTap: () => _editPage(index),
                               ),
@@ -732,8 +704,8 @@ class _BookManagePageState extends State<BookManagePage> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  AppTheme.sweetPink.withOpacity(0.2),
-                  AppTheme.lavender.withOpacity(0.2),
+AppTheme.sweetPink.withValues(alpha: 0.2),
+                   AppTheme.lavender.withValues(alpha: 0.2),
                 ],
               ),
               borderRadius: BorderRadius.circular(32),
@@ -741,26 +713,30 @@ class _BookManagePageState extends State<BookManagePage> {
             child: Icon(
               Icons.pages_outlined,
               size: 64,
-              color: AppTheme.primaryColor.withOpacity(0.7),
+              color: AppTheme.primaryOf(context).withValues(alpha: 0.7),
             ),
           ),
           const SizedBox(height: 16),
           Text(
-            '点读本还没有页面',
+            '读本还没有页面',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: AppTheme.warmBrown,
+              color: AppTheme.onSurfaceOf(context),
             ),
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: _addNewPage,
-            icon: const Icon(Icons.add_photo_alternate_rounded, size: 20),
+            icon: Icon(
+                  Icons.add_photo_alternate_rounded,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
             label: const Text('添加第一页'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.gentleGreen,
-            ),
+style: ElevatedButton.styleFrom(
+          backgroundColor: AppTheme.primaryOf(context),
+        ),
           ),
         ],
       ),
@@ -776,9 +752,9 @@ class _BookManagePageState extends State<BookManagePage> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.warmBrown.withOpacity(0.1),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
+              color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.1),
+              blurRadius: 2,
+              offset: const Offset(0, 1),
             ),
           ],
         ),
@@ -803,7 +779,7 @@ class _BookManagePageState extends State<BookManagePage> {
           end: Alignment.bottomRight,
           colors: [
             AppTheme.lightGray,
-            AppTheme.softGray.withOpacity(0.3),
+            AppTheme.onSurfaceOf(context).withValues(alpha: 0.3),
           ],
         ),
         borderRadius: BorderRadius.circular(12),
@@ -811,7 +787,7 @@ class _BookManagePageState extends State<BookManagePage> {
       child: Icon(
         Icons.image_not_supported_rounded,
         size: 24,
-        color: AppTheme.softGray,
+        color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
       ),
     );
   }
@@ -849,15 +825,15 @@ class _BookManagePageState extends State<BookManagePage> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppTheme.calmBlue.withOpacity(0.3),
-            AppTheme.gentleGreen.withOpacity(0.3),
+AppTheme.calmBlue.withValues(alpha: 0.3),
+             AppTheme.gentleGreen.withValues(alpha: 0.3),
           ],
         ),
       ),
       child: Icon(
         Icons.book_rounded,
         size: 24,
-        color: AppTheme.warmBrown.withOpacity(0.5),
+        color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.5),
       ),
     );
   }

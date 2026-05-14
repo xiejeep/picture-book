@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
@@ -14,6 +15,7 @@ class StorageService {
 
   late Box<BookModel> _booksBox;
   late Box<AiSettingsModel> _aiSettingsBox;
+  late Box<dynamic> _appSettingsBox;
   late FlutterSecureStorage _secureStorage;
   bool _isInitialized = false;
 
@@ -29,6 +31,7 @@ class StorageService {
     
     _booksBox = await Hive.openBox<BookModel>(AppConstants.hiveBoxName);
     _aiSettingsBox = await Hive.openBox<AiSettingsModel>(AppConstants.aiSettingsBoxName);
+    _appSettingsBox = await Hive.openBox<dynamic>('app_settings');
     _secureStorage = const FlutterSecureStorage();
     _isInitialized = true;
   }
@@ -90,6 +93,7 @@ class StorageService {
   Future<void> clearAll() async {
     await booksBox.clear();
     await _aiSettingsBox.clear();
+    await _appSettingsBox.clear();
     await _secureStorage.delete(key: AppConstants.secureStorageApiKeyKey);
   }
 
@@ -126,5 +130,26 @@ class StorageService {
   Future<bool> hasApiKey() async {
     final key = await _secureStorage.read(key: AppConstants.secureStorageApiKeyKey);
     return key != null && key.isNotEmpty;
+  }
+
+  ThemeMode getThemeMode() {
+    final value = _appSettingsBox.get('theme_mode', defaultValue: 'system') as String;
+    switch (value) {
+      case 'light':
+        return ThemeMode.light;
+      case 'dark':
+        return ThemeMode.dark;
+      default:
+        return ThemeMode.system;
+    }
+  }
+
+  Future<void> saveThemeMode(ThemeMode mode) async {
+    final value = switch (mode) {
+      ThemeMode.light => 'light',
+      ThemeMode.dark => 'dark',
+      _ => 'system',
+    };
+    await _appSettingsBox.put('theme_mode', value);
   }
 }

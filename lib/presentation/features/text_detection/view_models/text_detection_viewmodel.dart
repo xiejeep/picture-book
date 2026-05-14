@@ -169,9 +169,16 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
       }
       
       final blocks = result.blocks.map((block) {
+        final inflatedRect = block.boundingBox.inflate(6.0);
+        final clampedRect = Rect.fromLTRB(
+          inflatedRect.left.clamp(0.0, state.canvasSize.width),
+          inflatedRect.top.clamp(0.0, state.canvasSize.height),
+          inflatedRect.right.clamp(0.0, state.canvasSize.width),
+          inflatedRect.bottom.clamp(0.0, state.canvasSize.height),
+        );
         return TextBlockData(
           id: DateTime.now().microsecondsSinceEpoch.toString() + block.text.hashCode.toString(),
-          boundingBox: block.boundingBox,
+          boundingBox: clampedRect,
           text: block.text,
         );
       }).toList();

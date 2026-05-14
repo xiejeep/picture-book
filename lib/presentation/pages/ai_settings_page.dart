@@ -159,19 +159,12 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
         title: const Text('AI设置'),
         flexibleSpace: Container(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [
-                AppTheme.gentleGreen,
-                AppTheme.calmBlue,
-              ],
-            ),
+            gradient: AppTheme.appBarGradientOf(context),
           ),
         ),
       ),
       body: Container(
-        decoration: AppTheme.warmGradientBox,
+        decoration: AppTheme.gradientBoxOf(context),
         child: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(20),
@@ -210,12 +203,12 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
                 margin: const EdgeInsets.only(left: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.2),
+                  color: AppTheme.secondaryOf(context).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text(
+                child: Text(
                   '已配置',
-                  style: TextStyle(color: Colors.green, fontSize: 12),
+                  style: TextStyle(color: AppTheme.secondaryOf(context), fontSize: 12),
                 ),
               ),
           ],
@@ -228,7 +221,7 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
             border: const OutlineInputBorder(),
             hintText: '请输入智谱AI API Key',
             filled: true,
-            fillColor: Colors.white,
+            fillColor: AppTheme.cardOf(context),
             suffixIcon: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -242,7 +235,7 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
                 ),
                 if (_hasExistingKey)
                   IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    icon: Icon(Icons.delete_outline, color: AppTheme.errorOf(context)),
                     onPressed: _deleteApiKey,
                     tooltip: '删除API Key',
                   ),
@@ -253,13 +246,13 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
         const SizedBox(height: 8),
         Text.rich(
           TextSpan(
-            style: const TextStyle(color: Colors.grey, fontSize: 12),
+            style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6), fontSize: 12),
             children: [
               const TextSpan(text: 'API Key可在 '),
               TextSpan(
                 text: 'open.bigmodel.cn',
-                style: const TextStyle(
-                  color: Colors.blue,
+                style: TextStyle(
+                  color: AppTheme.calmBlue,
                   decoration: TextDecoration.underline,
                 ),
                 recognizer: TapGestureRecognizer()
@@ -287,17 +280,17 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 4),
-        const Text(
+        Text(
           '用于图片识别与OCR文本清洗',
-          style: TextStyle(color: Colors.grey, fontSize: 12),
+          style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6), fontSize: 12),
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
           value: _selectedModel,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: AppTheme.cardOf(context),
           ),
           items: AppConstants.availableModels.map((model) {
             return DropdownMenuItem(
@@ -324,17 +317,17 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 4),
-        const Text(
+        Text(
           '用于结构化输出，确保JSON格式稳定',
-          style: TextStyle(color: Colors.grey, fontSize: 12),
+          style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6), fontSize: 12),
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
           value: _selectedTextModel,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: AppTheme.cardOf(context),
           ),
           items: AppConstants.availableTextModels.map((model) {
             return DropdownMenuItem(
@@ -367,8 +360,8 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
                 : const Icon(Icons.save),
             label: Text(_isSaving ? '保存中...' : '保存设置'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.gentleGreen,
-              foregroundColor: Colors.white,
+              backgroundColor: AppTheme.primaryOf(context).withValues(alpha: 0.85),
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
           ),
@@ -386,8 +379,8 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
                 : const Icon(Icons.wifi_find),
             label: Text(_isTesting ? '测试中...' : '测试连接'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
+              backgroundColor: AppTheme.calmBlue.withValues(alpha: 0.85),
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
           ),
@@ -400,7 +393,7 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.blue.withOpacity(0.1),
+        color: AppTheme.calmBlue.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -408,14 +401,14 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
         children: [
           Row(
             children: [
-              Icon(Icons.info_outline, color: Colors.blue, size: 20),
+              Icon(Icons.info_outline, color: AppTheme.calmBlue, size: 20),
               SizedBox(width: 8),
               Text(
                 '功能说明',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: Colors.blue,
+                  color: AppTheme.calmBlue,
                 ),
               ),
             ],
@@ -428,23 +421,23 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
           SizedBox(height: 4),
           Text(
             '• 去除音标符号（如 /æ/, /ɪ/ 等）',
-            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+            style: TextStyle(fontSize: 13, color: AppTheme.onSurfaceOf(context).withOpacity(0.7)),
           ),
           Text(
             '• 去除序号标记（如 1., 2., ③ 等）',
-            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+            style: TextStyle(fontSize: 13, color: AppTheme.onSurfaceOf(context).withOpacity(0.7)),
           ),
           Text(
             '• 去除装饰符号（如 ##, |, **, → 等）',
-            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+            style: TextStyle(fontSize: 13, color: AppTheme.onSurfaceOf(context).withOpacity(0.7)),
           ),
           Text(
             '• 保留纯净的英文单词或句子',
-            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+            style: TextStyle(fontSize: 13, color: AppTheme.onSurfaceOf(context).withOpacity(0.7)),
           ),
           Text(
             '• 提升点读体验，更适合儿童学习',
-            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+            style: TextStyle(fontSize: 13, color: AppTheme.onSurfaceOf(context).withOpacity(0.7)),
           ),
         ],
       ),

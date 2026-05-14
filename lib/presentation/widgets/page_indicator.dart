@@ -19,22 +19,16 @@ class PageIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasPrev = currentPage > 0;
     final hasNext = currentPage < totalPages - 1;
+    final primaryColor = AppTheme.primaryOf(context);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF6BCB77),
-            Color(0xFF89C4F4),
-          ],
-        ),
+        gradient: AppTheme.appBarGradientOf(context),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Color(0xFF6BCB77).withOpacity(0.3),
+            color: primaryColor.withOpacity(0.3),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -44,6 +38,7 @@ class PageIndicator extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildButton(
+            context: context,
             onTap: hasPrev ? onPrevious : null,
             icon: Icons.arrow_back_ios_new_rounded,
           ),
@@ -99,6 +94,7 @@ class PageIndicator extends StatelessWidget {
             ),
           ),
           _buildButton(
+            context: context,
             onTap: hasNext ? onNext : null,
             icon: Icons.arrow_forward_ios_rounded,
           ),
@@ -108,6 +104,7 @@ class PageIndicator extends StatelessWidget {
   }
 
   Widget _buildButton({
+    required BuildContext context,
     required VoidCallback? onTap,
     required IconData icon,
   }) {
