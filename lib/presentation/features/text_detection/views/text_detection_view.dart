@@ -533,6 +533,8 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
           updated.text,
           originalText: updated.originalText,
           aiEnhancedText: updated.aiEnhancedText,
+          translatedText: updated.translatedText,
+          aiTranslatedText: updated.aiTranslatedText,
         );
       }
     }

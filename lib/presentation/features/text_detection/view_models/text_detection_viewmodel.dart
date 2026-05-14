@@ -520,7 +520,7 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
     );
   }
 
-  void updateBlockText(String blockId, String newText, {String? originalText, String? aiEnhancedText}) {
+  void updateBlockText(String blockId, String newText, {String? originalText, String? aiEnhancedText, String? translatedText, String? aiTranslatedText}) {
     final newBlocks = List<TextBlockData>.from(state.textBlocks);
     final index = newBlocks.indexWhere((b) => b.id == blockId);
     if (index != -1) {
@@ -528,6 +528,8 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
       newBlocks[index].text = newText;
       if (originalText != null) newBlocks[index].originalText = originalText;
       if (aiEnhancedText != null) newBlocks[index].aiEnhancedText = aiEnhancedText;
+      if (translatedText != null) newBlocks[index].translatedText = translatedText;
+      if (aiTranslatedText != null) newBlocks[index].aiTranslatedText = aiTranslatedText;
       if (textChanged) {
         newBlocks[index].translatedText = null;
         newBlocks[index].aiTranslatedText = null;
