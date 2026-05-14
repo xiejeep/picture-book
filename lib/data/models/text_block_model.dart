@@ -29,6 +29,12 @@ class TextBlockModel extends HiveObject {
   @HiveField(7)
   final String? aiTranslatedText;
 
+  @HiveField(8)
+  final String? originalText;
+
+  @HiveField(9)
+  final String? aiEnhancedText;
+
   TextBlockModel({
     required this.left,
     required this.top,
@@ -38,6 +44,8 @@ class TextBlockModel extends HiveObject {
     this.isDeleted = false,
     this.translatedText,
     this.aiTranslatedText,
+    this.originalText,
+    this.aiEnhancedText,
   });
 
   Rect get boundingBox => Rect.fromLTRB(left, top, right, bottom);
@@ -48,6 +56,8 @@ class TextBlockModel extends HiveObject {
     bool isDeleted = false,
     String? translatedText,
     String? aiTranslatedText,
+    String? originalText,
+    String? aiEnhancedText,
   }) {
     return TextBlockModel(
       left: boundingBox.left,
@@ -58,6 +68,8 @@ class TextBlockModel extends HiveObject {
       isDeleted: isDeleted,
       translatedText: translatedText,
       aiTranslatedText: aiTranslatedText,
+      originalText: originalText,
+      aiEnhancedText: aiEnhancedText,
     );
   }
 
@@ -70,8 +82,12 @@ class TextBlockModel extends HiveObject {
     bool? isDeleted,
     String? translatedText,
     String? aiTranslatedText,
+    String? originalText,
+    String? aiEnhancedText,
     bool clearTranslatedText = false,
     bool clearAiTranslatedText = false,
+    bool clearOriginalText = false,
+    bool clearAiEnhancedText = false,
   }) {
     return TextBlockModel(
       left: left ?? this.left,
@@ -82,6 +98,8 @@ class TextBlockModel extends HiveObject {
       isDeleted: isDeleted ?? this.isDeleted,
       translatedText: clearTranslatedText ? null : (translatedText ?? this.translatedText),
       aiTranslatedText: clearAiTranslatedText ? null : (aiTranslatedText ?? this.aiTranslatedText),
+      originalText: clearOriginalText ? null : (originalText ?? this.originalText),
+      aiEnhancedText: clearAiEnhancedText ? null : (aiEnhancedText ?? this.aiEnhancedText),
     );
   }
 }

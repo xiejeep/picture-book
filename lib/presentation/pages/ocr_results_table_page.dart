@@ -904,17 +904,6 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
                                           ? Colors.purple.withOpacity(0.15)
                                           : Colors.grey.withOpacity(0.15),
                                     ),
-                                    if (hasDraft) ...[
-                                      const SizedBox(height: 8),
-                                      _buildInfoContainer(
-                                        icon: Icons.translate,
-                                        iconColor: Colors.teal,
-                                        label: '翻译草稿',
-                                        text: block.translatedText!,
-                                        bgColor: Colors.teal.withOpacity(0.06),
-                                        borderColor: Colors.teal.withOpacity(0.12),
-                                      ),
-                                    ],
                                     if (hasAiTrans) ...[
                                       const SizedBox(height: 8),
                                       _buildInfoContainer(
@@ -924,6 +913,16 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
                                         text: block.aiTranslatedText!,
                                         bgColor: Colors.amber.withOpacity(0.06),
                                         borderColor: Colors.amber.withOpacity(0.12),
+                                      ),
+                                    ] else if (hasDraft) ...[
+                                      const SizedBox(height: 8),
+                                      _buildInfoContainer(
+                                        icon: Icons.translate,
+                                        iconColor: Colors.teal,
+                                        label: '翻译草稿',
+                                        text: block.translatedText!,
+                                        bgColor: Colors.teal.withOpacity(0.06),
+                                        borderColor: Colors.teal.withOpacity(0.12),
                                       ),
                                     ],
                                     if (hasAi || hasDraft || hasAiTrans) ...[

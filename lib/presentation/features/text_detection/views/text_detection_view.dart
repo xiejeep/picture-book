@@ -519,7 +519,7 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
       context,
       MaterialPageRoute(
         builder: (context) => OcrResultsTablePage(
-          textBlocks: visibleBlocks,
+          textBlocks: List.from(visibleBlocks),
           imageFile: state.imageFile,
         ),
       ),
@@ -535,6 +535,7 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
           aiEnhancedText: updated.aiEnhancedText,
           translatedText: updated.translatedText,
           aiTranslatedText: updated.aiTranslatedText,
+          isDeleted: updated.isDeleted,
         );
       }
     }

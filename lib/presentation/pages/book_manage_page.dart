@@ -175,6 +175,10 @@ class _BookManagePageState extends State<BookManagePage> {
         'boundingBox': b.boundingBox,
         'text': b.text,
         'isDeleted': b.isDeleted,
+        'originalText': b.originalText,
+        'aiEnhancedText': b.aiEnhancedText,
+        'translatedText': b.translatedText,
+        'aiTranslatedText': b.aiTranslatedText,
       };
     }).toList();
 
@@ -220,6 +224,8 @@ class _BookManagePageState extends State<BookManagePage> {
           isDeleted: block.isDeleted ?? false,
           translatedText: block.translatedText,
           aiTranslatedText: block.aiTranslatedText,
+          originalText: block.originalText,
+          aiEnhancedText: block.aiEnhancedText,
         );
       }).toList();
 
@@ -262,6 +268,8 @@ class _BookManagePageState extends State<BookManagePage> {
           isDeleted: block.isDeleted ?? false,
           translatedText: block.translatedText,
           aiTranslatedText: block.aiTranslatedText,
+          originalText: block.originalText,
+          aiEnhancedText: block.aiEnhancedText,
         );
       }).toList();
 
