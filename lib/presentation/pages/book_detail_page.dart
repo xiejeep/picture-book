@@ -6,6 +6,7 @@ import '../../data/models/text_block_model.dart';
 import '../../data/services/tts_service.dart';
 import '../../data/services/image_service.dart';
 import '../../data/services/storage_service.dart';
+import '../../data/services/translation_service.dart';
 import '../../data/models/ai_settings_model.dart';
 import '../../core/constants/constants.dart';
 import '../widgets/page_indicator.dart';
@@ -35,6 +36,10 @@ class _BookDetailPageState extends State<BookDetailPage> {
   int? _tappedBlockIndex;
   double _currentSpeechRate = AppConstants.systemTtsDefaultSpeed;
   bool _currentUseGlmTts = false;
+  int? _translatedBlockIndex;
+  String? _translatedText;
+  bool _isTranslating = false;
+  TranslationStatus _translationStatus = TranslationStatus.idle;
 
   @override
   void initState() {
@@ -239,13 +244,19 @@ class _BookDetailPageState extends State<BookDetailPage> {
 
   void _goToPreviousPage() {
     if (_currentPageIndex > 0) {
-      setState(() => _currentPageIndex--);
+      setState(() {
+        _currentPageIndex--;
+        _clearTranslation();
+      });
     }
   }
 
   void _goToNextPage() {
     if (_currentPageIndex < _book.pages.length - 1) {
-      setState(() => _currentPageIndex++);
+      setState(() {
+        _currentPageIndex++;
+        _clearTranslation();
+      });
     }
   }
 
@@ -263,12 +274,10 @@ class _BookDetailPageState extends State<BookDetailPage> {
       if (mounted) setState(() => _tappedBlockIndex = null);
     });
 
+    _translateBlock(block, blockIndex);
+
     if (_playingText != null) {
       await TtsService.instance.stop();
-      setState(() {
-        _playingText = null;
-        _playingBlockIndex = null;
-      });
     }
 
     setState(() {
@@ -280,6 +289,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
       await TtsService.instance.speak(block.text);
     } catch (e) {
       if (e is GlmTtsException) {
+        if (!mounted) return;
         showDialog(
           context: context,
           builder: (context) => Dialog(
@@ -353,9 +363,57 @@ class _BookDetailPageState extends State<BookDetailPage> {
       }
     }
 
+    if (mounted) {
+      setState(() {
+        _playingText = null;
+        _playingBlockIndex = null;
+      });
+    }
+  }
+
+  void _replayCurrentBlock() {
+    if (_translatedBlockIndex == null) return;
+    final page = _book.pages[_currentPageIndex];
+    if (_translatedBlockIndex! >= page.textBlocks.length) return;
+    final block = page.textBlocks[_translatedBlockIndex!];
+    _playTextBlock(block, _translatedBlockIndex!);
+  }
+
+  void _stopPlaying() {
+    TtsService.instance.stop();
     setState(() {
       _playingText = null;
       _playingBlockIndex = null;
+    });
+  }
+
+  Future<void> _translateBlock(TextBlockModel block, int blockIndex) async {
+    if (_translatedBlockIndex == blockIndex && _translatedText != null) return;
+
+    setState(() {
+      _translatedBlockIndex = blockIndex;
+      _translatedText = null;
+      _isTranslating = true;
+      _translationStatus = TranslationStatus.translating;
+    });
+
+    final result = await TranslationService.instance.translateWithStatus(block.text);
+
+    if (!mounted) return;
+
+    setState(() {
+      _isTranslating = false;
+      _translationStatus = result.status;
+      _translatedText = result.translatedText;
+    });
+  }
+
+  void _clearTranslation() {
+    setState(() {
+      _translatedBlockIndex = null;
+      _translatedText = null;
+      _isTranslating = false;
+      _translationStatus = TranslationStatus.idle;
     });
   }
 
@@ -485,84 +543,8 @@ class _BookDetailPageState extends State<BookDetailPage> {
                   ),
                 ),
               ),
-            
-            if (_playingText != null)
-              Positioned(
-                bottom: 60,
-                left: MediaQuery.of(context).padding.left,
-                right: MediaQuery.of(context).padding.right,
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          AppTheme.honeyYellow,
-                          AppTheme.softOrange,
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.honeyYellow.withOpacity(0.4),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Icon(
-                            Icons.volume_up_rounded,
-                            size: 16,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 200),
-                          child: Text(
-                            '正在朗读: ${_playingText!.length > 30 ? '${_playingText!.substring(0, 30)}...' : _playingText}',
-                            style: const TextStyle(color: Colors.white, fontSize: 13),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        GestureDetector(
-                          onTap: () {
-                            TtsService.instance.stop();
-                            setState(() {
-                              _playingText = null;
-                              _playingBlockIndex = null;
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Icon(
-                              Icons.stop_rounded,
-                              size: 16,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+            if (_translatedBlockIndex != null)
+              _buildReadingBar(),
             if (_book.pages.isNotEmpty)
               Positioned(
                 bottom: 24,
@@ -808,6 +790,147 @@ class _BookDetailPageState extends State<BookDetailPage> {
     }
 
     return widgets;
+  }
+
+  Widget _buildReadingBar() {
+    final block = _book.pages[_currentPageIndex].textBlocks[_translatedBlockIndex!];
+    final isPlaying = _playingText != null;
+
+    String statusText;
+    if (_translationStatus == TranslationStatus.downloadingModel) {
+      statusText = '正在下载翻译模型...';
+    } else if (_isTranslating) {
+      statusText = '翻译中...';
+    } else if (_translationStatus == TranslationStatus.failed) {
+      statusText = '翻译失败';
+    } else {
+      statusText = '';
+    }
+
+    return Positioned(
+      bottom: 64,
+      left: 16,
+      right: 16,
+      child: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: Color(0xFF2D2D3A),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      block.text,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: isPlaying ? _stopPlaying : _replayCurrentBlock,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white12,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        isPlaying ? Icons.stop_rounded : Icons.volume_up_rounded,
+                        size: 20,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: _clearTranslation,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white12,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.close,
+                        size: 20,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (_isTranslating)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.5,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white54),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        statusText,
+                        style: const TextStyle(color: Colors.white54, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                )
+              else if (_translatedText != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white10,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _translatedText!,
+                      style: TextStyle(
+                        color: AppTheme.honeyYellow,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                )
+              else if (_translationStatus == TranslationStatus.failed)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    statusText,
+                    style: const TextStyle(color: Colors.white54, fontSize: 13),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<Size> _getImageSize(File file) async {

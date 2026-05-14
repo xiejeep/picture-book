@@ -5,6 +5,7 @@ import '../../data/services/book_service.dart';
 import '../../data/services/ocr_service.dart';
 import '../../data/services/ai_service.dart';
 import '../../data/services/tts_service.dart';
+import '../../data/services/translation_service.dart';
 
 final storageServiceProvider = Provider<StorageService>((ref) {
   return StorageService.instance;
@@ -28,4 +29,8 @@ final aiServiceProvider = Provider<AiService>((ref) {
 
 final ttsServiceProvider = Provider<TtsService>((ref) {
   return TtsService.instance;
+});
+
+final translationServiceProvider = Provider<TranslationService>((ref) {
+  return TranslationService.instance;
 });

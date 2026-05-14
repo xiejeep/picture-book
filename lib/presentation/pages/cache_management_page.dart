@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../data/services/tts_cache_service.dart';
+import '../../data/services/translation_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/toast_util.dart';
 
@@ -15,21 +16,29 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
   int _fileCount = 0;
   bool _isLoading = true;
   bool _isClearing = false;
+  bool _isTranslationModelDownloaded = false;
+  bool _isDeletingModel = false;
+  bool _isCheckingModel = true;
 
   @override
   void initState() {
     super.initState();
-    _loadCacheInfo();
+    _loadAllInfo();
   }
 
-  Future<void> _loadCacheInfo() async {
+  Future<void> _loadAllInfo() async {
     setState(() => _isLoading = true);
-    final size = await TtsCacheService.instance.getCacheSize();
-    final count = await TtsCacheService.instance.getCacheFileCount();
+    final results = await Future.wait([
+      TtsCacheService.instance.getCacheSize(),
+      TtsCacheService.instance.getCacheFileCount(),
+      TranslationService.instance.isModelDownloaded(),
+    ]);
     setState(() {
-      _cacheSize = size;
-      _fileCount = count;
+      _cacheSize = results[0] as int;
+      _fileCount = results[1] as int;
+      _isTranslationModelDownloaded = results[2] as bool;
       _isLoading = false;
+      _isCheckingModel = false;
     });
   }
 
@@ -56,10 +65,47 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
     if (confirm == true) {
       setState(() => _isClearing = true);
       await TtsCacheService.instance.clearCache();
-      await _loadCacheInfo();
+      await _loadAllInfo();
       setState(() => _isClearing = false);
 
       ToastUtil.info('TTS缓存已清空');
+    }
+  }
+
+  Future<void> _deleteTranslationModel() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('删除翻译模型'),
+        content: const Text('删除后下次翻译时会重新下载模型（约30MB）。确定删除？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() => _isDeletingModel = true);
+      final deleted = await TranslationService.instance.deleteModel();
+      setState(() {
+        _isDeletingModel = false;
+        if (deleted) {
+          _isTranslationModelDownloaded = false;
+        }
+      });
+      if (deleted) {
+        ToastUtil.success('翻译模型已删除');
+      } else {
+        ToastUtil.error('删除失败');
+      }
     }
   }
 
@@ -106,6 +152,8 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                       _buildCacheInfoCard(),
                       const SizedBox(height: 24),
                       _buildCacheDetailCard(),
+                      const SizedBox(height: 24),
+                      _buildTranslationModelCard(),
                       const SizedBox(height: 24),
                       _buildClearButton(),
                       const SizedBox(height: 24),
@@ -222,6 +270,107 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
     );
   }
 
+  Widget _buildTranslationModelCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppTheme.calmBlue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.translate, color: AppTheme.calmBlue, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '翻译模型 (英→中)',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _isCheckingModel
+                            ? '检查中...'
+                            : _isTranslationModelDownloaded
+                                ? '已下载，约 30MB'
+                                : '未下载',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (_isTranslationModelDownloaded && !_isDeletingModel)
+                  TextButton(
+                    onPressed: _deleteTranslationModel,
+                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    child: const Text('删除', style: TextStyle(fontSize: 13)),
+                  ),
+                if (_isDeletingModel)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: Colors.orange),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '删除后下次翻译时会自动重新下载',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDetailItem({
     required IconData icon,
     required String title,
@@ -282,7 +431,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                 child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
               )
             : const Icon(Icons.delete_sweep),
-        label: Text(_isClearing ? '清空中...' : '清空缓存'),
+        label: Text(_isClearing ? '清空中...' : '清空TTS缓存'),
         style: ElevatedButton.styleFrom(
           backgroundColor: _cacheSize > 0 ? Colors.red : Colors.grey,
           foregroundColor: Colors.white,
@@ -321,13 +470,13 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
             ],
           ),
           const SizedBox(height: 12),
-          _buildInfoItem('相同文本+音色+语速组合会缓存音频'),
+          _buildInfoItem('TTS缓存：相同文本+音色+语速组合会缓存音频'),
           const SizedBox(height: 8),
-          _buildInfoItem('缓存可避免重复调用API，节省费用'),
+          _buildInfoItem('翻译模型：离线英译中模型，首次翻译时自动下载'),
           const SizedBox(height: 8),
           _buildInfoItem('清空缓存后再次点读会重新生成音频'),
           const SizedBox(height: 8),
-          _buildInfoItem('建议在存储空间不足时清空缓存'),
+          _buildInfoItem('OCR识别模型由系统管理，无法手动清理'),
         ],
       ),
     );

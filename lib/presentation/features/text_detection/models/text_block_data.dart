@@ -7,6 +7,7 @@ class TextBlockData {
   bool isDeleted;
   String? originalText;
   String? aiEnhancedText;
+  String? translatedText;
 
   TextBlockData({
     required this.id,
@@ -15,6 +16,7 @@ class TextBlockData {
     this.isDeleted = false,
     this.originalText,
     this.aiEnhancedText,
+    this.translatedText,
   });
 
   Map<String, dynamic> toMap() {
@@ -25,6 +27,7 @@ class TextBlockData {
       'isDeleted': isDeleted,
       'originalText': originalText,
       'aiEnhancedText': aiEnhancedText,
+      'translatedText': translatedText,
     };
   }
 
@@ -36,6 +39,7 @@ class TextBlockData {
       isDeleted: map['isDeleted'] as bool? ?? false,
       originalText: map['originalText'] as String?,
       aiEnhancedText: map['aiEnhancedText'] as String?,
+      translatedText: map['translatedText'] as String?,
     );
   }
 
@@ -46,6 +50,7 @@ class TextBlockData {
     bool? isDeleted,
     String? originalText,
     String? aiEnhancedText,
+    String? translatedText,
   }) {
     return TextBlockData(
       id: id ?? this.id,
@@ -54,6 +59,7 @@ class TextBlockData {
       isDeleted: isDeleted ?? this.isDeleted,
       originalText: originalText ?? this.originalText,
       aiEnhancedText: aiEnhancedText ?? this.aiEnhancedText,
+      translatedText: translatedText ?? this.translatedText,
     );
   }
 }
