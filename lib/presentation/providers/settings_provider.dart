@@ -67,3 +67,7 @@ final hasApiKeyProvider = Provider<bool>((ref) {
 final selectedModelProvider = Provider<String>((ref) {
   return ref.watch(settingsProvider).settings?.selectedModel ?? AppConstants.defaultModel;
 });
+
+final selectedTextModelProvider = Provider<String>((ref) {
+  return ref.watch(settingsProvider).settings?.selectedTextModel ?? AppConstants.defaultTextModel;
+});

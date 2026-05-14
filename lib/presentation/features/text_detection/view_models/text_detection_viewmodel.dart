@@ -587,6 +587,9 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
         state.imageFile!,
         blocksData,
         state.currentAiModel,
+        onProgress: (msg) {
+          state = state.copyWith(aiBannerText: msg);
+        },
       );
 
       int updatedCount = 0;
@@ -628,6 +631,9 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
         state.imageFile!,
         blocksData,
         state.currentAiModel,
+        onProgress: (msg) {
+          state = state.copyWith(aiBannerText: msg);
+        },
       );
 
       final correctedText = correctedBlocks[0];

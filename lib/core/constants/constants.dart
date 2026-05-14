@@ -25,6 +25,14 @@ class AppConstants {
   ];
   
   static const String defaultModel = 'glm-4v-flash';
+
+  static const String defaultTextModel = 'glm-4.7-flash';
+
+  static const List<Map<String, String>> availableTextModels = [
+    {'name': 'glm-4.7-flash', 'label': 'GLM-4.7-Flash (免费)', 'free': 'true'},
+    {'name': 'glm-4.7-flashx', 'label': 'GLM-4.7-FlashX', 'free': 'false'},
+    {'name': 'glm-5.1', 'label': 'GLM-5.1', 'free': 'false'},
+  ];
   
   static const String secureStorageApiKeyKey = 'zhipu_api_key';
   

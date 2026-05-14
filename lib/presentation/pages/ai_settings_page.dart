@@ -20,6 +20,7 @@ class AiSettingsPage extends ConsumerStatefulWidget {
 class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
   final TextEditingController _apiKeyController = TextEditingController();
   String _selectedModel = AppConstants.defaultModel;
+  String _selectedTextModel = AppConstants.defaultTextModel;
   bool _obscureApiKey = true;
   bool _isTesting = false;
   bool _isSaving = false;
@@ -44,6 +45,10 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
       final savedModel = settings?.selectedModel ?? AppConstants.defaultModel;
       final modelExists = AppConstants.availableModels.any((m) => m['name'] == savedModel);
       _selectedModel = modelExists ? savedModel : AppConstants.defaultModel;
+
+      final savedTextModel = settings?.selectedTextModel ?? AppConstants.defaultTextModel;
+      final textModelExists = AppConstants.availableTextModels.any((m) => m['name'] == savedTextModel);
+      _selectedTextModel = textModelExists ? savedTextModel : AppConstants.defaultTextModel;
     });
   }
 
@@ -64,6 +69,7 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
         useGlmTts: currentSettings?.useGlmTts ?? false,
         ttsVoice: currentSettings?.ttsVoice ?? AppConstants.defaultTtsVoice,
         speechRate: currentSettings?.speechRate ?? AppConstants.systemTtsDefaultSpeed,
+        selectedTextModel: _selectedTextModel,
       );
       await StorageService.instance.saveAiSettings(settings);
       await ref.read(settingsProvider.notifier).refresh();
@@ -133,6 +139,7 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
         _apiKeyController.clear();
         _hasExistingKey = false;
         _selectedModel = AppConstants.defaultModel;
+        _selectedTextModel = AppConstants.defaultTextModel;
       });
 
       ToastUtil.info('API Key已删除');
@@ -174,6 +181,8 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
                 _buildApiKeySection(),
                 const SizedBox(height: 24),
                 _buildModelSection(),
+                const SizedBox(height: 16),
+                _buildTextModelSection(),
                 const SizedBox(height: 32),
                 _buildButtonsSection(),
                 const SizedBox(height: 24),
@@ -274,8 +283,13 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          '选择模型',
+          '视觉模型',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          '用于图片识别与OCR文本清洗',
+          style: TextStyle(color: Colors.grey, fontSize: 12),
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
@@ -297,10 +311,42 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
             }
           },
         ),
-        const SizedBox(height: 8),
+      ],
+    );
+  }
+
+  Widget _buildTextModelSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         const Text(
-          'Flash模型免费，FlashX/Turbo/GLM-4V需付费',
+          '文本模型',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          '用于结构化输出，确保JSON格式稳定',
           style: TextStyle(color: Colors.grey, fontSize: 12),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _selectedTextModel,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            filled: true,
+            fillColor: Colors.white,
+          ),
+          items: AppConstants.availableTextModels.map((model) {
+            return DropdownMenuItem(
+              value: model['name'],
+              child: Text(model['label']!),
+            );
+          }).toList(),
+          onChanged: (value) {
+            if (value != null) {
+              setState(() => _selectedTextModel = value);
+            }
+          },
         ),
       ],
     );

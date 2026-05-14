@@ -28,6 +28,7 @@ class TextDetectionState {
   final double speechRate;
   final bool useGlmTts;
   final bool showAiBanner;
+  final String aiBannerText;
 
   const TextDetectionState({
     this.imageFile,
@@ -51,6 +52,7 @@ class TextDetectionState {
     this.speechRate = AppConstants.systemTtsDefaultSpeed,
     this.useGlmTts = false,
     this.showAiBanner = false,
+    this.aiBannerText = 'AI正在优化识别结果...',
   });
 
   TextBlockData? get selectedBlock {
@@ -105,6 +107,7 @@ class TextDetectionState {
     double? speechRate,
     bool? useGlmTts,
     bool? showAiBanner,
+    String? aiBannerText,
     bool clearSelectedBlockId = false,
     bool clearErrorMessage = false,
     bool clearCurrentDrawRect = false,
@@ -136,6 +139,7 @@ class TextDetectionState {
       speechRate: speechRate ?? this.speechRate,
       useGlmTts: useGlmTts ?? this.useGlmTts,
       showAiBanner: showAiBanner ?? this.showAiBanner,
+      aiBannerText: aiBannerText ?? this.aiBannerText,
     );
   }
 }

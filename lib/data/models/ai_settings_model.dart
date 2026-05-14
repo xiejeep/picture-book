@@ -19,13 +19,17 @@ class AiSettingsModel extends HiveObject {
   @HiveField(4)
   bool useSlowSpeed;
 
+  @HiveField(5)
+  String selectedTextModel;
+
   AiSettingsModel({
     required this.selectedModel,
     this.useGlmTts = false,
     this.ttsVoice = 'tongtong',
     this.speechRate = 0.5,
     this.useSlowSpeed = false,
-  });
+    String? selectedTextModel,
+  }) : selectedTextModel = selectedTextModel ?? 'glm-4.7-flash';
 
   AiSettingsModel copyWith({
     String? selectedModel,
@@ -33,6 +37,7 @@ class AiSettingsModel extends HiveObject {
     String? ttsVoice,
     double? speechRate,
     bool? useSlowSpeed,
+    String? selectedTextModel,
   }) {
     return AiSettingsModel(
       selectedModel: selectedModel ?? this.selectedModel,
@@ -40,6 +45,7 @@ class AiSettingsModel extends HiveObject {
       ttsVoice: ttsVoice ?? this.ttsVoice,
       speechRate: speechRate ?? this.speechRate,
       useSlowSpeed: useSlowSpeed ?? this.useSlowSpeed,
+      selectedTextModel: selectedTextModel ?? this.selectedTextModel,
     );
   }
 }

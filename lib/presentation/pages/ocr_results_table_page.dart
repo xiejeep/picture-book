@@ -26,6 +26,7 @@ class OcrResultsTablePage extends ConsumerStatefulWidget {
 class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
   late List<TextBlockData> _blocks;
   bool _isAiEnhancing = false;
+  String _aiProgressText = 'AI正在优化识别结果...';
   String _currentAiModel = AppConstants.defaultModel;
 
   @override
@@ -326,6 +327,7 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
 
     setState(() {
       _isAiEnhancing = true;
+      _aiProgressText = 'AI正在优化识别结果...';
     });
 
     try {
@@ -338,6 +340,9 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
         widget.imageFile!,
         blocksData,
         _currentAiModel,
+        onProgress: (msg) {
+          setState(() => _aiProgressText = msg);
+        },
       );
 
       final correctedText = correctedBlocks[0];
@@ -453,6 +458,7 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
 
     setState(() {
       _isAiEnhancing = true;
+      _aiProgressText = 'AI正在优化识别结果...';
     });
 
     try {
@@ -466,6 +472,9 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
         widget.imageFile!,
         blocksData,
         _currentAiModel,
+        onProgress: (msg) {
+          setState(() => _aiProgressText = msg);
+        },
       );
 
       int updatedCount = 0;
@@ -824,7 +833,7 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
                   color: Colors.purple.withOpacity(0.9),
                   borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     SizedBox(
@@ -837,7 +846,7 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
                     ),
                     SizedBox(width: 12),
                     Text(
-                      'AI正在优化识别结果...',
+                      _aiProgressText,
                       style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                   ],

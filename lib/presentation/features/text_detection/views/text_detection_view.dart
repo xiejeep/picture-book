@@ -301,7 +301,7 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
             onReRecognizeAll: () => _showReRecognizeAllDialog(notifier),
           ),
           if (state.isProcessing) _buildProcessingBanner('正在识别文字...'),
-          if (state.showAiBanner) _buildProcessingBanner('AI正在优化识别结果...', Colors.purple),
+          if (state.showAiBanner) _buildProcessingBanner(state.aiBannerText, Colors.purple),
           if (state.mode == CanvasMode.draw) _buildModeBanner('绘制模式：拖动绘制矩形'),
           if (state.errorMessage != null) _buildErrorBanner(state.errorMessage!),
           if (visibleBlocks.isEmpty && state.textBlocks.isNotEmpty)
