@@ -1,12 +1,15 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/toast_util.dart';
 import '../../core/constants/constants.dart';
 import '../../data/services/ai_service.dart';
 import '../features/text_detection/text_detection.dart';
+import '../providers/tts_provider.dart';
 
-class OcrResultsTablePage extends StatefulWidget {
+class OcrResultsTablePage extends ConsumerStatefulWidget {
   final List<TextBlockData> textBlocks;
   final File? imageFile;
 
@@ -17,10 +20,10 @@ class OcrResultsTablePage extends StatefulWidget {
   });
 
   @override
-  State<OcrResultsTablePage> createState() => _OcrResultsTablePageState();
+  ConsumerState<OcrResultsTablePage> createState() => _OcrResultsTablePageState();
 }
 
-class _OcrResultsTablePageState extends State<OcrResultsTablePage> {
+class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
   late List<TextBlockData> _blocks;
   bool _isAiEnhancing = false;
   String _currentAiModel = AppConstants.defaultModel;
@@ -571,7 +574,22 @@ class _OcrResultsTablePageState extends State<OcrResultsTablePage> {
                           final block = visibleBlocks[index];
                           final hasAi = block.aiEnhancedText != null;
 
-                          return Card(
+                          return Slidable(
+                            key: ValueKey(block.text + index.toString()),
+                            endActionPane: ActionPane(
+                              motion: const DrawerMotion(),
+                              children: [
+                                SlidableAction(
+                                  onPressed: (_) => _deleteBlock(index),
+                                  backgroundColor: const Color(0xFFFF6B6B),
+                                  foregroundColor: Colors.white,
+                                  icon: Icons.delete_rounded,
+                                  label: '删除',
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ],
+                            ),
+                            child: Card(
                             margin: EdgeInsets.zero,
                             elevation: 2,
                             shape: RoundedRectangleBorder(
@@ -651,10 +669,10 @@ class _OcrResultsTablePageState extends State<OcrResultsTablePage> {
                                             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                                           ),
                                         IconButton(
-                                          icon: const Icon(Icons.delete_outline, size: 18),
-                                          tooltip: '删除',
-                                          onPressed: () => _deleteBlock(index),
-                                          color: Colors.red,
+                                          icon: const Icon(Icons.volume_up, size: 18),
+                                          tooltip: '播放',
+                                          onPressed: () => ref.read(ttsProvider.notifier).speak(block.text),
+                                          color: AppTheme.primaryColor,
                                           padding: EdgeInsets.zero,
                                           constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                                         ),
@@ -787,6 +805,7 @@ class _OcrResultsTablePageState extends State<OcrResultsTablePage> {
                                   ],
                                 ),
                               ),
+                            ),
                             ),
                           );
                         },
