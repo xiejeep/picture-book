@@ -218,6 +218,8 @@ class _BookManagePageState extends State<BookManagePage> {
           boundingBox: block.boundingBox,
           text: block.text,
           isDeleted: block.isDeleted ?? false,
+          translatedText: block.translatedText,
+          aiTranslatedText: block.aiTranslatedText,
         );
       }).toList();
 
@@ -258,6 +260,8 @@ class _BookManagePageState extends State<BookManagePage> {
           boundingBox: block.boundingBox,
           text: block.text,
           isDeleted: block.isDeleted ?? false,
+          translatedText: block.translatedText,
+          aiTranslatedText: block.aiTranslatedText,
         );
       }).toList();
 

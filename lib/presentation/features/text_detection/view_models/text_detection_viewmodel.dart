@@ -524,9 +524,14 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
     final newBlocks = List<TextBlockData>.from(state.textBlocks);
     final index = newBlocks.indexWhere((b) => b.id == blockId);
     if (index != -1) {
+      final textChanged = newBlocks[index].text != newText;
       newBlocks[index].text = newText;
       if (originalText != null) newBlocks[index].originalText = originalText;
       if (aiEnhancedText != null) newBlocks[index].aiEnhancedText = aiEnhancedText;
+      if (textChanged) {
+        newBlocks[index].translatedText = null;
+        newBlocks[index].aiTranslatedText = null;
+      }
     }
     state = state.copyWith(textBlocks: newBlocks, hasChanges: true);
   }

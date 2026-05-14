@@ -67,6 +67,8 @@ class PageModel extends HiveObject {
         'bottom': block.bottom,
         'text': block.text,
         'isDeleted': block.isDeleted,
+        'translatedText': block.translatedText,
+        'aiTranslatedText': block.aiTranslatedText,
       }).toList(),
       'pageIndex': pageIndex,
       'createdAt': createdAt.toIso8601String(),
@@ -87,6 +89,8 @@ class PageModel extends HiveObject {
           bottom: blockJson['bottom'] as double,
           text: blockJson['text'] as String,
           isDeleted: blockJson['isDeleted'] as bool,
+          translatedText: blockJson['translatedText'] as String?,
+          aiTranslatedText: blockJson['aiTranslatedText'] as String?,
         );
       }).toList(),
       pageIndex: json['pageIndex'] as int,

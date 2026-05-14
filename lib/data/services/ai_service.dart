@@ -141,14 +141,24 @@ class AiService {
 
   static const int _maxBatchSize = 50;
 
+  Future<String> extractVisionText(File imageFile, String model) async {
+    final apiKey = await getApiKey();
+    if (apiKey == null || apiKey.isEmpty) {
+      throw Exception('API Key not configured');
+    }
+    return await _visionExtractText(imageFile, model, apiKey);
+  }
+
   Future<Map<int, String>> enhanceTextBlocks(
     File imageFile,
     List<Map<int, String>> blocks,
     String model, {
     void Function(String message)? onProgress,
+    String? visionDescription,
   }) async {
     debugPrint('=== AiService.enhanceTextBlocks ===');
     debugPrint('输入blocks数: ${blocks.length}');
+    debugPrint('复用vision: ${visionDescription != null}');
 
     final apiKey = await getApiKey();
     if (apiKey == null || apiKey.isEmpty) {
@@ -165,13 +175,16 @@ class AiService {
       debugPrint('分${batches.length}批处理');
     }
 
-    onProgress?.call('AI正在理解图片内容...');
+    String visionResult;
+    if (visionDescription != null) {
+      visionResult = visionDescription;
+      debugPrint('使用缓存的视觉描述');
+    } else {
+      onProgress?.call('AI正在理解图片内容...');
+      visionResult = await _visionExtractText(imageFile, model, apiKey);
+    }
 
-    final visionDescription = await _visionExtractText(
-      imageFile, model, apiKey,
-    );
-
-    debugPrint('视觉模型提取的文本:\n$visionDescription');
+    debugPrint('视觉模型提取的文本:\n$visionResult');
 
     final mergedResult = <int, String>{};
     for (int i = 0; i < batches.length; i++) {
@@ -180,7 +193,7 @@ class AiService {
       onProgress?.call('AI正在清洗文本$batchLabel...');
 
       final batchResult = await _textCleanBatch(
-        visionDescription, batches[i], getTextModel(), apiKey, batchIndex: i,
+        visionResult, batches[i], getTextModel(), apiKey, batchIndex: i,
       );
 
       debugPrint('批次$i Step2文本模型输出:');
@@ -461,6 +474,200 @@ You MUST output exactly $count blocks with indices $firstIndex through $lastInde
         .toLowerCase();
     if (cleaned.isEmpty) return {};
     return cleaned.split(RegExp(r'\s+')).where((w) => w.length >= 2).toSet();
+  }
+
+  Future<Map<int, String>> enhanceTranslation(
+    File imageFile,
+    List<Map<int, String>> blocksWithDraft,
+    String model, {
+    void Function(String message)? onProgress,
+    String? visionDescription,
+  }) async {
+    debugPrint('=== AiService.enhanceTranslation ===');
+    debugPrint('输入blocks数: ${blocksWithDraft.length}');
+    debugPrint('复用vision: ${visionDescription != null}');
+
+    final apiKey = await getApiKey();
+    if (apiKey == null || apiKey.isEmpty) {
+      throw Exception('API Key not configured');
+    }
+
+    final batches = <List<Map<int, String>>>[];
+    for (int i = 0; i < blocksWithDraft.length; i += _maxBatchSize) {
+      final end = (i + _maxBatchSize).clamp(0, blocksWithDraft.length);
+      batches.add(blocksWithDraft.sublist(i, end));
+    }
+
+    if (batches.length > 1) {
+      debugPrint('分${batches.length}批处理');
+    }
+
+    String visionResult;
+    if (visionDescription != null) {
+      visionResult = visionDescription;
+      debugPrint('使用缓存的视觉描述');
+    } else {
+      onProgress?.call('AI正在理解图片内容...');
+      visionResult = await _visionExtractText(imageFile, model, apiKey);
+    }
+
+    debugPrint('翻译用视觉模型描述:\n$visionResult');
+
+    final mergedResult = <int, String>{};
+    for (int i = 0; i < batches.length; i++) {
+      debugPrint('处理翻译第${i + 1}/${batches.length}批 (${batches[i].length}块)');
+      final batchLabel = batches.length > 1 ? ' (${i + 1}/${batches.length})' : '';
+      onProgress?.call('AI正在优化翻译$batchLabel...');
+
+      final batchResult = await _translationRefineBatch(
+        visionResult, batches[i], getTextModel(), apiKey, batchIndex: i,
+      );
+
+      debugPrint('翻译批次$i 输出:');
+      batchResult.forEach((key, value) {
+        debugPrint('  result[$key]: "$value"');
+      });
+
+      mergedResult.addAll(batchResult);
+    }
+
+    onProgress?.call('AI翻译优化完成');
+    return mergedResult;
+  }
+
+  Future<Map<int, String>> _translationRefineBatch(
+    String visionContext,
+    List<Map<int, String>> batch,
+    String textModel,
+    String apiKey, {
+    int batchIndex = 0,
+  }) async {
+    final firstIndex = batch.first.keys.first;
+    final lastIndex = batch.last.keys.first;
+    final count = batch.length;
+
+    final blocksInput = batch.map((b) {
+      final parts = b.values.first.split('|||');
+      final original = parts[0].replaceAll('\n', '\\n');
+      final draft = parts.length > 1 ? parts[1] : '';
+      return '{"index":${b.keys.first},"original":"$original","draft_translation":"$draft"}';
+    }).join('\n');
+
+    final escapedVisionContext = visionContext
+        .replaceAll('\\', '\\\\')
+        .replaceAll('"', '\\"')
+        .replaceAll('\n', '\\n');
+
+    final prompt = '''你是一个专业翻译校对助手。
+
+=== 图片内容描述 ===
+$escapedVisionContext
+
+=== 待翻译文本块 ($count blocks, indices $firstIndex to $lastIndex) ===
+每个块包含英文原文和机器翻译草稿。
+$blocksInput
+
+=== 任务 ===
+根据图片内容理解文本的语境，对机器翻译草稿进行二次优化：
+
+1. 结合图片理解文本的上下文和场景，翻译要符合图片中的语境
+2. 纠正机器翻译中生硬、不准确或不自然的地方
+3. 保持翻译简洁自然，通俗易懂
+4. 如果草稿翻译已经很好，可以保留
+5. 每个块独立翻译，不要合并或拆分
+
+=== 输出格式 ===
+返回JSON（不要markdown，不要解释）：
+{"blocks":[{"index":$firstIndex,"translation":"优化后的中文翻译"},{"index":${firstIndex + 1},"translation":"..."},...,{"index":$lastIndex,"translation":"..."}]}
+
+严格输出$count个块，索引从$firstIndex到$lastIndex。''';
+
+    final response = await http.post(
+      Uri.parse(AppConstants.zhipuApiEndpoint),
+      headers: {
+        'Authorization': 'Bearer $apiKey',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'model': textModel,
+        'messages': [
+          {'role': 'user', 'content': prompt}
+        ],
+        'response_format': {'type': 'json_object'},
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      debugPrint('翻译批次$batchIndex API Error: ${response.statusCode} - ${response.body}');
+      debugPrint('翻译批次$batchIndex失败，回退草稿');
+      return _fallbackToDraft(batch);
+    }
+
+    final responseBody = jsonDecode(response.body);
+    final content = responseBody['choices'][0]['message']['content'] as String;
+
+    debugPrint('翻译批次$batchIndex 原始返回:\n$content');
+
+    try {
+      return _parseTranslationJson(content, batch);
+    } catch (e) {
+      debugPrint('翻译批次$batchIndex JSON解析失败: $e，回退草稿');
+      return _fallbackToDraft(batch);
+    }
+  }
+
+  Map<int, String> _parseTranslationJson(String content, List<Map<int, String>> batch) {
+    String jsonStr = content;
+    jsonStr = jsonStr.replaceAll(RegExp(r'```json\s*'), '');
+    jsonStr = jsonStr.replaceAll(RegExp(r'```\s*'), '');
+    jsonStr = jsonStr.trim();
+
+    final decoded = jsonDecode(jsonStr);
+
+    List blocksList;
+    if (decoded is List) {
+      blocksList = decoded;
+    } else if (decoded is Map && decoded['blocks'] != null) {
+      blocksList = decoded['blocks'] as List;
+    } else {
+      throw Exception('Invalid response format');
+    }
+
+    final result = <int, String>{};
+    for (final block in blocksList) {
+      final indexValue = block['index'];
+      int index;
+      if (indexValue is int) {
+        index = indexValue;
+      } else if (indexValue is String) {
+        final match = RegExp(r'\d+').firstMatch(indexValue);
+        if (match == null) continue;
+        index = int.parse(match.group(0)!);
+      } else {
+        continue;
+      }
+      final translation = (block['translation'] ?? '').toString();
+      result[index] = translation;
+    }
+
+    final fallback = _fallbackToDraft(batch);
+    for (final b in batch) {
+      final idx = b.keys.first;
+      if (!result.containsKey(idx) || result[idx]!.trim().isEmpty) {
+        result[idx] = fallback[idx]!;
+      }
+    }
+
+    return result;
+  }
+
+  Map<int, String> _fallbackToDraft(List<Map<int, String>> batch) {
+    final result = <int, String>{};
+    for (final b in batch) {
+      final parts = b.values.first.split('|||');
+      result[b.keys.first] = parts.length > 1 ? parts[1] : '';
+    }
+    return result;
   }
 
   Future<String> _imageToBase64(File imageFile) async {

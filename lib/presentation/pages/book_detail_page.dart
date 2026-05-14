@@ -390,6 +390,26 @@ class _BookDetailPageState extends State<BookDetailPage> {
   Future<void> _translateBlock(TextBlockModel block, int blockIndex) async {
     if (_translatedBlockIndex == blockIndex && _translatedText != null) return;
 
+    if (block.aiTranslatedText != null) {
+      setState(() {
+        _translatedBlockIndex = blockIndex;
+        _translatedText = block.aiTranslatedText;
+        _isTranslating = false;
+        _translationStatus = TranslationStatus.done;
+      });
+      return;
+    }
+
+    if (block.translatedText != null) {
+      setState(() {
+        _translatedBlockIndex = blockIndex;
+        _translatedText = block.translatedText;
+        _isTranslating = false;
+        _translationStatus = TranslationStatus.done;
+      });
+      return;
+    }
+
     setState(() {
       _translatedBlockIndex = blockIndex;
       _translatedText = null;

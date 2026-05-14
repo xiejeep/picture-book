@@ -23,13 +23,15 @@ class TextBlockModelAdapter extends TypeAdapter<TextBlockModel> {
       bottom: fields[3] as double,
       text: fields[4] as String,
       isDeleted: fields[5] as bool,
+      translatedText: fields[6] as String?,
+      aiTranslatedText: fields[7] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, TextBlockModel obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.left)
       ..writeByte(1)
@@ -41,7 +43,11 @@ class TextBlockModelAdapter extends TypeAdapter<TextBlockModel> {
       ..writeByte(4)
       ..write(obj.text)
       ..writeByte(5)
-      ..write(obj.isDeleted);
+      ..write(obj.isDeleted)
+      ..writeByte(6)
+      ..write(obj.translatedText)
+      ..writeByte(7)
+      ..write(obj.aiTranslatedText);
   }
 
   @override

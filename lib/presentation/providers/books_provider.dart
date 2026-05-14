@@ -71,6 +71,8 @@ class BooksNotifier extends Notifier<BooksState> {
           boundingBox: block['boundingBox'] as Rect,
           text: block['text'] as String,
           isDeleted: block['isDeleted'] as bool? ?? false,
+          translatedText: block['translatedText'] as String?,
+          aiTranslatedText: block['aiTranslatedText'] as String?,
         );
       }
       final dynamic b = block;
@@ -79,6 +81,8 @@ class BooksNotifier extends Notifier<BooksState> {
           boundingBox: b.boundingBox as Rect,
           text: b.text as String,
           isDeleted: (b.isDeleted as bool?) ?? false,
+          translatedText: b.translatedText as String?,
+          aiTranslatedText: b.aiTranslatedText as String?,
         );
       }
       throw ArgumentError('Invalid text block type: ${block.runtimeType}');

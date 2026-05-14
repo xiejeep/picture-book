@@ -8,6 +8,7 @@ class TextBlockData {
   String? originalText;
   String? aiEnhancedText;
   String? translatedText;
+  String? aiTranslatedText;
 
   TextBlockData({
     required this.id,
@@ -17,6 +18,7 @@ class TextBlockData {
     this.originalText,
     this.aiEnhancedText,
     this.translatedText,
+    this.aiTranslatedText,
   });
 
   Map<String, dynamic> toMap() {
@@ -28,6 +30,7 @@ class TextBlockData {
       'originalText': originalText,
       'aiEnhancedText': aiEnhancedText,
       'translatedText': translatedText,
+      'aiTranslatedText': aiTranslatedText,
     };
   }
 
@@ -40,6 +43,7 @@ class TextBlockData {
       originalText: map['originalText'] as String?,
       aiEnhancedText: map['aiEnhancedText'] as String?,
       translatedText: map['translatedText'] as String?,
+      aiTranslatedText: map['aiTranslatedText'] as String?,
     );
   }
 
@@ -51,15 +55,21 @@ class TextBlockData {
     String? originalText,
     String? aiEnhancedText,
     String? translatedText,
+    String? aiTranslatedText,
+    bool clearOriginalText = false,
+    bool clearAiEnhancedText = false,
+    bool clearTranslatedText = false,
+    bool clearAiTranslatedText = false,
   }) {
     return TextBlockData(
       id: id ?? this.id,
       boundingBox: boundingBox ?? this.boundingBox,
       text: text ?? this.text,
       isDeleted: isDeleted ?? this.isDeleted,
-      originalText: originalText ?? this.originalText,
-      aiEnhancedText: aiEnhancedText ?? this.aiEnhancedText,
-      translatedText: translatedText ?? this.translatedText,
+      originalText: clearOriginalText ? null : (originalText ?? this.originalText),
+      aiEnhancedText: clearAiEnhancedText ? null : (aiEnhancedText ?? this.aiEnhancedText),
+      translatedText: clearTranslatedText ? null : (translatedText ?? this.translatedText),
+      aiTranslatedText: clearAiTranslatedText ? null : (aiTranslatedText ?? this.aiTranslatedText),
     );
   }
 }

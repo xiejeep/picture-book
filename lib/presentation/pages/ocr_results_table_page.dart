@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/toast_util.dart';
 import '../../core/constants/constants.dart';
 import '../../data/services/ai_service.dart';
+import '../../data/services/translation_service.dart';
 import '../features/text_detection/text_detection.dart';
 import '../providers/tts_provider.dart';
 
@@ -26,8 +27,10 @@ class OcrResultsTablePage extends ConsumerStatefulWidget {
 class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
   late List<TextBlockData> _blocks;
   bool _isAiEnhancing = false;
-  String _aiProgressText = 'AI正在优化识别结果...';
+  bool _isAiTranslating = false;
+  String _progressText = 'AI正在优化识别结果...';
   String _currentAiModel = AppConstants.defaultModel;
+  String? _cachedVisionDescription;
 
   @override
   void initState() {
@@ -46,6 +49,26 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
     final visibleBlocks = _blocks.where((b) => !b.isDeleted).toList();
     final targetBlock = visibleBlocks[visibleIndex];
     return _blocks.indexOf(targetBlock);
+  }
+
+  bool get _isBusy => _isAiEnhancing || _isAiTranslating;
+
+  Future<String> _ensureVisionDescription() async {
+    if (_cachedVisionDescription != null) {
+      debugPrint('复用已缓存的视觉描述');
+      return _cachedVisionDescription!;
+    }
+    if (widget.imageFile == null) {
+      throw Exception('没有图片文件');
+    }
+    setState(() {
+      _progressText = 'AI正在理解图片内容...';
+    });
+    _cachedVisionDescription = await AiService.instance.extractVisionText(
+      widget.imageFile!, _currentAiModel,
+    );
+    debugPrint('视觉描述已缓存');
+    return _cachedVisionDescription!;
   }
 
   void _editBlock(int visibleIndex) {
@@ -181,9 +204,14 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
                   const SizedBox(width: 8),
                   ElevatedButton(
                     onPressed: () {
-                      setState(() {
-                        _blocks[realIndex].text = controller.text;
-                      });
+                      final newText = controller.text;
+                      if (newText != block.text) {
+                        setState(() {
+                          _blocks[realIndex].text = newText;
+                          _blocks[realIndex].translatedText = null;
+                          _blocks[realIndex].aiTranslatedText = null;
+                        });
+                      }
                       Navigator.pop(context);
                     },
                     child: const Text('保存'),
@@ -259,43 +287,7 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange.withOpacity(0.5)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.warning_amber, color: Colors.orange, size: 20),
-                      SizedBox(width: 8),
-                      Text(
-                        '隐私提示',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.orange,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '使用AI功能时，您的文本和图片将发送给第三方AI服务商（智谱AI）进行处理。',
-                    style: TextStyle(fontSize: 13, color: Colors.black87),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    '提示：AI识别结果可能不完全准确，建议手动检查和修改。',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
+            _buildPrivacyNotice(),
             const SizedBox(height: 12),
             const Text('确定要对此文字块进行AI强化识别吗？'),
           ],
@@ -315,55 +307,6 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
 
     if (confirm == true) {
       await _aiEnhanceBlock(visibleIndex);
-    }
-  }
-
-  Future<void> _aiEnhanceBlock(int visibleIndex) async {
-    final realIndex = _findRealIndex(visibleIndex);
-    if (widget.imageFile == null) {
-      ToastUtil.error('没有图片文件，无法进行AI强化');
-      return;
-    }
-
-    setState(() {
-      _isAiEnhancing = true;
-      _aiProgressText = 'AI正在优化识别结果...';
-    });
-
-    try {
-      final block = _blocks[realIndex];
-      block.originalText ??= block.text;
-      
-      final blocksData = [{0: block.text}];
-      
-      final correctedBlocks = await AiService.instance.enhanceTextBlocks(
-        widget.imageFile!,
-        blocksData,
-        _currentAiModel,
-        onProgress: (msg) {
-          setState(() => _aiProgressText = msg);
-        },
-      );
-
-      final correctedText = correctedBlocks[0];
-      if (correctedText != null) {
-        setState(() {
-          _blocks[realIndex].aiEnhancedText = correctedText;
-          _blocks[realIndex].text = correctedText;
-          _isAiEnhancing = false;
-        });
-        ToastUtil.success('AI强化完成');
-      } else {
-        setState(() {
-          _isAiEnhancing = false;
-        });
-        ToastUtil.info('AI强化完成，无需修改');
-      }
-    } catch (e) {
-      setState(() {
-        _isAiEnhancing = false;
-      });
-      ToastUtil.error('AI强化失败: $e');
     }
   }
 
@@ -388,43 +331,7 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange.withOpacity(0.5)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.warning_amber, color: Colors.orange, size: 20),
-                      SizedBox(width: 8),
-                      Text(
-                        '隐私提示',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.orange,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '使用AI功能时，您的文本和图片将发送给第三方AI服务商（智谱AI）进行处理。',
-                    style: TextStyle(fontSize: 13, color: Colors.black87),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    '提示：AI识别结果可能不完全准确，建议手动检查和修改。',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
+            _buildPrivacyNotice(),
             const SizedBox(height: 12),
             Text('确定要对所有${visibleBlocks.length}个文字块进行AI强化识别吗？'),
           ],
@@ -447,6 +354,144 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
     }
   }
 
+  Future<void> _showAiTranslateDialog() async {
+    final hasApiKey = await AiService.instance.hasApiKey();
+    if (!hasApiKey) {
+      ToastUtil.warning('请先在首页AI设置中配置API Key');
+      return;
+    }
+
+    final visibleBlocks = _blocks.where((b) => !b.isDeleted).toList();
+    if (visibleBlocks.isEmpty) {
+      ToastUtil.warning('没有可翻译的文字块');
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('AI强化翻译'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildPrivacyNotice(),
+            const SizedBox(height: 12),
+            Text('将对${visibleBlocks.length}个文字块进行翻译：\n\n'
+                '1. 使用ML Kit生成草稿翻译\n'
+                '2. 由AI结合图片语境优化翻译'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await _aiTranslateAllBlocks();
+    }
+  }
+
+  Widget _buildPrivacyNotice() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange.withOpacity(0.5)),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.warning_amber, color: Colors.orange, size: 20),
+              SizedBox(width: 8),
+              Text(
+                '隐私提示',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+          Text(
+            '使用AI功能时，您的文本和图片将发送给第三方AI服务商（智谱AI）进行处理。',
+            style: TextStyle(fontSize: 13, color: Colors.black87),
+          ),
+          SizedBox(height: 4),
+          Text(
+            '提示：AI识别结果可能不完全准确，建议手动检查和修改。',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _aiEnhanceBlock(int visibleIndex) async {
+    final realIndex = _findRealIndex(visibleIndex);
+    if (widget.imageFile == null) {
+      ToastUtil.error('没有图片文件，无法进行AI强化');
+      return;
+    }
+
+    setState(() {
+      _isAiEnhancing = true;
+      _progressText = 'AI正在优化识别结果...';
+    });
+
+    try {
+      final vision = await _ensureVisionDescription();
+
+      final block = _blocks[realIndex];
+      block.originalText ??= block.text;
+
+      final blocksData = [{0: block.text}];
+
+      final correctedBlocks = await AiService.instance.enhanceTextBlocks(
+        widget.imageFile!,
+        blocksData,
+        _currentAiModel,
+        onProgress: (msg) {
+          setState(() => _progressText = msg);
+        },
+        visionDescription: vision,
+      );
+
+      final correctedText = correctedBlocks[0];
+      if (correctedText != null) {
+        setState(() {
+          _blocks[realIndex].aiEnhancedText = correctedText;
+          _blocks[realIndex].text = correctedText;
+          _isAiEnhancing = false;
+        });
+        ToastUtil.success('AI强化完成');
+      } else {
+        setState(() {
+          _isAiEnhancing = false;
+        });
+        ToastUtil.info('AI强化完成，无需修改');
+      }
+    } catch (e) {
+      setState(() {
+        _isAiEnhancing = false;
+      });
+      ToastUtil.error('AI强化失败: $e');
+    }
+  }
+
   Future<void> _aiEnhanceAllBlocks() async {
     if (widget.imageFile == null) {
       ToastUtil.error('没有图片文件，无法进行AI强化');
@@ -458,10 +503,12 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
 
     setState(() {
       _isAiEnhancing = true;
-      _aiProgressText = 'AI正在优化识别结果...';
+      _progressText = 'AI正在优化识别结果...';
     });
 
     try {
+      final vision = await _ensureVisionDescription();
+
       final blocksData = <Map<int, String>>[];
       for (int i = 0; i < visibleBlocks.length; i++) {
         visibleBlocks[i].originalText ??= visibleBlocks[i].text;
@@ -473,8 +520,9 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
         blocksData,
         _currentAiModel,
         onProgress: (msg) {
-          setState(() => _aiProgressText = msg);
+          setState(() => _progressText = msg);
         },
+        visionDescription: vision,
       );
 
       int updatedCount = 0;
@@ -500,10 +548,89 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
     }
   }
 
+  Future<void> _aiTranslateAllBlocks() async {
+    if (widget.imageFile == null) {
+      ToastUtil.error('没有图片文件，无法进行AI翻译');
+      return;
+    }
+
+    final visibleBlocks = _blocks.where((b) => !b.isDeleted).toList();
+    if (visibleBlocks.isEmpty) return;
+
+    setState(() {
+      _isAiTranslating = true;
+      _progressText = '正在翻译文本...';
+    });
+
+    try {
+      for (int i = 0; i < visibleBlocks.length; i++) {
+        if (!mounted) break;
+        final block = visibleBlocks[i];
+        if (block.text.trim().isEmpty) continue;
+
+        setState(() {
+          _progressText = '正在翻译第 ${i + 1}/${visibleBlocks.length} 个文本块...';
+        });
+
+        final result = await TranslationService.instance.translateWithStatus(block.text);
+
+        if (result.status == TranslationStatus.downloadingModel) {
+          setState(() {
+            _progressText = '正在下载翻译模型...';
+          });
+        }
+
+        if (result.status == TranslationStatus.done && result.translatedText != null) {
+          visibleBlocks[i].translatedText = result.translatedText;
+        }
+      }
+
+      final vision = await _ensureVisionDescription();
+
+      final blocksWithDraft = <Map<int, String>>[];
+      for (int i = 0; i < visibleBlocks.length; i++) {
+        final block = visibleBlocks[i];
+        final draft = block.translatedText ?? '';
+        blocksWithDraft.add({i: '${block.text}|||$draft'});
+      }
+
+      final aiTranslations = await AiService.instance.enhanceTranslation(
+        widget.imageFile!,
+        blocksWithDraft,
+        _currentAiModel,
+        onProgress: (msg) {
+          setState(() => _progressText = msg);
+        },
+        visionDescription: vision,
+      );
+
+      int translatedCount = 0;
+      for (int i = 0; i < visibleBlocks.length; i++) {
+        final aiTranslation = aiTranslations[i];
+        if (aiTranslation != null && aiTranslation.isNotEmpty) {
+          visibleBlocks[i].aiTranslatedText = aiTranslation;
+          translatedCount++;
+        }
+      }
+
+      setState(() {
+        _isAiTranslating = false;
+      });
+
+      ToastUtil.success('AI强化翻译完成，已翻译 $translatedCount 个文字块');
+    } catch (e) {
+      setState(() {
+        _isAiTranslating = false;
+      });
+      ToastUtil.error('AI翻译失败: ${e.toString().split('\n').first}');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final visibleBlocks = _blocks.where((b) => !b.isDeleted).toList();
     final hasAiResults = visibleBlocks.any((b) => b.aiEnhancedText != null);
+    final hasTranslations = visibleBlocks.any((b) => b.translatedText != null || b.aiTranslatedText != null);
 
     return Scaffold(
       appBar: AppBar(
@@ -521,20 +648,26 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
           ),
         ),
         actions: [
-          if (!_isAiEnhancing && visibleBlocks.isNotEmpty && widget.imageFile != null)
+          if (!_isBusy && visibleBlocks.isNotEmpty && widget.imageFile != null) ...[
             IconButton(
               icon: const Icon(Icons.auto_fix_high),
               tooltip: 'AI强化全部',
               onPressed: _showAiEnhanceAllDialog,
             ),
+            IconButton(
+              icon: const Icon(Icons.translate),
+              tooltip: 'AI强化翻译',
+              onPressed: _showAiTranslateDialog,
+            ),
+          ],
         ],
       ),
       body: Stack(
         children: [
           AbsorbPointer(
-            absorbing: _isAiEnhancing,
+            absorbing: _isBusy,
             child: Opacity(
-              opacity: _isAiEnhancing ? 0.6 : 1.0,
+              opacity: _isBusy ? 0.6 : 1.0,
               child: visibleBlocks.isEmpty
               ? Center(
                   child: Column(
@@ -578,6 +711,33 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
                           ],
                         ),
                       ),
+                    if (hasTranslations)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.teal.withOpacity(0.08),
+                          border: Border(
+                            bottom: BorderSide(color: Colors.teal.withOpacity(0.15)),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.translate, size: 18, color: Colors.teal),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '${visibleBlocks.where((b) => b.aiTranslatedText != null || b.translatedText != null).length} 个文字块已翻译',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.teal,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     Expanded(
                       child: ListView.separated(
                         padding: const EdgeInsets.all(12),
@@ -586,9 +746,11 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
                         itemBuilder: (context, index) {
                           final block = visibleBlocks[index];
                           final hasAi = block.aiEnhancedText != null;
+                          final hasDraft = block.translatedText != null;
+                          final hasAiTrans = block.aiTranslatedText != null;
 
                           return Slidable(
-                            key: ValueKey(block.text + index.toString()),
+                            key: ValueKey(block.id),
                             endActionPane: ActionPane(
                               motion: const DrawerMotion(),
                               children: [
@@ -669,10 +831,37 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
                                                     ],
                                                   ),
                                                 ),
+                                              if (hasAiTrans)
+                                                Container(
+                                                  margin: const EdgeInsets.only(left: 4),
+                                                  padding: const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 3,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.amber.withOpacity(0.15),
+                                                    borderRadius: BorderRadius.circular(10),
+                                                  ),
+                                                  child: const Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Icon(Icons.translate, size: 12, color: Colors.amber),
+                                                      SizedBox(width: 4),
+                                                      Text(
+                                                        'AI翻译',
+                                                        style: TextStyle(
+                                                          fontSize: 11,
+                                                          color: Colors.amber,
+                                                          fontWeight: FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
                                             ],
                                           ),
                                         ),
-                                        if (!_isAiEnhancing && widget.imageFile != null)
+                                        if (!_isBusy && widget.imageFile != null)
                                           IconButton(
                                             icon: const Icon(Icons.auto_fix_high, size: 18),
                                             tooltip: 'AI强化此块',
@@ -693,92 +882,51 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
                                     ),
                                     const SizedBox(height: 10),
                                     if (hasAi && block.originalText != null) ...[
-                                      Container(
-                                        width: double.infinity,
-                                        padding: const EdgeInsets.all(10),
-                                        decoration: BoxDecoration(
-                                          color: Colors.blue.withOpacity(0.06),
-                                          borderRadius: BorderRadius.circular(10),
-                                          border: Border.all(color: Colors.blue.withOpacity(0.12)),
-                                        ),
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            const Row(
-                                              children: [
-                                                Icon(Icons.text_fields, size: 14, color: Colors.blue),
-                                                SizedBox(width: 4),
-                                                Text(
-                                                  'OCR原始',
-                                                  style: TextStyle(
-                                                    fontSize: 11,
-                                                    color: Colors.blue,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              block.originalText!,
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                color: Colors.black.withOpacity(0.7),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                      _buildInfoContainer(
+                                        icon: Icons.text_fields,
+                                        iconColor: Colors.blue,
+                                        label: 'OCR原始',
+                                        text: block.originalText!,
+                                        bgColor: Colors.blue.withOpacity(0.06),
+                                        borderColor: Colors.blue.withOpacity(0.12),
                                       ),
                                       const SizedBox(height: 8),
                                     ],
-                                    Container(
-                                      width: double.infinity,
-                                      padding: const EdgeInsets.all(10),
-                                      decoration: BoxDecoration(
-                                        color: hasAi
-                                            ? Colors.purple.withOpacity(0.04)
-                                            : AppTheme.lightGray.withOpacity(0.5),
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(
-                                          color: hasAi
-                                              ? Colors.purple.withOpacity(0.15)
-                                              : Colors.grey.withOpacity(0.15),
-                                        ),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Icon(
-                                                hasAi ? Icons.auto_fix_high : Icons.text_snippet,
-                                                size: 14,
-                                                color: hasAi ? Colors.purple : Colors.grey.shade600,
-                                              ),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                hasAi ? 'AI优化结果' : '识别结果',
-                                                style: TextStyle(
-                                                  fontSize: 11,
-                                                  color: hasAi ? Colors.purple : Colors.grey.shade600,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            block.text,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
-                                              color: Colors.black87,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                    _buildInfoContainer(
+                                      icon: hasAi ? Icons.auto_fix_high : Icons.text_snippet,
+                                      iconColor: hasAi ? Colors.purple : Colors.grey.shade600,
+                                      label: hasAi ? 'AI优化结果' : '识别结果',
+                                      text: block.text,
+                                      bgColor: hasAi
+                                          ? Colors.purple.withOpacity(0.04)
+                                          : AppTheme.lightGray.withOpacity(0.5),
+                                      borderColor: hasAi
+                                          ? Colors.purple.withOpacity(0.15)
+                                          : Colors.grey.withOpacity(0.15),
                                     ),
-                                    if (hasAi) ...[
+                                    if (hasDraft) ...[
+                                      const SizedBox(height: 8),
+                                      _buildInfoContainer(
+                                        icon: Icons.translate,
+                                        iconColor: Colors.teal,
+                                        label: '翻译草稿',
+                                        text: block.translatedText!,
+                                        bgColor: Colors.teal.withOpacity(0.06),
+                                        borderColor: Colors.teal.withOpacity(0.12),
+                                      ),
+                                    ],
+                                    if (hasAiTrans) ...[
+                                      const SizedBox(height: 8),
+                                      _buildInfoContainer(
+                                        icon: Icons.auto_awesome,
+                                        iconColor: Colors.amber.shade700,
+                                        label: 'AI优化翻译',
+                                        text: block.aiTranslatedText!,
+                                        bgColor: Colors.amber.withOpacity(0.06),
+                                        borderColor: Colors.amber.withOpacity(0.12),
+                                      ),
+                                    ],
+                                    if (hasAi || hasDraft || hasAiTrans) ...[
                                       const SizedBox(height: 8),
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.end,
@@ -828,7 +976,7 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
                 ),
           ),
           ),
-          if (_isAiEnhancing)
+          if (_isBusy)
             Positioned(
               top: 0,
               left: 0,
@@ -836,7 +984,7 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: Colors.purple.withOpacity(0.9),
+                  color: (_isAiTranslating ? Colors.teal : Colors.purple).withOpacity(0.9),
                   borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
                 ),
                 child: Row(
@@ -851,9 +999,11 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
                       ),
                     ),
                     SizedBox(width: 12),
-                    Text(
-                      _aiProgressText,
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    Flexible(
+                      child: Text(
+                        _progressText,
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ],
                 ),
@@ -862,10 +1012,57 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _isAiEnhancing ? null : () => Navigator.pop(context, _blocks),
+        onPressed: _isBusy ? null : () => Navigator.pop(context, _blocks),
         icon: const Icon(Icons.check),
         label: const Text('确认返回'),
         backgroundColor: AppTheme.gentleGreen,
+      ),
+    );
+  }
+
+  Widget _buildInfoContainer({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String text,
+    required Color bgColor,
+    required Color borderColor,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: iconColor),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: iconColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Colors.black87,
+            ),
+          ),
+        ],
       ),
     );
   }
