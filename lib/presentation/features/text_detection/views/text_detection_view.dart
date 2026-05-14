@@ -151,19 +151,23 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
             onPressed: () => _showHelpDialog(),
             tooltip: '操作指南',
           ),
-        if (state.backgroundImage != null && visibleBlocks.isNotEmpty)
-          IconButton(
-            icon: const Icon(Icons.table_chart),
-            onPressed: () => _navigateToResultsTable(state, visibleBlocks),
-            tooltip: '查看结果表格',
-          ),
-        if (widget.onSave != null && state.imageFile != null && visibleBlocks.isNotEmpty)
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: () => _saveToBook(state, notifier),
-            tooltip: '保存到点读本',
-          ),
-        _buildPopupMenu(state, notifier, visibleBlocks),
+        if (state.isAiEnhancing)
+          const SizedBox.shrink()
+        else ...[
+          if (state.backgroundImage != null && visibleBlocks.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.table_chart),
+              onPressed: () => _navigateToResultsTable(state, visibleBlocks),
+              tooltip: '查看结果表格',
+            ),
+          if (widget.onSave != null && state.imageFile != null && visibleBlocks.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.save),
+              onPressed: () => _saveToBook(state, notifier),
+              tooltip: '保存到点读本',
+            ),
+          _buildPopupMenu(state, notifier, visibleBlocks),
+        ],
       ],
     );
   }
@@ -255,50 +259,60 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
     return SafeArea(
       child: Stack(
         children: [
-          LayoutBuilder(
-            builder: (context, constraints) {
-              return InteractiveViewer(
-                key: _viewerKey,
-                transformationController: notifier.transformController,
-                panEnabled: false,
-                scaleEnabled: false,
-                constrained: false,
-                minScale: 0.1,
-                maxScale: 10.0,
-                child: SizedBox(
-                  width: state.canvasSize.width,
-                  height: state.canvasSize.height,
-                  child: Listener(
-                    onPointerDown: (event) {
-                      if (_tryDeleteButtonTap(state, notifier, event.localPosition)) {
-                        return;
-                      }
-                      notifier.onPointerDown(event.localPosition);
-                    },
-                    child: GestureDetector(
-                      onScaleStart: (_) => notifier.onScaleStart(),
-                      onScaleUpdate: (details) => notifier.onScaleUpdate(details),
-                      onScaleEnd: (_) => notifier.onScaleEnd(),
-                      child: CustomPaint(
-                        size: state.canvasSize,
-                        painter: TextBlockPainter(
-                          state: state,
-                          transformController: notifier.transformController,
+          AbsorbPointer(
+            absorbing: state.isAiEnhancing,
+            child: Opacity(
+              opacity: state.isAiEnhancing ? 0.6 : 1.0,
+              child: Stack(
+                children: [
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      return InteractiveViewer(
+                        key: _viewerKey,
+                        transformationController: notifier.transformController,
+                        panEnabled: false,
+                        scaleEnabled: false,
+                        constrained: false,
+                        minScale: 0.1,
+                        maxScale: 10.0,
+                        child: SizedBox(
+                          width: state.canvasSize.width,
+                          height: state.canvasSize.height,
+                          child: Listener(
+                            onPointerDown: (event) {
+                              if (_tryDeleteButtonTap(state, notifier, event.localPosition)) {
+                                return;
+                              }
+                              notifier.onPointerDown(event.localPosition);
+                            },
+                            child: GestureDetector(
+                              onScaleStart: (_) => notifier.onScaleStart(),
+                              onScaleUpdate: (details) => notifier.onScaleUpdate(details),
+                              onScaleEnd: (_) => notifier.onScaleEnd(),
+                              child: CustomPaint(
+                                size: state.canvasSize,
+                                painter: TextBlockPainter(
+                                  state: state,
+                                  transformController: notifier.transformController,
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
-                ),
-              );
-            },
-          ),
-          BottomToolbar(
-            notifier: notifier,
-            onPlay: () => _playSelectedBlock(state),
-            onEdit: () => _editSelectedBlock(state),
-            onDelete: () => _confirmDeleteBlock(state, notifier),
-            onAiEnhanceAll: () => _showAiEnhanceAllDialog(notifier),
-            onReRecognizeAll: () => _showReRecognizeAllDialog(notifier),
+                  BottomToolbar(
+                    notifier: notifier,
+                    onPlay: () => _playSelectedBlock(state),
+                    onEdit: () => _editSelectedBlock(state),
+                    onDelete: () => _confirmDeleteBlock(state, notifier),
+                    onAiEnhanceAll: () => _showAiEnhanceAllDialog(notifier),
+                    onReRecognizeAll: () => _showReRecognizeAllDialog(notifier),
+                  ),
+                ],
+              ),
+            ),
           ),
           if (state.isProcessing) _buildProcessingBanner('正在识别文字...'),
           if (state.showAiBanner) _buildProcessingBanner(state.aiBannerText, Colors.purple),

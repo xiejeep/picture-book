@@ -531,7 +531,11 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
       ),
       body: Stack(
         children: [
-          visibleBlocks.isEmpty
+          AbsorbPointer(
+            absorbing: _isAiEnhancing,
+            child: Opacity(
+              opacity: _isAiEnhancing ? 0.6 : 1.0,
+              child: visibleBlocks.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -822,6 +826,8 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
                     ),
                   ],
                 ),
+          ),
+          ),
           if (_isAiEnhancing)
             Positioned(
               top: 0,
@@ -856,7 +862,7 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.pop(context, _blocks),
+        onPressed: _isAiEnhancing ? null : () => Navigator.pop(context, _blocks),
         icon: const Icon(Icons.check),
         label: const Text('确认返回'),
         backgroundColor: AppTheme.gentleGreen,
