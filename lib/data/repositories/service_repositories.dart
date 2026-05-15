@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:ui';
 import '../models/text_block_model.dart';
 
 abstract class OcrRepository {

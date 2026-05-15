@@ -45,10 +45,15 @@ class InfoContainer extends StatelessWidget {
               ),
               if (onEdit != null) ...[
                 const Spacer(),
-                GestureDetector(
-                  onTap: onEdit,
-                  child: Icon(Icons.edit,
-                      size: 16, color: mutedColor.withValues(alpha: 0.7)),
+                Semantics(
+                  label: '编辑',
+                  hint: '编辑此内容',
+                  button: true,
+                  child: GestureDetector(
+                    onTap: onEdit,
+                    child: Icon(Icons.edit,
+                        size: 16, color: mutedColor.withValues(alpha: 0.7)),
+                  ),
                 ),
               ],
             ],

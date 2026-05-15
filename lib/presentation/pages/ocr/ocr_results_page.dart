@@ -11,6 +11,7 @@ import '../../providers/settings_provider.dart';
 import '../../providers/repository_providers.dart';
 import '../../providers/service_providers.dart';
 import '../../features/text_detection/text_detection.dart';
+import '../../widgets/semantics_icon_button.dart';
 import './widgets/block_card.dart';
 import './widgets/progress_overlay.dart';
 
@@ -107,8 +108,11 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
                         fontWeight: FontWeight.w600,
                         color: onSurfaceColor),
                   ),
-                  IconButton(
-                      icon: Icon(Icons.close, color: onSurfaceColor),
+                  SemanticsIconButton(
+                      icon: Icons.close,
+                      label: '关闭',
+                      hint: '关闭编辑窗口',
+                      color: onSurfaceColor,
                       onPressed: () => Navigator.pop(ctx)),
                 ],
               ),
@@ -195,8 +199,11 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
                         fontWeight: FontWeight.w600,
                         color: onSurfaceColor),
                   ),
-                  IconButton(
-                      icon: Icon(Icons.close, color: onSurfaceColor),
+                  SemanticsIconButton(
+                      icon: Icons.close,
+                      label: '关闭',
+                      hint: '关闭翻译编辑窗口',
+                      color: onSurfaceColor,
                       onPressed: () => Navigator.pop(ctx)),
                 ],
               ),
@@ -633,13 +640,15 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
             if (!_isBusy &&
                 visibleBlocks.isNotEmpty &&
                 widget.imageFile != null) ...[
-              IconButton(
-                  icon: const Icon(Icons.auto_fix_high),
-                  tooltip: 'AI强化全部',
+              SemanticsIconButton(
+                  icon: Icons.auto_fix_high,
+                  label: 'AI强化全部',
+                  hint: '对所有文字块进行AI强化识别',
                   onPressed: _showAiEnhanceAllDialog),
-              IconButton(
-                  icon: const Icon(Icons.translate),
-                  tooltip: 'AI强化翻译',
+              SemanticsIconButton(
+                  icon: Icons.translate,
+                  label: 'AI强化翻译',
+                  hint: '对所有文字块进行AI强化翻译',
                   onPressed: _showAiTranslateDialog),
             ],
           ],
@@ -679,11 +688,16 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
                   text: _progressText, color: AppTheme.primaryOf(context)),
           ],
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _isBusy ? null : () => Navigator.pop(context, _blocks),
-          icon: const Icon(Icons.check),
-          label: const Text('确认返回'),
-          backgroundColor: AppTheme.primaryOf(context),
+        floatingActionButton: Semantics(
+          label: '确认返回',
+          hint: '确认结果并返回上一页',
+          button: true,
+          child: FloatingActionButton.extended(
+            onPressed: _isBusy ? null : () => Navigator.pop(context, _blocks),
+            icon: const Icon(Icons.check),
+            label: const Text('确认返回'),
+            backgroundColor: AppTheme.primaryOf(context),
+          ),
         ),
       ),
     );

@@ -41,6 +41,8 @@ class PageIndicator extends StatelessWidget {
             context: context,
             onTap: hasPrev ? onPrevious : null,
             icon: Icons.arrow_back_ios_new_rounded,
+            semanticsLabel: '上一页',
+            semanticsHint: '查看上一页内容',
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -97,6 +99,8 @@ class PageIndicator extends StatelessWidget {
             context: context,
             onTap: hasNext ? onNext : null,
             icon: Icons.arrow_forward_ios_rounded,
+            semanticsLabel: '下一页',
+            semanticsHint: '查看下一页内容',
           ),
         ],
       ),
@@ -107,22 +111,30 @@ class PageIndicator extends StatelessWidget {
     required BuildContext context,
     required VoidCallback? onTap,
     required IconData icon,
+    required String semanticsLabel,
+    String? semanticsHint,
   }) {
     final enabled = onTap != null;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: enabled
-              ? Colors.white.withValues(alpha: 0.25)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: enabled ? Colors.white : Colors.white.withValues(alpha: 0.3),
+    return Semantics(
+      label: semanticsLabel,
+      hint: semanticsHint,
+      button: true,
+      enabled: enabled,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: enabled
+                ? Colors.white.withValues(alpha: 0.25)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            icon,
+            size: 18,
+            color: enabled ? Colors.white : Colors.white.withValues(alpha: 0.3),
+          ),
         ),
       ),
     );

@@ -200,64 +200,75 @@ class SettingsPage extends ConsumerWidget {
     required List<Color> gradientColors,
     required bool isSelected,
   }) {
+    final hints = {
+      ThemeMode.light: '切换到亮色主题',
+      ThemeMode.dark: '切换到暗色主题',
+      ThemeMode.system: '主题跟随系统设置',
+    };
     return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          ref.read(themeModeProvider.notifier).setThemeMode(mode);
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors:
-                  gradientColors.map((c) => c.withValues(alpha: 0.15)).toList(),
+      child: Semantics(
+        label: '$label主题',
+        hint: hints[mode],
+        button: true,
+        child: GestureDetector(
+          onTap: () {
+            ref.read(themeModeProvider.notifier).setThemeMode(mode);
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: gradientColors
+                    .map((c) => c.withValues(alpha: 0.15))
+                    .toList(),
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: isSelected
+                  ? Border.all(color: gradientColors[0], width: 2.5)
+                  : null,
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: gradientColors[0].withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : null,
             ),
-            borderRadius: BorderRadius.circular(16),
-            border: isSelected
-                ? Border.all(color: gradientColors[0], width: 2.5)
-                : null,
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: gradientColors[0].withValues(alpha: 0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: gradientColors,
                     ),
-                  ]
-                : null,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: gradientColors,
+                    shape: BoxShape.circle,
                   ),
-                  shape: BoxShape.circle,
+                  child: Icon(icon, color: Colors.white, size: 24),
                 ),
-                child: Icon(icon, color: Colors.white, size: 24),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: isSelected
-                      ? gradientColors[0]
-                      : AppTheme.onSurfaceOf(context).withValues(alpha: 0.7),
+                const SizedBox(height: 8),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    color: isSelected
+                        ? gradientColors[0]
+                        : AppTheme.onSurfaceOf(context).withValues(alpha: 0.7),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -347,7 +358,6 @@ class SettingsPage extends ConsumerWidget {
     Color? badgeColor,
     required VoidCallback onTap,
   }) {
-    final isDark = AppTheme.isDarkMode(context);
     return ListTile(
       leading: Container(
         width: 48,

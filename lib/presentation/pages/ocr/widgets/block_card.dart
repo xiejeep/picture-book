@@ -83,19 +83,24 @@ class BlockCard extends StatelessWidget {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(20),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: onEdit,
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(context),
-                  const SizedBox(height: 10),
-                  _buildContent(context),
-                  if (hasAi || hasDraft || hasAiTrans) _buildActions(context),
-                ],
+          child: Semantics(
+            label: '文字块 #${index + 1}',
+            hint: '点击编辑此文字块',
+            button: true,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: onEdit,
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(context),
+                    const SizedBox(height: 10),
+                    _buildContent(context),
+                    if (hasAi || hasDraft || hasAiTrans) _buildActions(context),
+                  ],
+                ),
               ),
             ),
           ),

@@ -220,6 +220,19 @@
 - **问题**: 大段 AI prompt 嵌在 Dart 代码中，不便维护
 - **建议**: 外部化到 assets/prompts/ 目录或常量文件
 
+#### ~~13. Semantics 不完整~~ ✅ 已修复（会话 4）
+- **修复**: 为所有交互元素添加 `Semantics` wrapper（label + hint + button: true）
+- **涉及文件**:
+  - `page_indicator.dart` — 2 个 GestureDetector（上一页/下一页按钮）
+  - `bottom_toolbar.dart` — 10 个 GestureDetector（模式/子模式/操作按钮）
+  - `settings_page.dart` — 3 个 GestureDetector（主题选择器）
+  - `book_manage_page.dart` — 2 个 InkWell（保存按钮、封面编辑）
+  - `voice_settings_page.dart` — 2 个 InkWell（TTS 类型选项）
+  - `ocr_results_page.dart` — 4 个 IconButton → SemanticsIconButton + 1 个 FAB
+  - `block_card.dart` — 1 个 InkWell（文字块卡片）
+  - `info_container.dart` — 1 个 GestureDetector（编辑图标）
+- **状态**: ✅ 完成
+
 ### LOW 优先级
 
 #### 12. Repository 层零价值（设计选择）
@@ -227,9 +240,7 @@
 - 如果不需要可测试性，可以考虑简化为直接使用 Service Provider
 - 但保留也无害，后续可注入 mock 实现
 
-#### 13. Semantics 不完整
-- 多个页面的交互元素缺少 `Semantics` wrapper（见 AGENTS.md 无障碍要求）
-- **涉及**: `page_indicator.dart`, `bottom_toolbar.dart`, `book_manage_page.dart`, `voice_settings_page.dart`, `settings_page.dart`, `ocr_results_page.dart`
+#### ~~13. Semantics 不完整~~ ✅ 已修复（会话 4）
 
 #### 14. image_service getImageFile() 同步操作残留
 - `getImageFile()` 仍使用 `existsSync()` — 因为所有调用方都在 `build()` 方法中同步使用，改为 async 需要 FutureBuilder
@@ -255,6 +266,12 @@ dart format lib/: 2 files formatted
 ```
 flutter analyze: 0 errors, 6 pre-existing warnings (not from our changes)
 dart format lib/: 2 files formatted
+```
+
+### 第四轮
+```
+flutter analyze: 0 errors, 0 warnings, 127 info (仅 style 建议)
+dart format lib/: 4 files formatted
 ```
 
 ## 四、关键文件变更清单
@@ -314,3 +331,16 @@ dart format lib/: 2 files formatted
 - `lib/data/services/vision_service.dart` — prompt 引用 AppPrompts.visionExtractText()
 - `lib/data/services/text_cleaning_service.dart` — prompt 引用 AppPrompts.textCleanBatch() / AppPrompts.translationRefineBatch()
 ```
+
+### 第四轮修改文件
+- `lib/data/repositories/service_repositories.dart` — 移除 unused `dart:ui` import
+- `lib/data/repositories/book_repository_impl.dart` — 移除 unused fields/imports（`_storageService`/`_imageService`/`constants.dart`）
+- `lib/presentation/pages/ocr/widgets/status_banner.dart` — 移除 unused `app_theme.dart` import
+- `lib/presentation/pages/settings_page.dart` — 移除 unused `isDark` 变量 + 3 个主题选择器添加 Semantics
+- `lib/presentation/widgets/page_indicator.dart` — 2 个翻页按钮添加 Semantics（参数化 label/hint）
+- `lib/presentation/features/text_detection/widgets/bottom_toolbar.dart` — 10 个工具栏按钮添加 Semantics（4 个 builder 方法）
+- `lib/presentation/pages/book_manage_page.dart` — 保存按钮 + 封面编辑添加 Semantics
+- `lib/presentation/pages/voice_settings_page.dart` — 2 个 TTS 选项添加 Semantics
+- `lib/presentation/pages/ocr/ocr_results_page.dart` — 4 个 IconButton → SemanticsIconButton + FAB 添加 Semantics
+- `lib/presentation/pages/ocr/widgets/block_card.dart` — InkWell 添加 Semantics
+- `lib/presentation/pages/ocr/widgets/info_container.dart` — 编辑图标 GestureDetector 添加 Semantics

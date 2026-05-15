@@ -3,19 +3,16 @@ import '../models/book_model.dart';
 import '../models/page_model.dart';
 import '../models/text_block_model.dart';
 import '../repositories/book_repository.dart';
-import '../services/storage_service.dart';
-import '../services/image_service.dart';
 import '../services/book_service.dart';
-import '../../core/constants/constants.dart';
+import '../services/image_service.dart';
+import '../services/storage_service.dart';
 
 class BookRepositoryImpl implements BookRepository {
-  final StorageService _storageService;
-  final ImageService _imageService;
   final BookService _bookService;
 
   BookRepositoryImpl(
-    this._storageService,
-    this._imageService,
+    StorageService _,
+    ImageService __,
     this._bookService,
   );
 

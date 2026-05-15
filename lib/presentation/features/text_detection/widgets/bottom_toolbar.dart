@@ -77,6 +77,7 @@ class BottomToolbar extends StatelessWidget {
             icon: Icons.auto_fix_high,
             label: 'AI强化',
             onTap: onAiEnhanceAll,
+            semanticsHint: '对所有文字块进行AI强化识别',
             color: Colors.purpleAccent,
           ),
           const SizedBox(width: 6),
@@ -85,6 +86,7 @@ class BottomToolbar extends StatelessWidget {
           icon: Icons.refresh,
           label: '重识别',
           onTap: onReRecognizeAll,
+          semanticsHint: '重新进行OCR文字识别',
         ),
       ],
     );
@@ -134,6 +136,7 @@ class BottomToolbar extends StatelessWidget {
               label: '调整大小',
               isActive: isResize,
               onTap: isResize ? null : () => notifier.toggleEditSubMode(),
+              semanticsHint: '调整选中文字块的大小',
             ),
             const SizedBox(width: 4),
             _buildSubModeButton(
@@ -142,24 +145,28 @@ class BottomToolbar extends StatelessWidget {
               label: '移动位置',
               isActive: !isResize,
               onTap: isResize ? () => notifier.toggleEditSubMode() : null,
+              semanticsHint: '移动选中文字块的位置',
             ),
             const Spacer(),
             _buildIconLabelButton(
               icon: Icons.volume_up,
               label: '试听',
               onTap: onPlay,
+              semanticsHint: '试听选中文字块的朗读效果',
               color: AppTheme.gentleGreen,
             ),
             _buildIconLabelButton(
               icon: Icons.edit,
               label: '编辑',
               onTap: onEdit,
+              semanticsHint: '编辑选中文字块的文字内容',
               color: AppTheme.softOrange,
             ),
             _buildIconLabelButton(
               icon: Icons.delete,
               label: '删除',
               onTap: onDelete,
+              semanticsHint: '删除选中的文字块',
               color: Colors.redAccent,
             ),
           ],
@@ -211,34 +218,44 @@ class BottomToolbar extends StatelessWidget {
     TextDetectionState state,
   ) {
     final isActive = state.mode == mode;
+    final hints = {
+      CanvasMode.view: '切换到查看模式，可缩放平移图片',
+      CanvasMode.draw: '切换到绘制模式，可拖动绘制文字区域',
+      CanvasMode.edit: '切换到编辑模式，可选中并编辑文字块',
+    };
 
-    return GestureDetector(
-      onTap: () => notifier.setMode(mode),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: isActive ? AppTheme.primaryOf(context) : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 18,
-              color: isActive ? Colors.white : Colors.white54,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+    return Semantics(
+      label: '${label}模式',
+      hint: hints[mode],
+      button: true,
+      child: GestureDetector(
+        onTap: () => notifier.setMode(mode),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: isActive ? AppTheme.primaryOf(context) : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 18,
                 color: isActive ? Colors.white : Colors.white54,
               ),
-            ),
-          ],
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                  color: isActive ? Colors.white : Colors.white54,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -250,34 +267,40 @@ class BottomToolbar extends StatelessWidget {
     required String label,
     required bool isActive,
     required VoidCallback? onTap,
+    String? semanticsHint,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: isActive ? AppTheme.primaryOf(context) : Colors.white12,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: isActive ? Colors.white : Colors.white54,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+    return Semantics(
+      label: label,
+      hint: semanticsHint,
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: isActive ? AppTheme.primaryOf(context) : Colors.white12,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 16,
                 color: isActive ? Colors.white : Colors.white54,
               ),
-            ),
-          ],
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                  color: isActive ? Colors.white : Colors.white54,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -287,23 +310,29 @@ class BottomToolbar extends StatelessWidget {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    required String semanticsHint,
     Color color = Colors.white,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 20, color: color),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style:
-                  TextStyle(fontSize: 11, color: color.withValues(alpha: 0.8)),
-            ),
-          ],
+    return Semantics(
+      label: label,
+      hint: semanticsHint,
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 20, color: color),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                    fontSize: 11, color: color.withValues(alpha: 0.8)),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -313,32 +342,38 @@ class BottomToolbar extends StatelessWidget {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    required String semanticsHint,
     Color? color,
   }) {
     final iconColor = color ?? Colors.white;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.white12,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: iconColor),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: iconColor,
+    return Semantics(
+      label: label,
+      hint: semanticsHint,
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white12,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: iconColor),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: iconColor,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

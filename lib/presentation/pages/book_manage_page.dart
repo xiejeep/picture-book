@@ -434,113 +434,126 @@ class _BookManagePageState extends State<BookManagePage> {
                           Material(
                             color: AppTheme.primaryOf(context),
                             borderRadius: BorderRadius.circular(16),
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(16),
-                              onTap: _isSaving ? null : _saveTitle,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 14),
-                                child: _isSaving
-                                    ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : const Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.save_rounded,
-                                            size: 18,
+                            child: Semantics(
+                              label: '保存',
+                              hint: '保存读本名称',
+                              button: true,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(16),
+                                onTap: _isSaving ? null : _saveTitle,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 14),
+                                  child: _isSaving
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
                                             color: Colors.white,
                                           ),
-                                          SizedBox(width: 6),
-                                          Text(
-                                            '保存',
-                                            style: TextStyle(
+                                        )
+                                      : const Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.save_rounded,
+                                              size: 18,
                                               color: Colors.white,
-                                              fontWeight: FontWeight.w600,
                                             ),
-                                          ),
-                                        ],
-                                      ),
+                                            SizedBox(width: 6),
+                                            Text(
+                                              '保存',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                ),
                               ),
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 16),
-                      InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: _editCover,
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppTheme.cardOf(context),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: AppTheme.onSurfaceOf(context)
-                                  .withValues(alpha: 0.1),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 60,
-                                height: 60,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(8),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AppTheme.onSurfaceOf(context)
-                                          .withValues(alpha: 0.1),
-                                      blurRadius: 2,
-                                      offset: const Offset(0, 1),
-                                    ),
-                                  ],
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: _buildCoverPreview(),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '封面图片',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppTheme.onSurfaceOf(context),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      widget.book.customCoverPath != null
-                                          ? '自定义封面'
-                                          : (_pages.isEmpty ? '暂无页面' : '使用第一页'),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: AppTheme.onSurfaceOf(context)
-                                            .withValues(alpha: 0.6),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Icon(
-                                Icons.edit_rounded,
-                                size: 18,
+                      Semantics(
+                        label: '封面图片',
+                        hint: '点击修改封面图片',
+                        button: true,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: _editCover,
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppTheme.cardOf(context),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
                                 color: AppTheme.onSurfaceOf(context)
-                                    .withValues(alpha: 0.4),
+                                    .withValues(alpha: 0.1),
                               ),
-                            ],
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 60,
+                                  height: 60,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppTheme.onSurfaceOf(context)
+                                            .withValues(alpha: 0.1),
+                                        blurRadius: 2,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: _buildCoverPreview(),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '封面图片',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppTheme.onSurfaceOf(context),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        widget.book.customCoverPath != null
+                                            ? '自定义封面'
+                                            : (_pages.isEmpty
+                                                ? '暂无页面'
+                                                : '使用第一页'),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppTheme.onSurfaceOf(context)
+                                              .withValues(alpha: 0.6),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.edit_rounded,
+                                  size: 18,
+                                  color: AppTheme.onSurfaceOf(context)
+                                      .withValues(alpha: 0.4),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),

@@ -159,99 +159,106 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
     bool recommended = false,
   }) {
     final isSelected = _useGlmTts == value;
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _useGlmTts = value;
-          _speechRate = value
-              ? AppConstants.glmTtsDefaultSpeed
-              : AppConstants.systemTtsDefaultSpeed;
-        });
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? AppTheme.primaryOf(context).withValues(alpha: 0.2)
-                    : AppTheme.onSurfaceOf(context).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
+    final semanticsLabel = value ? 'GLM-TTS高质量语音' : '系统TTS';
+    final semanticsHint = value ? '使用AI合成语音，效果更自然' : '使用设备自带语音引擎';
+    return Semantics(
+      label: semanticsLabel,
+      hint: semanticsHint,
+      button: true,
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _useGlmTts = value;
+            _speechRate = value
+                ? AppConstants.glmTtsDefaultSpeed
+                : AppConstants.systemTtsDefaultSpeed;
+          });
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppTheme.primaryOf(context).withValues(alpha: 0.2)
+                      : AppTheme.onSurfaceOf(context).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  icon,
+                  color: isSelected
+                      ? AppTheme.primaryOf(context)
+                      : AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
+                ),
               ),
-              child: Icon(
-                icon,
-                color: isSelected
-                    ? AppTheme.primaryOf(context)
-                    : AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          color: isSelected
-                              ? AppTheme.onSurfaceOf(context)
-                              : AppTheme.onSurfaceOf(context)
-                                  .withValues(alpha: 0.6),
-                        ),
-                      ),
-                      if (recommended) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppTheme.accentOf(context)
-                                .withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            '推荐',
-                            style: TextStyle(
-                                color: AppTheme.accentOf(context),
-                                fontSize: 10),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: isSelected
+                                ? AppTheme.onSurfaceOf(context)
+                                : AppTheme.onSurfaceOf(context)
+                                    .withValues(alpha: 0.6),
                           ),
                         ),
+                        if (recommended) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppTheme.accentOf(context)
+                                  .withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '推荐',
+                              style: TextStyle(
+                                  color: AppTheme.accentOf(context),
+                                  fontSize: 10),
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.mutedOf(context),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.mutedOf(context),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            Radio<bool>(
-              value: value,
-              groupValue: _useGlmTts,
-              onChanged: (v) {
-                setState(() {
-                  _useGlmTts = v!;
-                  _speechRate = v
-                      ? AppConstants.glmTtsDefaultSpeed
-                      : AppConstants.systemTtsDefaultSpeed;
-                });
-              },
-              activeColor: AppTheme.primaryOf(context),
-            ),
-          ],
+              Radio<bool>(
+                value: value,
+                groupValue: _useGlmTts,
+                onChanged: (v) {
+                  setState(() {
+                    _useGlmTts = v!;
+                    _speechRate = v
+                        ? AppConstants.glmTtsDefaultSpeed
+                        : AppConstants.systemTtsDefaultSpeed;
+                  });
+                },
+                activeColor: AppTheme.primaryOf(context),
+              ),
+            ],
+          ),
         ),
       ),
     );
