@@ -20,6 +20,7 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
   final TransformationController transformController = TransformationController();
   final ImagePicker _picker = ImagePicker();
   
+  Size _viewportSize = Size.zero;
   Matrix4? _scaleStartMatrix;
   Matrix4? _panStartMatrix;
   Offset? _panStartFocalPoint;
@@ -200,6 +201,7 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
   void fitToScreen(Size viewportSize) {
     if (state.backgroundImage == null) return;
 
+    _viewportSize = viewportSize;
     final imageSize = state.canvasSize;
     final scaleX = viewportSize.width / imageSize.width;
     final scaleY = viewportSize.height / imageSize.height;
@@ -248,7 +250,7 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
         ..scale(scale, scale)
         ..translate(-focalPoint.dx, -focalPoint.dy);
 
-      transformController.value = zoomMatrix.multiplied(_scaleStartMatrix!);
+      transformController.value = _scaleStartMatrix!.multiplied(zoomMatrix);
       return;
     }
 
@@ -706,22 +708,32 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
     final currentScale = transformController.value.getMaxScaleOnAxis();
     final newScale = (currentScale * 1.3).clamp(0.5, 4.0);
     final scaleRatio = newScale / currentScale;
-    final newMatrix = transformController.value.clone();
-    newMatrix.scale(scaleRatio, scaleRatio);
-    transformController.value = newMatrix;
+    final center = Offset(_viewportSize.width / 2, _viewportSize.height / 2);
+    final zoomMatrix = Matrix4.identity()
+      ..translate(center.dx, center.dy)
+      ..scale(scaleRatio, scaleRatio)
+      ..translate(-center.dx, -center.dy);
+    transformController.value = zoomMatrix.multiplied(transformController.value);
   }
 
   void zoomOut() {
     final currentScale = transformController.value.getMaxScaleOnAxis();
     final newScale = (currentScale / 1.3).clamp(0.5, 4.0);
     final scaleRatio = newScale / currentScale;
-    final newMatrix = transformController.value.clone();
-    newMatrix.scale(scaleRatio, scaleRatio);
-    transformController.value = newMatrix;
+    final center = Offset(_viewportSize.width / 2, _viewportSize.height / 2);
+    final zoomMatrix = Matrix4.identity()
+      ..translate(center.dx, center.dy)
+      ..scale(scaleRatio, scaleRatio)
+      ..translate(-center.dx, -center.dy);
+    transformController.value = zoomMatrix.multiplied(transformController.value);
   }
 
   void resetZoom() {
-    transformController.value = Matrix4.identity();
+    if (_viewportSize == Size.zero) {
+      transformController.value = Matrix4.identity();
+      return;
+    }
+    fitToScreen(_viewportSize);
   }
 }
 

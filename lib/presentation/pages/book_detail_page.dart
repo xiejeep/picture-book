@@ -199,7 +199,7 @@ Slider(
                           ),
                           child: Text(
                             '更多设置',
-                            style: TextStyle(color: AppTheme.onSurfaceOf(context).withOpacity(0.6)),
+                            style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6)),
                           ),
                         ),
                       ),
@@ -313,7 +313,7 @@ Slider(
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppTheme.errorOf(context).withOpacity(0.15),
+                      color: AppTheme.errorOf(context).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Icon(
@@ -336,7 +336,7 @@ Slider(
                     e.userMessage,
                     style: TextStyle(
                       fontSize: 14,
-                      color: AppTheme.onSurfaceOf(context).withOpacity(0.7),
+                      color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.7),
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -460,7 +460,7 @@ Slider(
       extendBodyBehindAppBar: true,
       appBar: _showAppBar
           ? AppBar(
-              backgroundColor: isDark ? AppTheme.darkSurface.withOpacity(0.85) : AppTheme.softOrange.withOpacity(0.85),
+              backgroundColor: isDark ? AppTheme.darkSurface.withValues(alpha: 0.85) : AppTheme.softOrange.withValues(alpha: 0.85),
               elevation: 0,
               title: Text(_book.title),
               actions: [
@@ -472,7 +472,7 @@ Slider(
                     icon: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
+                        color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(
@@ -493,7 +493,7 @@ Slider(
                     icon: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
+                        color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(
@@ -514,13 +514,13 @@ Slider(
                     icon: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
+                        color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
                         _showTranslation ? Icons.translate_rounded : Icons.translate_outlined,
                         size: 18,
-                        color: _showTranslation ? Colors.white : Colors.white.withOpacity(0.6),
+                        color: _showTranslation ? Colors.white : Colors.white.withValues(alpha: 0.6),
                       ),
                     ),
                     onPressed: _toggleTranslation,
@@ -535,7 +535,7 @@ Slider(
                     icon: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
+                        color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
@@ -616,8 +616,8 @@ Slider(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  AppTheme.sweetPink.withOpacity(0.2),
-                  AppTheme.lavender.withOpacity(0.2),
+                  AppTheme.sweetPink.withValues(alpha: 0.2),
+                  AppTheme.lavender.withValues(alpha: 0.2),
                 ],
               ),
               borderRadius: BorderRadius.circular(32),
@@ -625,7 +625,7 @@ Slider(
             child: Icon(
               Icons.pages_outlined,
               size: 64,
-              color: AppTheme.primaryOf(context).withOpacity(0.7),
+              color: AppTheme.primaryOf(context).withValues(alpha: 0.7),
             ),
           ),
           const SizedBox(height: 20),
@@ -637,20 +637,18 @@ Slider(
               color: AppTheme.onSurfaceOf(context),
             ),
           ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppTheme.accentOf(context).withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              '请在读本列表长按进入编辑模式',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppTheme.onSurfaceOf(context).withOpacity(0.7),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () => context.push('/book/${_book.id}/manage', extra: _book),
+            icon: const Icon(Icons.add_photo_alternate_rounded),
+            label: const Text('添加页面'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryOf(context).withValues(alpha: 0.85),
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              textAlign: TextAlign.center,
             ),
           ),
         ],
@@ -674,7 +672,7 @@ Slider(
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.errorOf(context).withOpacity(0.15),
+                color: AppTheme.errorOf(context).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Icon(
@@ -814,21 +812,21 @@ Slider(
                   child: SizedBox(
                     width: displayRect.width,
                     height: displayRect.height,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      decoration: BoxDecoration(
-                        color: isTapped
-                            ? AppTheme.accentOf(context).withOpacity(0.3)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(4),
-                        border: isTapped
-                            ? Border.all(
-                                color: AppTheme.accentOf(context).withOpacity(0.6),
-                                width: 2,
-                              )
-                            : null,
+child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        decoration: BoxDecoration(
+                          color: isTapped
+                              ? AppTheme.accentOf(context).withValues(alpha: 0.3)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(4),
+                          border: isTapped
+                              ? Border.all(
+                                  color: AppTheme.accentOf(context).withValues(alpha: 0.6),
+                                  width: 2,
+                                )
+                              : null,
+                        ),
                       ),
-                    ),
                   ),
                 ),
               ),
@@ -869,7 +867,7 @@ Slider(
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withValues(alpha: 0.3),
                 blurRadius: 16,
                 offset: const Offset(0, 4),
               ),

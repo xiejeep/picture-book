@@ -32,6 +32,7 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
   String _progressText = 'AI正在优化识别结果...';
   String _currentAiModel = AppConstants.defaultModel;
   String? _cachedVisionDescription;
+  bool _hasChanges = false;
 
   @override
   void initState() {
@@ -120,6 +121,7 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
                           _blocks[realIndex].text = controller.text;
                           _blocks[realIndex].translatedText = null;
                           _blocks[realIndex].aiTranslatedText = null;
+                          _hasChanges = true;
                         });
                       }
                       Navigator.pop(ctx);
@@ -191,6 +193,7 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
                         } else {
                           _blocks[realIndex].translatedText = controller.text;
                         }
+                        _hasChanges = true;
                       });
                       Navigator.pop(ctx);
                     },
@@ -232,14 +235,20 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
   void _useAiText(int visibleIndex) {
     final realIndex = _findRealIndex(visibleIndex);
     if (_blocks[realIndex].aiEnhancedText != null) {
-      setState(() => _blocks[realIndex].text = _blocks[realIndex].aiEnhancedText!);
+      setState(() {
+        _blocks[realIndex].text = _blocks[realIndex].aiEnhancedText!;
+        _hasChanges = true;
+      });
     }
   }
 
   void _useOriginalText(int visibleIndex) {
     final realIndex = _findRealIndex(visibleIndex);
     if (_blocks[realIndex].originalText != null) {
-      setState(() => _blocks[realIndex].text = _blocks[realIndex].originalText!);
+      setState(() {
+        _blocks[realIndex].text = _blocks[realIndex].originalText!;
+        _hasChanges = true;
+      });
     }
   }
 
@@ -255,7 +264,10 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              setState(() => _blocks[realIndex].isDeleted = true);
+              setState(() {
+                _blocks[realIndex].isDeleted = true;
+                _hasChanges = true;
+              });
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('删除'),
@@ -291,6 +303,40 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
     final hasKey = await AiService.instance.hasApiKey();
     if (!hasKey) ToastUtil.warning('请先在设置中配置API Key');
     return hasKey;
+  }
+
+  Future<bool> _onWillPop() async {
+    if (!_hasChanges) return true;
+    
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('保存更改'),
+        content: const Text('您有未保存的更改，是否保存？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'discard'),
+            child: const Text('不保存'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'cancel'),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, 'save'),
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+    
+    if (result == 'save') {
+      if (mounted) Navigator.pop(context, _blocks);
+      return false;
+    } else if (result == 'discard') {
+      return true;
+    }
+    return false;
   }
 
   Future<bool?> _showConfirmDialog(String title, String content) {
@@ -346,6 +392,7 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
           _blocks[realIndex].aiEnhancedText = correctedBlocks[0]!;
           _blocks[realIndex].text = correctedBlocks[0]!;
           _isAiEnhancing = false;
+          _hasChanges = true;
         });
         ToastUtil.success('AI强化完成');
       } else {
@@ -388,7 +435,10 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
         }
       }
       
-      setState(() => _isAiEnhancing = false);
+      setState(() {
+        _isAiEnhancing = false;
+        if (updatedCount > 0) _hasChanges = true;
+      });
       ToastUtil.success('AI强化识别完成，已优化 $updatedCount 个文字块');
     } catch (e) {
       setState(() => _isAiEnhancing = false);
@@ -438,7 +488,10 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
         }
       }
       
-      setState(() => _isAiTranslating = false);
+      setState(() {
+        _isAiTranslating = false;
+        if (translatedCount > 0) _hasChanges = true;
+      });
       ToastUtil.success('AI强化翻译完成，已翻译 $translatedCount 个文字块');
     } catch (e) {
       setState(() => _isAiTranslating = false);
@@ -449,58 +502,64 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
   @override
   Widget build(BuildContext context) {
     final visibleBlocks = _blocks.where((b) => !b.isDeleted).toList();
-    final aiCount = visibleBlocks.where((b) => b.aiEnhancedText != null).length;
-    final transCount = visibleBlocks.where((b) => b.translatedText != null || b.aiTranslatedText != null).length;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('OCR识别结果'),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(gradient: AppTheme.appBarGradientOf(context)),
-        ),
-        actions: [
-          if (!_isBusy && visibleBlocks.isNotEmpty && widget.imageFile != null) ...[
-            IconButton(icon: const Icon(Icons.auto_fix_high), tooltip: 'AI强化全部', onPressed: _showAiEnhanceAllDialog),
-            IconButton(icon: const Icon(Icons.translate), tooltip: 'AI强化翻译', onPressed: _showAiTranslateDialog),
-          ],
-        ],
-      ),
-      body: Stack(
-        children: [
-          AbsorbPointer(
-            absorbing: _isBusy,
-            child: Opacity(
-              opacity: _isBusy ? 0.6 : 1.0,
-              child: visibleBlocks.isEmpty
-                  ? _buildEmptyState()
-                  : ListView.separated(
-                    padding: const EdgeInsets.all(12),
-                    itemCount: visibleBlocks.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 16),
-                    itemBuilder: (context, index) => BlockCard(
-                      block: visibleBlocks[index],
-                      index: index,
-                      isBusy: _isBusy,
-                      hasImageFile: widget.imageFile != null,
-                      onEdit: () => _editBlock(index),
-                      onDelete: () => _deleteBlock(index),
-                      onAiEnhance: () => _showAiEnhanceDialog(index),
-                      onPlay: () => ref.read(ttsProvider.notifier).speak(visibleBlocks[index].text),
-                      onUseOriginal: () => _useOriginalText(index),
-                      onUseAiText: () => _useAiText(index),
-                      onEditTranslation: () => _editTranslation(index),
-                    ),
-                  ),
-            ),
+    return PopScope(
+      canPop: !_hasChanges,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _onWillPop();
+        if (shouldPop && mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('OCR识别结果'),
+          flexibleSpace: Container(
+            decoration: BoxDecoration(gradient: AppTheme.appBarGradientOf(context)),
           ),
-          if (_isBusy) ProgressOverlay(text: _progressText, color: AppTheme.primaryOf(context)),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _isBusy ? null : () => Navigator.pop(context, _blocks),
-        icon: const Icon(Icons.check),
-        label: const Text('确认返回'),
-        backgroundColor: AppTheme.primaryOf(context),
+          actions: [
+            if (!_isBusy && visibleBlocks.isNotEmpty && widget.imageFile != null) ...[
+              IconButton(icon: const Icon(Icons.auto_fix_high), tooltip: 'AI强化全部', onPressed: _showAiEnhanceAllDialog),
+              IconButton(icon: const Icon(Icons.translate), tooltip: 'AI强化翻译', onPressed: _showAiTranslateDialog),
+            ],
+          ],
+        ),
+        body: Stack(
+          children: [
+            AbsorbPointer(
+              absorbing: _isBusy,
+              child: Opacity(
+                opacity: _isBusy ? 0.6 : 1.0,
+                child: visibleBlocks.isEmpty
+                    ? _buildEmptyState()
+                    : ListView.separated(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: visibleBlocks.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 16),
+                      itemBuilder: (context, index) => BlockCard(
+                        block: visibleBlocks[index],
+                        index: index,
+                        isBusy: _isBusy,
+                        hasImageFile: widget.imageFile != null,
+                        onEdit: () => _editBlock(index),
+                        onDelete: () => _deleteBlock(index),
+                        onAiEnhance: () => _showAiEnhanceDialog(index),
+                        onPlay: () => ref.read(ttsProvider.notifier).speak(visibleBlocks[index].text),
+                        onUseOriginal: () => _useOriginalText(index),
+                        onUseAiText: () => _useAiText(index),
+                        onEditTranslation: () => _editTranslation(index),
+                      ),
+                    ),
+              ),
+            ),
+            if (_isBusy) ProgressOverlay(text: _progressText, color: AppTheme.primaryOf(context)),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _isBusy ? null : () => Navigator.pop(context, _blocks),
+          icon: const Icon(Icons.check),
+          label: const Text('确认返回'),
+          backgroundColor: AppTheme.primaryOf(context),
+        ),
       ),
     );
   }
