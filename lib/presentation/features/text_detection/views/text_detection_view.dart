@@ -86,9 +86,19 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
 
     _checkForNewEmptyBlock(state);
 
-    return Scaffold(
-      appBar: _buildAppBar(state, notifier, visibleBlocks),
-      body: _buildBody(state, notifier, visibleBlocks),
+    return PopScope(
+      canPop: !state.hasChanges,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final result = await _showUnsavedDialog(state, notifier);
+        if (result != null && context.mounted) {
+          Navigator.pop(context, result);
+        }
+      },
+      child: Scaffold(
+        appBar: _buildAppBar(state, notifier, visibleBlocks),
+        body: _buildBody(state, notifier, visibleBlocks),
+      ),
     );
   }
 
@@ -525,6 +535,69 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
     
     notifier.clearChanges();
     widget.onSave!(visibleBlocks, state.imageFile!);
+  }
+
+  Future<Map<String, dynamic>?> _showUnsavedDialog(
+    TextDetectionState state,
+    TextDetectionNotifier notifier,
+  ) async {
+    if (widget.onSave != null && state.imageFile != null) {
+      final visibleBlocks = notifier.getBlocksForSave();
+      if (visibleBlocks.isNotEmpty) {
+        final action = await showDialog<String>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('未保存的更改'),
+            content: const Text('你有未保存的更改，是否保存？'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, 'discard'),
+                child: const Text('不保存'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, 'save'),
+                child: const Text('保存'),
+              ),
+            ],
+          ),
+        );
+        if (action == 'save') {
+          notifier.clearChanges();
+          return {
+            'textBlocks': visibleBlocks,
+            'imageFile': state.imageFile,
+          };
+        }
+        if (action == 'discard') {
+          notifier.clearChanges();
+          return null;
+        }
+        return null;
+      }
+    }
+
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('未保存的更改'),
+        content: const Text('你有未保存的更改，确定要退出吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('退出'),
+          ),
+        ],
+      ),
+    );
+    if (discard == true) {
+      notifier.clearChanges();
+      return null;
+    }
+    return null;
   }
 
   void _playSelectedBlock(TextDetectionState state) {
