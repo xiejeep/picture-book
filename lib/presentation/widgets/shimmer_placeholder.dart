@@ -18,7 +18,7 @@ class ShimmerPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Shimmer.fromColors(
       baseColor: isDark ? AppTheme.darkMuted : Colors.grey.shade300,
       highlightColor: isDark ? AppTheme.darkSurface : Colors.grey.shade100,

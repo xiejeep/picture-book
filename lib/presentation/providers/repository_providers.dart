@@ -7,24 +7,24 @@ import 'service_providers.dart';
 
 final bookRepositoryProvider = Provider<BookRepository>((ref) {
   return BookRepositoryImpl(
-    ref.watch(storageServiceProvider),
-    ref.watch(imageServiceProvider),
-    ref.watch(bookServiceProvider),
+    ref.read(storageServiceProvider),
+    ref.read(imageServiceProvider),
+    ref.read(bookServiceProvider),
   );
 });
 
 final ocrRepositoryProvider = Provider<OcrRepository>((ref) {
-  return OcrRepositoryImpl(ref.watch(ocrServiceProvider));
+  return OcrRepositoryImpl(ref.read(ocrServiceProvider));
 });
 
 final aiRepositoryProvider = Provider<AiRepository>((ref) {
-  return AiRepositoryImpl(ref.watch(aiServiceProvider));
+  return AiRepositoryImpl(ref.read(aiServiceProvider));
 });
 
 final ttsRepositoryProvider = Provider<TtsRepository>((ref) {
-  return TtsRepositoryImpl(ref.watch(ttsServiceProvider));
+  return TtsRepositoryImpl(ref.read(ttsServiceProvider));
 });
 
 final imageRepositoryProvider = Provider<ImageRepository>((ref) {
-  return ImageRepositoryImpl(ref.watch(imageServiceProvider));
+  return ImageRepositoryImpl(ref.read(imageServiceProvider));
 });

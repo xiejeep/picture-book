@@ -1,21 +1,24 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/constants/constants.dart';
+import '../../../../core/constants/app_prompts.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/toast_util.dart';
 import '../../../../data/services/ai_service.dart';
 import '../../../../data/services/tts_service.dart';
 import '../../../../data/services/ocr_service.dart';
 import '../../../pages/ocr/ocr_results_page.dart';
-import '../../../pages/voice_settings_page.dart';
 import '../models/text_block_data.dart';
 import '../models/canvas_mode.dart';
 import '../models/text_detection_state.dart';
 import '../view_models/text_detection_viewmodel.dart';
 import 'text_block_painter.dart';
 import '../widgets/bottom_toolbar.dart';
+
+part 'text_detection_dialogs.dart';
 
 class TextDetectionView extends ConsumerStatefulWidget {
   final Function(List<TextBlockData>, File)? onSave;
@@ -33,7 +36,8 @@ class TextDetectionView extends ConsumerStatefulWidget {
   ConsumerState<TextDetectionView> createState() => _TextDetectionViewState();
 }
 
-class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
+class _TextDetectionViewState extends ConsumerState<TextDetectionView>
+    with _TextDetectionDialogs {
   final GlobalKey _viewerKey = GlobalKey();
   bool _imageFitted = false;
   String? _lastSelectedBlockId;
@@ -63,9 +67,10 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
   }
 
   void _fitImageToViewport() {
-    final renderBox = _viewerKey.currentContext?.findRenderObject() as RenderBox?;
+    final renderBox =
+        _viewerKey.currentContext?.findRenderObject() as RenderBox?;
     if (renderBox == null || renderBox.size.isEmpty) return;
-    
+
     final notifier = ref.read(textDetectionProvider.notifier);
     notifier.fitToScreen(renderBox.size);
     _imageFitted = true;
@@ -78,7 +83,8 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
     final visibleBlocks = state.getVisibleBlocks();
 
     if (state.backgroundImage != null && !_imageFitted) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _fitImageToViewport());
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => _fitImageToViewport());
     }
     if (state.backgroundImage == null) {
       _imageFitted = false;
@@ -90,7 +96,7 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
       canPop: !state.hasChanges,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
-        final result = await _showUnsavedDialog(state, notifier);
+        final result = await showUnsavedDialog(state, notifier);
         if (result != null && context.mounted) {
           Navigator.pop(context, result);
         }
@@ -106,12 +112,12 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
     if (state.selectedBlockId != _lastSelectedBlockId) {
       _lastSelectedBlockId = state.selectedBlockId;
       _editDialogShown = false;
-      
+
       final block = state.selectedBlock;
       if (block != null && block.text.isEmpty && !_editDialogShown) {
         _editDialogShown = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          _editSelectedBlock(state);
+          editSelectedBlock(state);
         });
       }
     }
@@ -130,8 +136,9 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
       actions: [
         if (state.backgroundImage != null)
           IconButton(
-            icon: Icon(Icons.help_outline, color: Theme.of(context).colorScheme.onPrimary),
-            onPressed: () => _showHelpDialog(),
+            icon: Icon(Icons.help_outline,
+                color: Theme.of(context).colorScheme.onPrimary),
+            onPressed: () => showHelpDialog(),
             tooltip: '操作指南',
           ),
         if (state.isAiEnhancing)
@@ -139,13 +146,17 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
         else ...[
           if (state.backgroundImage != null && visibleBlocks.isNotEmpty)
             IconButton(
-              icon: Icon(Icons.table_chart, color: Theme.of(context).colorScheme.onPrimary),
+              icon: Icon(Icons.table_chart,
+                  color: Theme.of(context).colorScheme.onPrimary),
               onPressed: () => _navigateToResultsTable(state, visibleBlocks),
               tooltip: '查看结果表格',
             ),
-          if (widget.onSave != null && state.imageFile != null && visibleBlocks.isNotEmpty)
+          if (widget.onSave != null &&
+              state.imageFile != null &&
+              visibleBlocks.isNotEmpty)
             IconButton(
-              icon: Icon(Icons.save, color: Theme.of(context).colorScheme.onPrimary),
+              icon: Icon(Icons.save,
+                  color: Theme.of(context).colorScheme.onPrimary),
               onPressed: () => _saveToBook(state, notifier),
               tooltip: '保存到读本',
             ),
@@ -162,7 +173,8 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
   ) {
     final hasSelectedBlock = state.selectedBlockId != null;
     return PopupMenuButton<String>(
-      icon: Icon(Icons.more_vert, color: Theme.of(context).colorScheme.onPrimary),
+      icon:
+          Icon(Icons.more_vert, color: Theme.of(context).colorScheme.onPrimary),
       tooltip: '更多操作',
       onSelected: (value) => _handleMenuAction(value, state, notifier),
       itemBuilder: (context) => [
@@ -171,7 +183,8 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
             value: 'select_model',
             child: Row(
               children: [
-                Icon(Icons.psychology, size: 20, color: AppTheme.primaryOf(context)),
+                Icon(Icons.psychology,
+                    size: 20, color: AppTheme.primaryOf(context)),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
@@ -184,7 +197,10 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
                           (m) => m['name'] == state.currentAiModel,
                           orElse: () => AppConstants.availableModels.first,
                         )['label']}',
-                        style: TextStyle(fontSize: 11, color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6)),
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.onSurfaceOf(context)
+                                .withValues(alpha: 0.6)),
                       ),
                     ],
                   ),
@@ -197,7 +213,8 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
             value: 'voice_settings',
             child: Row(
               children: [
-                Icon(Icons.record_voice_over_rounded, size: 20, color: AppTheme.primaryOf(context)),
+                Icon(Icons.record_voice_over_rounded,
+                    size: 20, color: AppTheme.primaryOf(context)),
                 const SizedBox(width: 8),
                 const Text('语音设置'),
               ],
@@ -209,7 +226,8 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
             value: 're_recognize',
             child: Row(
               children: [
-                Icon(Icons.refresh, size: 20, color: AppTheme.primaryOf(context)),
+                Icon(Icons.refresh,
+                    size: 20, color: AppTheme.primaryOf(context)),
                 const SizedBox(width: 8),
                 const Text('重新识别此区域'),
               ],
@@ -219,7 +237,8 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
             value: 'ai_enhance_selected',
             child: Row(
               children: [
-                Icon(Icons.auto_fix_high, size: 20, color: AppTheme.accentOf(context)),
+                Icon(Icons.auto_fix_high,
+                    size: 20, color: AppTheme.accentOf(context)),
                 const SizedBox(width: 8),
                 const Text('AI强化此区域'),
               ],
@@ -263,20 +282,23 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
                           height: state.canvasSize.height,
                           child: Listener(
                             onPointerDown: (event) {
-                              if (_tryDeleteButtonTap(state, notifier, event.localPosition)) {
+                              if (_tryDeleteButtonTap(
+                                  state, notifier, event.localPosition)) {
                                 return;
                               }
                               notifier.onPointerDown(event.localPosition);
                             },
                             child: GestureDetector(
                               onScaleStart: (_) => notifier.onScaleStart(),
-                              onScaleUpdate: (details) => notifier.onScaleUpdate(details),
+                              onScaleUpdate: (details) =>
+                                  notifier.onScaleUpdate(details),
                               onScaleEnd: (_) => notifier.onScaleEnd(),
                               child: CustomPaint(
                                 size: state.canvasSize,
                                 painter: TextBlockPainter(
                                   state: state,
-                                  transformController: notifier.transformController,
+                                  transformController:
+                                      notifier.transformController,
                                 ),
                               ),
                             ),
@@ -288,19 +310,21 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
                   BottomToolbar(
                     notifier: notifier,
                     onPlay: () => _playSelectedBlock(state),
-                    onEdit: () => _editSelectedBlock(state),
-                    onDelete: () => _confirmDeleteBlock(state, notifier),
-                    onAiEnhanceAll: () => _showAiEnhanceAllDialog(notifier),
-                    onReRecognizeAll: () => _showReRecognizeAllDialog(notifier),
+                    onEdit: () => editSelectedBlock(state),
+                    onDelete: () => confirmDeleteBlock(state, notifier),
+                    onAiEnhanceAll: () => showAiEnhanceAllDialog(notifier),
+                    onReRecognizeAll: () => showReRecognizeAllDialog(notifier),
                   ),
                 ],
               ),
             ),
           ),
           if (state.isProcessing) _buildProcessingBanner('正在识别文字...'),
-          if (state.showAiBanner) _buildProcessingBanner(state.aiBannerText, Colors.purple),
+          if (state.showAiBanner)
+            _buildProcessingBanner(state.aiBannerText, Colors.purple),
           if (state.mode == CanvasMode.draw) _buildModeBanner('绘制模式：拖动绘制矩形'),
-          if (state.errorMessage != null) _buildErrorBanner(state.errorMessage!),
+          if (state.errorMessage != null)
+            _buildErrorBanner(state.errorMessage!),
           if (visibleBlocks.isEmpty && state.textBlocks.isNotEmpty)
             _buildInfoBanner('未找到英文文字'),
         ],
@@ -359,7 +383,8 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
               const SizedBox(width: 8),
               Text(
                 text,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -387,7 +412,8 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
               const SizedBox(width: 4),
               Text(
                 text,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -410,7 +436,8 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
           ),
           child: Text(
             message,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.bold),
           ),
         ),
       ),
@@ -436,7 +463,8 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
               const SizedBox(width: 4),
               Text(
                 message,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -452,16 +480,16 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
   ) {
     switch (action) {
       case 'select_model':
-        _showModelSelectionDialog(state, notifier);
+        showModelSelectionDialog(state, notifier);
         break;
       case 'voice_settings':
         _showVoiceSettingsDialog();
         break;
       case 're_recognize':
-        _reRecognizeSelectedBlock(state, notifier);
+        showReRecognizeSelectedBlock(state, notifier);
         break;
       case 'ai_enhance_selected':
-        _showAiEnhanceSelectedDialog(state, notifier);
+        showAiEnhanceSelectedDialog(state, notifier);
         break;
     }
   }
@@ -475,7 +503,9 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
     final block = state.selectedBlock;
     if (block == null) return false;
 
-    final scale = notifier.transformController.value.getMaxScaleOnAxis().clamp(0.01, 100.0);
+    final scale = notifier.transformController.value
+        .getMaxScaleOnAxis()
+        .clamp(0.01, 100.0);
     final buttonSize = (24.0 / scale).clamp(16.0, 40.0);
     final deletePos = Offset(
       block.boundingBox.right + buttonSize / 2,
@@ -488,7 +518,7 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
     );
 
     if (hitRect.contains(canvasPoint)) {
-      _confirmDeleteBlock(state, notifier);
+      confirmDeleteBlock(state, notifier);
       return true;
     }
     return false;
@@ -526,78 +556,15 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
 
   void _saveToBook(TextDetectionState state, TextDetectionNotifier notifier) {
     if (widget.onSave == null || state.imageFile == null) return;
-    
+
     final visibleBlocks = notifier.getBlocksForSave();
     if (visibleBlocks.isEmpty) {
       ToastUtil.warning('没有可保存的文字块');
       return;
     }
-    
+
     notifier.clearChanges();
     widget.onSave!(visibleBlocks, state.imageFile!);
-  }
-
-  Future<Map<String, dynamic>?> _showUnsavedDialog(
-    TextDetectionState state,
-    TextDetectionNotifier notifier,
-  ) async {
-    if (widget.onSave != null && state.imageFile != null) {
-      final visibleBlocks = notifier.getBlocksForSave();
-      if (visibleBlocks.isNotEmpty) {
-        final action = await showDialog<String>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('未保存的更改'),
-            content: const Text('你有未保存的更改，是否保存？'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, 'discard'),
-                child: const Text('不保存'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, 'save'),
-                child: const Text('保存'),
-              ),
-            ],
-          ),
-        );
-        if (action == 'save') {
-          notifier.clearChanges();
-          return {
-            'textBlocks': visibleBlocks,
-            'imageFile': state.imageFile,
-          };
-        }
-        if (action == 'discard') {
-          notifier.clearChanges();
-          return null;
-        }
-        return null;
-      }
-    }
-
-    final discard = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('未保存的更改'),
-        content: const Text('你有未保存的更改，确定要退出吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('退出'),
-          ),
-        ],
-      ),
-    );
-    if (discard == true) {
-      notifier.clearChanges();
-      return null;
-    }
-    return null;
   }
 
   void _playSelectedBlock(TextDetectionState state) {
@@ -606,409 +573,7 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView> {
     TtsService.instance.speak(block.text);
   }
 
-  void _editSelectedBlock(TextDetectionState state) {
-    final block = state.selectedBlock;
-    if (block == null) return;
-    
-    final notifier = ref.read(textDetectionProvider.notifier);
-    
-    showDialog(
-      context: context,
-      builder: (context) {
-        final controller = TextEditingController(text: block.text);
-        bool isRecognizing = false;
-        String? errorMessage;
-        
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('编辑文字'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: controller,
-                    maxLines: null,
-                    decoration: const InputDecoration(
-                      labelText: '文字内容',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  if (errorMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        errorMessage!,
-                        style: const TextStyle(color: Colors.red, fontSize: 12),
-                      ),
-                    ),
-                  if (isRecognizing)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 12),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                          SizedBox(width: 8),
-                          Text('正在识别...', style: TextStyle(fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isRecognizing ? null : () => Navigator.pop(context),
-                  child: const Text('取消'),
-                ),
-                if (state.imageFile != null && !isRecognizing)
-                  TextButton(
-                    onPressed: () async {
-                      setDialogState(() {
-                        isRecognizing = true;
-                        errorMessage = null;
-                      });
-                      
-                      final recognizedText = await OcrService.instance.recognizeTextInRegion(
-                        state.imageFile!,
-                        block.boundingBox,
-                      );
-                      
-                      setDialogState(() {
-                        isRecognizing = false;
-                        if (recognizedText != null && recognizedText.isNotEmpty) {
-                          controller.text = recognizedText;
-                        } else {
-                          errorMessage = '该区域未识别到文字，请手动输入';
-                        }
-                      });
-                    },
-                    child: const Text('识别此区域'),
-                  ),
-                TextButton(
-                  onPressed: isRecognizing ? null : () {
-                    notifier.updateBlockText(block.id, controller.text);
-                    Navigator.pop(context);
-                  },
-                  child: const Text('保存'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _confirmDeleteBlock(TextDetectionState state, TextDetectionNotifier notifier) {
-    if (state.selectedBlockId == null) return;
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('删除'),
-        content: const Text('确定要删除此文字块吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              notifier.deleteSelectedBlock();
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('删除'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _reRecognizeSelectedBlock(
-    TextDetectionState state,
-    TextDetectionNotifier notifier,
-  ) async {
-    if (state.selectedBlockId == null) return;
-    
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('重新识别'),
-        content: const Text('确定要重新识别选中区域的文字吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('确定'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      await notifier.reRecognizeBlock(state.selectedBlockId!);
-    }
-  }
-
-  Future<void> _showAiEnhanceAllDialog(TextDetectionNotifier notifier) async {
-    final hasApiKey = await AiService.instance.hasApiKey();
-    if (!hasApiKey) {
-      ToastUtil.warning('请先在设置中配置API Key');
-      return;
-    }
-
-    final state = ref.read(textDetectionProvider);
-    final visibleBlocks = state.textBlocks.where((b) => !b.isDeleted).toList();
-    if (visibleBlocks.isEmpty) {
-      ToastUtil.warning('没有可优化的文字块');
-      return;
-    }
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('AI强化全部'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '使用AI功能时，您的文本和图片将发送给第三方AI服务商（智谱AI）进行处理。',
-                    style: TextStyle(fontSize: 13, color: Colors.black87),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    '提示：AI识别结果可能不完全准确，建议手动检查和修改。',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text('确定要对所有${visibleBlocks.length}个文字块进行AI强化识别吗？'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('确定'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      try {
-        final count = await notifier.aiEnhanceAll();
-        if (!mounted) return;
-        ToastUtil.success('AI强化识别完成，已优化 $count 个文字块');
-      } catch (e) {
-        if (!mounted) return;
-        ToastUtil.error('AI强化失败: ${e.toString().replaceAll('Exception: ', '')}');
-      }
-    }
-  }
-
-  Future<void> _showAiEnhanceSelectedDialog(
-    TextDetectionState state,
-    TextDetectionNotifier notifier,
-  ) async {
-    if (state.selectedBlockId == null) return;
-
-    final hasApiKey = await AiService.instance.hasApiKey();
-    if (!hasApiKey) {
-      ToastUtil.warning('请先在设置中配置API Key');
-      return;
-    }
-
-    if (state.imageFile == null) {
-      ToastUtil.error('没有图片文件，无法进行AI强化');
-      return;
-    }
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('AI强化识别'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '使用AI功能时，您的文本和图片将发送给第三方AI服务商（智谱AI）进行处理。',
-                    style: TextStyle(fontSize: 13, color: Colors.black87),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    '提示：AI识别结果可能不完全准确，建议手动检查和修改。',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text('确定要对此文字块进行AI强化识别吗？'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('确定'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      try {
-        final hasChanges = await notifier.aiEnhanceSelectedBlock();
-        if (!mounted) return;
-        if (hasChanges) {
-          ToastUtil.success('AI强化完成');
-        } else {
-          ToastUtil.info('AI强化完成，无需修改');
-        }
-      } catch (e) {
-        if (!mounted) return;
-        ToastUtil.error('AI强化失败: ${e.toString().replaceAll('Exception: ', '')}');
-      }
-    }
-  }
-
-  void _showModelSelectionDialog(TextDetectionState state, TextDetectionNotifier notifier) async {
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('选择AI强化模型'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: AppConstants.availableModels.map((model) {
-              final isSelected = state.currentAiModel == model['name'];
-              final isFree = model['free'] == 'true';
-              
-              return ListTile(
-                leading: Icon(
-                  isSelected ? Icons.check_circle : Icons.circle_outlined,
-                  color: isSelected ? AppTheme.primaryOf(context) : Colors.grey,
-                ),
-                title: Text(model['label']!),
-                subtitle: isFree 
-                    ? const Text('免费大模型', style: TextStyle(fontSize: 12))
-                    : const Text('付费大模型', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                selected: isSelected,
-                onTap: () => Navigator.pop(context, model['name']),
-              );
-            }).toList(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-        ],
-      ),
-    );
-
-    if (result != null) {
-      notifier.setAiModel(result);
-    }
-  }
-
   void _showVoiceSettingsDialog() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const VoiceSettingsPage()),
-    );
-  }
-
-  void _showReRecognizeAllDialog(TextDetectionNotifier notifier) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('重新识别全部'),
-        content: const Text('确定要重新识别图片中的所有文字吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('确定'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      await notifier.recognizeText();
-    }
-  }
-
-  void _showHelpDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('操作指南'),
-        content: const SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('• 双指缩放：放大/缩小图片'),
-              Text('• 单指平移：查看模式下拖动移动图片'),
-              Text('• 绘制模式：拖动绘制新的文字区域'),
-              Text('• 编辑模式：选中后可移动或调整大小'),
-              Text('• 点击文字块选中，点击空白区域取消'),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('知道了'),
-          ),
-        ],
-      ),
-    );
+    context.push('/settings/voice');
   }
 }

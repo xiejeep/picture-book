@@ -19,10 +19,10 @@ class PageModel extends HiveObject {
 
   @HiveField(4)
   final DateTime createdAt;
-  
+
   @HiveField(5)
   final double imageWidth;
-  
+
   @HiveField(6)
   final double imageHeight;
 
@@ -60,16 +60,18 @@ class PageModel extends HiveObject {
     return {
       'id': id,
       'imagePath': imagePath,
-      'textBlocks': textBlocks.map((block) => {
-        'left': block.left,
-        'top': block.top,
-        'right': block.right,
-        'bottom': block.bottom,
-        'text': block.text,
-        'isDeleted': block.isDeleted,
-        'translatedText': block.translatedText,
-        'aiTranslatedText': block.aiTranslatedText,
-      }).toList(),
+      'textBlocks': textBlocks
+          .map((block) => {
+                'left': block.left,
+                'top': block.top,
+                'right': block.right,
+                'bottom': block.bottom,
+                'text': block.text,
+                'isDeleted': block.isDeleted,
+                'translatedText': block.translatedText,
+                'aiTranslatedText': block.aiTranslatedText,
+              })
+          .toList(),
       'pageIndex': pageIndex,
       'createdAt': createdAt.toIso8601String(),
       'imageWidth': imageWidth,

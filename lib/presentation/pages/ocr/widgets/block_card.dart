@@ -36,9 +36,12 @@ class BlockCard extends StatelessWidget {
   bool get hasAi => block.aiEnhancedText != null;
   bool get hasDraft => block.translatedText != null;
   bool get hasAiTrans => block.aiTranslatedText != null;
-  bool get canUseOriginal => block.originalText != null && block.text != block.originalText;
-  bool get canUseAiText => block.aiEnhancedText != null && block.text != block.aiEnhancedText;
-  bool get hasOverflowItems => (hasImageFile && !isBusy) || canUseOriginal || canUseAiText;
+  bool get canUseOriginal =>
+      block.originalText != null && block.text != block.originalText;
+  bool get canUseAiText =>
+      block.aiEnhancedText != null && block.text != block.aiEnhancedText;
+  bool get hasOverflowItems =>
+      (hasImageFile && !isBusy) || canUseOriginal || canUseAiText;
 
   @override
   Widget build(BuildContext context) {
@@ -104,7 +107,7 @@ class BlockCard extends StatelessWidget {
   Widget _buildHeader(BuildContext context) {
     final primaryColor = AppTheme.primaryOf(context);
     final onSurfaceColor = AppTheme.onSurfaceOf(context);
-    
+
     return Row(
       children: [
         Container(
@@ -130,7 +133,9 @@ class BlockCard extends StatelessWidget {
           child: Row(
             children: [
               if (hasAi) _buildBadge(Icons.auto_fix_high, primaryColor, 'AI优化'),
-              if (hasAiTrans) _buildBadge(Icons.translate, AppTheme.accentOf(context), 'AI翻译', margin: const EdgeInsets.only(left: 6)),
+              if (hasAiTrans)
+                _buildBadge(Icons.translate, AppTheme.accentOf(context), 'AI翻译',
+                    margin: const EdgeInsets.only(left: 6)),
             ],
           ),
         ),
@@ -161,7 +166,7 @@ class BlockCard extends StatelessWidget {
     final primaryColor = AppTheme.primaryOf(context);
     final mutedColor = AppTheme.mutedOf(context);
     final surfaceColor = AppTheme.surfaceOf(context);
-    
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -204,7 +209,8 @@ class BlockCard extends StatelessWidget {
                 ),
               if (canUseAiText)
                 ListTile(
-                  leading: Icon(Icons.auto_fix_high, color: primaryColor.withValues(alpha: 0.7)),
+                  leading: Icon(Icons.auto_fix_high,
+                      color: primaryColor.withValues(alpha: 0.7)),
                   title: const Text('使用AI结果'),
                   subtitle: const Text('切换到AI优化版本'),
                   onTap: () {
@@ -220,7 +226,8 @@ class BlockCard extends StatelessWidget {
     );
   }
 
-  Widget _buildBadge(IconData icon, Color color, String label, {EdgeInsetsGeometry? margin}) {
+  Widget _buildBadge(IconData icon, Color color, String label,
+      {EdgeInsetsGeometry? margin}) {
     return Container(
       margin: margin,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -257,10 +264,12 @@ class BlockCard extends StatelessWidget {
         AiResultContainer(text: block.text, isAiEnhanced: hasAi),
         if (hasAiTrans) ...[
           const SizedBox(height: 8),
-          AiTranslationContainer(text: block.aiTranslatedText!, onEdit: onEditTranslation),
+          AiTranslationContainer(
+              text: block.aiTranslatedText!, onEdit: onEditTranslation),
         ] else if (hasDraft) ...[
           const SizedBox(height: 8),
-          DraftTranslationContainer(text: block.translatedText!, onEdit: onEditTranslation),
+          DraftTranslationContainer(
+              text: block.translatedText!, onEdit: onEditTranslation),
         ],
       ],
     );
@@ -269,7 +278,7 @@ class BlockCard extends StatelessWidget {
   Widget _buildActions(BuildContext context) {
     final primaryColor = AppTheme.primaryOf(context);
     final onPrimaryColor = Theme.of(context).colorScheme.onPrimary;
-    
+
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Center(
@@ -281,7 +290,8 @@ class BlockCard extends StatelessWidget {
             foregroundColor: onPrimaryColor,
             backgroundColor: primaryColor,
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
       ),

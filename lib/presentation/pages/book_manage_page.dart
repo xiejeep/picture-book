@@ -49,7 +49,8 @@ class _BookManagePageState extends State<BookManagePage> {
     setState(() => _isSaving = true);
 
     try {
-      await BookService.instance.updateBookTitle(widget.book.id, _titleController.text);
+      await BookService.instance
+          .updateBookTitle(widget.book.id, _titleController.text);
 
       ToastUtil.success('读本名称已更新');
     } catch (e) {
@@ -112,7 +113,9 @@ class _BookManagePageState extends State<BookManagePage> {
                     onPressed: () => Navigator.pop(context, false),
                     child: Text(
                       '取消',
-                      style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6)),
+                      style: TextStyle(
+                          color: AppTheme.onSurfaceOf(context)
+                              .withValues(alpha: 0.6)),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -163,13 +166,6 @@ class _BookManagePageState extends State<BookManagePage> {
       return;
     }
 
-    debugPrint('=== _editPage 开始 ===');
-    debugPrint('编辑第$index页');
-    debugPrint('当前页textBlocks数: ${page.textBlocks.length}');
-    for (int i = 0; i < page.textBlocks.length; i++) {
-      debugPrint('  page.textBlocks[$i]: text="${page.textBlocks[i].text}", isDeleted=${page.textBlocks[i].isDeleted}');
-    }
-
     final initialBlocks = page.textBlocks.map((b) {
       return {
         'boundingBox': b.boundingBox,
@@ -182,11 +178,6 @@ class _BookManagePageState extends State<BookManagePage> {
       };
     }).toList();
 
-    debugPrint('传递给TextDetectionPage的initialTextBlocks:');
-    for (int i = 0; i < initialBlocks.length; i++) {
-      debugPrint('  initial[$i]: ${initialBlocks[i]}');
-    }
-
     final result = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute(
@@ -194,12 +185,6 @@ class _BookManagePageState extends State<BookManagePage> {
           initialImageFile: imageFile,
           initialTextBlocks: initialBlocks,
           onSave: (textBlocks, newImageFile) async {
-            debugPrint('=== onSave 回调 ===');
-            debugPrint('接收的textBlocks数: ${textBlocks.length}');
-            for (int i = 0; i < textBlocks.length; i++) {
-              final tb = textBlocks[i];
-              debugPrint('  接收[$i]: text="${tb.text}", isDeleted=${tb.isDeleted}, rect=${tb.boundingBox}');
-            }
             Navigator.pop(context, {
               'textBlocks': textBlocks,
             });
@@ -209,13 +194,7 @@ class _BookManagePageState extends State<BookManagePage> {
     );
 
     if (result != null) {
-      debugPrint('=== 返回结果处理 ===');
       final receivedBlocks = result['textBlocks'] as List;
-      debugPrint('result中textBlocks数: ${receivedBlocks.length}');
-      for (int i = 0; i < receivedBlocks.length; i++) {
-        final block = receivedBlocks[i];
-        debugPrint('  result[$i]: text="${block.text}", isDeleted=${block.isDeleted}, rect=${block.boundingBox}');
-      }
 
       final blocks = receivedBlocks.map((block) {
         return TextBlockModel.fromData(
@@ -229,12 +208,8 @@ class _BookManagePageState extends State<BookManagePage> {
         );
       }).toList();
 
-      debugPrint('转换后的TextBlockModel:');
-      for (int i = 0; i < blocks.length; i++) {
-        debugPrint('  blocks[$i]: text="${blocks[i].text}", isDeleted=${blocks[i].isDeleted}');
-      }
-
-      await BookService.instance.updatePageTextBlocks(widget.book.id, index, blocks);
+      await BookService.instance
+          .updatePageTextBlocks(widget.book.id, index, blocks);
 
       setState(() {
         _pages[index] = _pages[index].copyWith(textBlocks: blocks);
@@ -273,7 +248,8 @@ class _BookManagePageState extends State<BookManagePage> {
         );
       }).toList();
 
-      await BookService.instance.addPageToBook(widget.book.id, imageFile, blocks);
+      await BookService.instance
+          .addPageToBook(widget.book.id, imageFile, blocks);
 
       final updatedBook = BookService.instance.getBook(widget.book.id);
       if (updatedBook != null) {
@@ -324,7 +300,8 @@ class _BookManagePageState extends State<BookManagePage> {
                   color: AppTheme.calmBlue.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.pages_rounded, color: AppTheme.calmBlue),
+                child:
+                    const Icon(Icons.pages_rounded, color: AppTheme.calmBlue),
               ),
               title: const Text('使用第一页'),
               subtitle: const Text('默认使用第一页作为封面'),
@@ -342,7 +319,8 @@ class _BookManagePageState extends State<BookManagePage> {
                   color: AppTheme.primaryOf(context).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.add_photo_alternate_rounded, color: AppTheme.gentleGreen),
+                child: const Icon(Icons.add_photo_alternate_rounded,
+                    color: AppTheme.gentleGreen),
               ),
               title: const Text('自定义封面'),
               subtitle: const Text('选择图片作为封面'),
@@ -364,11 +342,12 @@ class _BookManagePageState extends State<BookManagePage> {
       setState(() {});
       ToastUtil.success('已设置为第一页作为封面');
     } else if (result == 'custom') {
-      final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+      final XFile? pickedFile =
+          await _picker.pickImage(source: ImageSource.gallery);
       if (pickedFile == null) return;
 
       final File imageFile = File(pickedFile.path);
-      
+
       final croppedFile = await ImageCropper().cropImage(
         sourcePath: imageFile.path,
         uiSettings: [
@@ -400,7 +379,8 @@ class _BookManagePageState extends State<BookManagePage> {
 
       if (croppedFile == null) return;
 
-      final coverPath = await BookService.instance.saveCoverImage(File(croppedFile.path), widget.book.id);
+      final coverPath = await BookService.instance
+          .saveCoverImage(File(croppedFile.path), widget.book.id);
       await BookService.instance.updateBookCover(widget.book.id, coverPath);
       setState(() {});
       ToastUtil.success('封面已更新');
@@ -443,7 +423,8 @@ class _BookManagePageState extends State<BookManagePage> {
                                 hintText: '输入读本名称',
                                 prefixIcon: Icon(
                                   Icons.edit_note_rounded,
-                                  color: AppTheme.primaryOf(context).withValues(alpha: 0.7),
+                                  color: AppTheme.primaryOf(context)
+                                      .withValues(alpha: 0.7),
                                 ),
                               ),
                               onSubmitted: (_) => _saveTitle(),
@@ -457,7 +438,8 @@ class _BookManagePageState extends State<BookManagePage> {
                               borderRadius: BorderRadius.circular(16),
                               onTap: _isSaving ? null : _saveTitle,
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
                                 child: _isSaving
                                     ? const SizedBox(
                                         width: 20,
@@ -500,7 +482,8 @@ class _BookManagePageState extends State<BookManagePage> {
                             color: AppTheme.cardOf(context),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.1),
+                              color: AppTheme.onSurfaceOf(context)
+                                  .withValues(alpha: 0.1),
                             ),
                           ),
                           child: Row(
@@ -512,7 +495,8 @@ class _BookManagePageState extends State<BookManagePage> {
                                   borderRadius: BorderRadius.circular(8),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.1),
+                                      color: AppTheme.onSurfaceOf(context)
+                                          .withValues(alpha: 0.1),
                                       blurRadius: 2,
                                       offset: const Offset(0, 1),
                                     ),
@@ -538,12 +522,13 @@ class _BookManagePageState extends State<BookManagePage> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      widget.book.customCoverPath != null 
+                                      widget.book.customCoverPath != null
                                           ? '自定义封面'
                                           : (_pages.isEmpty ? '暂无页面' : '使用第一页'),
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
+                                        color: AppTheme.onSurfaceOf(context)
+                                            .withValues(alpha: 0.6),
                                       ),
                                     ),
                                   ],
@@ -552,7 +537,8 @@ class _BookManagePageState extends State<BookManagePage> {
                               Icon(
                                 Icons.edit_rounded,
                                 size: 18,
-                                color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.4),
+                                color: AppTheme.onSurfaceOf(context)
+                                    .withValues(alpha: 0.4),
                               ),
                             ],
                           ),
@@ -569,14 +555,15 @@ class _BookManagePageState extends State<BookManagePage> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-color: AppTheme.primaryOf(context).withValues(alpha: 0.2),
+                        color:
+                            AppTheme.primaryOf(context).withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
-                  Icons.pages_rounded,
-                  size: 16,
-                  color: AppTheme.primaryOf(context),
-                ),
+                        Icons.pages_rounded,
+                        size: 16,
+                        color: AppTheme.primaryOf(context),
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Text(
@@ -629,16 +616,20 @@ color: AppTheme.primaryOf(context).withValues(alpha: 0.2),
                             ),
                             child: Container(
                               margin: const EdgeInsets.only(bottom: 15),
-                              decoration: AppTheme.playfulCardDecorationOf(context),
+                              decoration:
+                                  AppTheme.playfulCardDecorationOf(context),
                               child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
                                 leading: _buildThumbnail(page),
                                 title: Row(
                                   children: [
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 4),
                                       decoration: BoxDecoration(
-color: AppTheme.accentOf(context).withValues(alpha: 0.2),
+                                        color: AppTheme.accentOf(context)
+                                            .withValues(alpha: 0.2),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(
@@ -661,22 +652,26 @@ color: AppTheme.accentOf(context).withValues(alpha: 0.2),
                                   ],
                                 ),
                                 subtitle: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.calmBlue.withValues(alpha: 0.2),
+                                    color: AppTheme.calmBlue
+                                        .withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
                                     '${page.textBlocks.where((b) => !b.isDeleted).length} 个文字块',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.7),
+                                      color: AppTheme.onSurfaceOf(context)
+                                          .withValues(alpha: 0.7),
                                     ),
                                   ),
                                 ),
                                 trailing: Icon(
                                   Icons.drag_handle_rounded,
-                                  color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
+                                  color: AppTheme.onSurfaceOf(context)
+                                      .withValues(alpha: 0.6),
                                 ),
                                 onTap: () => _editPage(index),
                               ),
@@ -704,8 +699,8 @@ color: AppTheme.accentOf(context).withValues(alpha: 0.2),
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-AppTheme.sweetPink.withValues(alpha: 0.2),
-                   AppTheme.lavender.withValues(alpha: 0.2),
+                  AppTheme.sweetPink.withValues(alpha: 0.2),
+                  AppTheme.lavender.withValues(alpha: 0.2),
                 ],
               ),
               borderRadius: BorderRadius.circular(32),
@@ -729,14 +724,14 @@ AppTheme.sweetPink.withValues(alpha: 0.2),
           ElevatedButton.icon(
             onPressed: _addNewPage,
             icon: Icon(
-                  Icons.add_photo_alternate_rounded,
-                  size: 20,
-                  color: Theme.of(context).colorScheme.onPrimary,
-                ),
+              Icons.add_photo_alternate_rounded,
+              size: 20,
+              color: Theme.of(context).colorScheme.onPrimary,
+            ),
             label: const Text('添加第一页'),
-style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.primaryOf(context),
-        ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryOf(context),
+            ),
           ),
         ],
       ),
@@ -794,7 +789,8 @@ style: ElevatedButton.styleFrom(
 
   Widget _buildCoverPreview() {
     if (widget.book.customCoverPath != null) {
-      final imageFile = ImageService.instance.getImageFile(widget.book.customCoverPath!);
+      final imageFile =
+          ImageService.instance.getImageFile(widget.book.customCoverPath!);
       if (imageFile != null) {
         return Image.file(
           imageFile,
@@ -806,7 +802,8 @@ style: ElevatedButton.styleFrom(
     }
 
     if (_pages.isNotEmpty) {
-      final imageFile = ImageService.instance.getImageFile(_pages.first.imagePath);
+      final imageFile =
+          ImageService.instance.getImageFile(_pages.first.imagePath);
       if (imageFile != null) {
         return Image.file(
           imageFile,
@@ -825,8 +822,8 @@ style: ElevatedButton.styleFrom(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-AppTheme.calmBlue.withValues(alpha: 0.3),
-             AppTheme.gentleGreen.withValues(alpha: 0.3),
+            AppTheme.calmBlue.withValues(alpha: 0.3),
+            AppTheme.gentleGreen.withValues(alpha: 0.3),
           ],
         ),
       ),

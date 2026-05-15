@@ -53,7 +53,9 @@ class SettingsPage extends ConsumerWidget {
                 Icon(
                   Icons.school_rounded,
                   size: 18,
-                  color: AppTheme.isDarkMode(context) ? AppTheme.darkAccent : AppTheme.sweetPink,
+                  color: AppTheme.isDarkMode(context)
+                      ? AppTheme.darkAccent
+                      : AppTheme.sweetPink,
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -61,7 +63,7 @@ class SettingsPage extends ConsumerWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.onSurfaceOf(context).withOpacity(0.7),
+                    color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.7),
                   ),
                 ),
               ],
@@ -76,8 +78,8 @@ class SettingsPage extends ConsumerWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    AppTheme.sweetPink.withOpacity(0.8),
-                    AppTheme.lavender.withOpacity(0.8),
+                    AppTheme.sweetPink.withValues(alpha: 0.8),
+                    AppTheme.lavender.withValues(alpha: 0.8),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(14),
@@ -99,7 +101,10 @@ class SettingsPage extends ConsumerWidget {
               ),
               child: const Text(
                 '推荐',
-                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500),
               ),
             ),
             shape: RoundedRectangleBorder(
@@ -129,7 +134,9 @@ class SettingsPage extends ConsumerWidget {
                 Icon(
                   Icons.palette_rounded,
                   size: 18,
-                  color: AppTheme.isDarkMode(context) ? AppTheme.darkAccent : AppTheme.honeyYellow,
+                  color: AppTheme.isDarkMode(context)
+                      ? AppTheme.darkAccent
+                      : AppTheme.honeyYellow,
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -137,7 +144,7 @@ class SettingsPage extends ConsumerWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.onSurfaceOf(context).withOpacity(0.7),
+                    color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.7),
                   ),
                 ),
               ],
@@ -206,7 +213,8 @@ class SettingsPage extends ConsumerWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: gradientColors.map((c) => c.withOpacity(0.15)).toList(),
+              colors:
+                  gradientColors.map((c) => c.withValues(alpha: 0.15)).toList(),
             ),
             borderRadius: BorderRadius.circular(16),
             border: isSelected
@@ -215,7 +223,7 @@ class SettingsPage extends ConsumerWidget {
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: gradientColors[0].withOpacity(0.3),
+                      color: gradientColors[0].withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     ),
@@ -246,7 +254,7 @@ class SettingsPage extends ConsumerWidget {
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   color: isSelected
                       ? gradientColors[0]
-                      : AppTheme.onSurfaceOf(context).withOpacity(0.7),
+                      : AppTheme.onSurfaceOf(context).withValues(alpha: 0.7),
                 ),
               ),
             ],
@@ -271,7 +279,9 @@ class SettingsPage extends ConsumerWidget {
                 Icon(
                   Icons.auto_fix_high_rounded,
                   size: 18,
-                  color: AppTheme.isDarkMode(context) ? AppTheme.darkSecondary : AppTheme.gentleGreen,
+                  color: AppTheme.isDarkMode(context)
+                      ? AppTheme.darkSecondary
+                      : AppTheme.gentleGreen,
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -279,7 +289,7 @@ class SettingsPage extends ConsumerWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.onSurfaceOf(context).withOpacity(0.7),
+                    color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.7),
                   ),
                 ),
               ],
@@ -291,14 +301,20 @@ class SettingsPage extends ConsumerWidget {
             iconColors: [AppTheme.gentleGreen, AppTheme.calmBlue],
             title: 'AI设置',
             subtitle: hasApiKey ? '已配置智谱AI' : '未配置，点击设置',
-            subtitleColor: hasApiKey ? AppTheme.secondaryOf(context) : AppTheme.primaryOf(context),
+            subtitleColor: hasApiKey
+                ? AppTheme.secondaryOf(context)
+                : AppTheme.primaryOf(context),
             badge: hasApiKey ? '已启用' : null,
             badgeColor: AppTheme.secondaryOf(context),
             onTap: () {
               context.push('/settings/ai');
             },
           ),
-          Divider(height: 1, indent: 76, endIndent: 20, color: AppTheme.dividerColorOf(context)),
+          Divider(
+              height: 1,
+              indent: 76,
+              endIndent: 20,
+              color: AppTheme.dividerColorOf(context)),
           _buildSettingTile(
             context: context,
             icon: Icons.record_voice_over_rounded,
@@ -309,7 +325,11 @@ class SettingsPage extends ConsumerWidget {
               context.push('/settings/voice');
             },
           ),
-          Divider(height: 1, indent: 76, endIndent: 20, color: AppTheme.dividerColorOf(context)),
+          Divider(
+              height: 1,
+              indent: 76,
+              endIndent: 20,
+              color: AppTheme.dividerColorOf(context)),
           _buildCacheTile(context),
         ],
       ),
@@ -336,7 +356,7 @@ class SettingsPage extends ConsumerWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: iconColors.map((c) => c.withOpacity(0.8)).toList(),
+            colors: iconColors.map((c) => c.withValues(alpha: 0.8)).toList(),
           ),
           borderRadius: BorderRadius.circular(14),
         ),
@@ -354,7 +374,8 @@ class SettingsPage extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: (badgeColor ?? AppTheme.secondaryOf(context)).withOpacity(0.2),
+                color: (badgeColor ?? AppTheme.secondaryOf(context))
+                    .withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
@@ -397,8 +418,8 @@ class SettingsPage extends ConsumerWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  AppTheme.lavender.withOpacity(0.8),
-                  AppTheme.calmBlue.withOpacity(0.8),
+                  AppTheme.lavender.withValues(alpha: 0.8),
+                  AppTheme.calmBlue.withValues(alpha: 0.8),
                 ],
               ),
               borderRadius: BorderRadius.circular(14),
@@ -410,8 +431,10 @@ class SettingsPage extends ConsumerWidget {
             cacheSize > 0
                 ? '${(cacheSize / 1024 / 1024).toStringAsFixed(1)}MB · $fileCount 个文件'
                 : '暂无缓存',
-style: TextStyle(
-              color: cacheSize > 0 ? AppTheme.primaryOf(context) : AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
+            style: TextStyle(
+              color: cacheSize > 0
+                  ? AppTheme.primaryOf(context)
+                  : AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
             ),
           ),
           trailing: Icon(
@@ -457,7 +480,7 @@ style: TextStyle(
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.onSurfaceOf(context).withOpacity(0.7),
+                    color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.7),
                   ),
                 ),
               ],
@@ -472,13 +495,14 @@ style: TextStyle(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    AppTheme.calmBlue.withOpacity(0.8),
-                    AppTheme.lavender.withOpacity(0.8),
+                    AppTheme.calmBlue.withValues(alpha: 0.8),
+                    AppTheme.lavender.withValues(alpha: 0.8),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Icon(Icons.info_outline_rounded, color: Colors.white),
+              child:
+                  const Icon(Icons.info_outline_rounded, color: Colors.white),
             ),
             title: const Text('关于点读鸭'),
             subtitle: FutureBuilder<PackageInfo>(

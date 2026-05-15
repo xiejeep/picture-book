@@ -30,15 +30,21 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
     setState(() {
       _useGlmTts = settings?.useGlmTts ?? false;
       _selectedTtsVoice = settings?.ttsVoice ?? AppConstants.defaultTtsVoice;
-      final voiceExists = AppConstants.ttsVoices.any((v) => v['name'] == _selectedTtsVoice);
-      _selectedTtsVoice = voiceExists ? _selectedTtsVoice : AppConstants.defaultTtsVoice;
+      final voiceExists =
+          AppConstants.ttsVoices.any((v) => v['name'] == _selectedTtsVoice);
+      _selectedTtsVoice =
+          voiceExists ? _selectedTtsVoice : AppConstants.defaultTtsVoice;
 
       if (settings?.speechRate != null && settings!.speechRate > 0) {
         _speechRate = settings.speechRate;
       } else if (settings?.useSlowSpeed == true) {
-        _speechRate = _useGlmTts ? AppConstants.glmTtsDefaultSpeed * 0.75 : AppConstants.systemTtsDefaultSpeed * 0.6;
+        _speechRate = _useGlmTts
+            ? AppConstants.glmTtsDefaultSpeed * 0.75
+            : AppConstants.systemTtsDefaultSpeed * 0.6;
       } else {
-        _speechRate = _useGlmTts ? AppConstants.glmTtsDefaultSpeed : AppConstants.systemTtsDefaultSpeed;
+        _speechRate = _useGlmTts
+            ? AppConstants.glmTtsDefaultSpeed
+            : AppConstants.systemTtsDefaultSpeed;
       }
     });
   }
@@ -48,8 +54,11 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
 
     try {
       final currentSettings = StorageService.instance.getAiSettings();
-      final settings = AiSettingsModel(
-        selectedModel: currentSettings?.selectedModel ?? AppConstants.defaultModel,
+      final settings = (currentSettings ??
+              AiSettingsModel(
+                selectedModel: AppConstants.defaultModel,
+              ))
+          .copyWith(
         useGlmTts: _useGlmTts,
         ttsVoice: _selectedTtsVoice,
         speechRate: _speechRate,
@@ -113,7 +122,7 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 2),
               ),
@@ -175,7 +184,9 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
               ),
               child: Icon(
                 icon,
-                color: isSelected ? AppTheme.primaryOf(context) : AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
+                color: isSelected
+                    ? AppTheme.primaryOf(context)
+                    : AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
               ),
             ),
             const SizedBox(width: 12),
@@ -190,20 +201,27 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w500,
-                          color: isSelected ? AppTheme.onSurfaceOf(context) : AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
+                          color: isSelected
+                              ? AppTheme.onSurfaceOf(context)
+                              : AppTheme.onSurfaceOf(context)
+                                  .withValues(alpha: 0.6),
                         ),
                       ),
                       if (recommended) ...[
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AppTheme.accentOf(context).withOpacity(0.2),
+                            color: AppTheme.accentOf(context)
+                                .withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             '推荐',
-                            style: TextStyle(color: AppTheme.accentOf(context), fontSize: 10),
+                            style: TextStyle(
+                                color: AppTheme.accentOf(context),
+                                fontSize: 10),
                           ),
                         ),
                       ],
@@ -288,7 +306,7 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 2),
               ),
@@ -301,40 +319,55 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
                 children: [
                   Text(
                     '当前语速',
-                    style: TextStyle(fontSize: 14, color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6)),
+                    style: TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.onSurfaceOf(context)
+                            .withValues(alpha: 0.6)),
                   ),
                   Text(
                     '${(_speechRate * 100).toInt()}%',
-style: TextStyle(
-                     fontSize: 18,
-                     fontWeight: FontWeight.bold,
-                     color: AppTheme.primaryOf(context),
-                   ),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryOf(context),
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
               Slider(
                 value: _speechRate,
-                min: _useGlmTts ? AppConstants.glmTtsMinSpeed : AppConstants.systemTtsMinSpeed,
-                max: _useGlmTts ? AppConstants.glmTtsMaxSpeed : AppConstants.systemTtsMaxSpeed,
-                divisions: _useGlmTts ? AppConstants.glmTtsSpeedDivisions : AppConstants.systemTtsSpeedDivisions,
+                min: _useGlmTts
+                    ? AppConstants.glmTtsMinSpeed
+                    : AppConstants.systemTtsMinSpeed,
+                max: _useGlmTts
+                    ? AppConstants.glmTtsMaxSpeed
+                    : AppConstants.systemTtsMaxSpeed,
+                divisions: _useGlmTts
+                    ? AppConstants.glmTtsSpeedDivisions
+                    : AppConstants.systemTtsSpeedDivisions,
                 label: '${(_speechRate * 100).toInt()}%',
                 onChanged: (value) {
                   setState(() => _speechRate = value);
                 },
-activeColor: AppTheme.primaryOf(context),
+                activeColor: AppTheme.primaryOf(context),
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     _useGlmTts ? '慢速' : '最慢',
-                    style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6), fontSize: 12),
+                    style: TextStyle(
+                        color: AppTheme.onSurfaceOf(context)
+                            .withValues(alpha: 0.6),
+                        fontSize: 12),
                   ),
                   Text(
                     _useGlmTts ? '快速' : '最快',
-                    style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6), fontSize: 12),
+                    style: TextStyle(
+                        color: AppTheme.onSurfaceOf(context)
+                            .withValues(alpha: 0.6),
+                        fontSize: 12),
                   ),
                 ],
               ),
@@ -343,15 +376,17 @@ activeColor: AppTheme.primaryOf(context),
         ),
         const SizedBox(height: 8),
         Text(
-          _useGlmTts
-              ? 'GLM-TTS语速范围: 50%-150%'
-              : '系统TTS语速范围: 30%-100%',
-          style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6), fontSize: 12),
+          _useGlmTts ? 'GLM-TTS语速范围: 50%-150%' : '系统TTS语速范围: 30%-100%',
+          style: TextStyle(
+              color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
+              fontSize: 12),
         ),
         const SizedBox(height: 4),
         Text(
           '不同语速会分别缓存音频',
-          style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6), fontSize: 12),
+          style: TextStyle(
+              color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
+              fontSize: 12),
         ),
       ],
     );

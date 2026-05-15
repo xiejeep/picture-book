@@ -6,4 +6,5 @@ export 'models/text_detection_state.dart';
 export 'view_models/text_detection_viewmodel.dart';
 
 import 'views/text_detection_view.dart';
+
 typedef TextDetectionPage = TextDetectionView;

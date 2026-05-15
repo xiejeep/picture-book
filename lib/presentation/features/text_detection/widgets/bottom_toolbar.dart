@@ -35,12 +35,10 @@ class BottomToolbar extends StatelessWidget {
           right: 0,
           child: SafeArea(
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
               decoration: const BoxDecoration(
                 color: Colors.black87,
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
               ),
               child: _buildContent(context, state),
             ),
@@ -115,7 +113,8 @@ class BottomToolbar extends StatelessWidget {
     );
   }
 
-  Widget _buildSelectedBlockContent(BuildContext context, TextDetectionState state) {
+  Widget _buildSelectedBlockContent(
+      BuildContext context, TextDetectionState state) {
     final isResize = state.editSubMode == EditSubMode.resize;
 
     return Column(
@@ -235,8 +234,7 @@ class BottomToolbar extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 12,
-                fontWeight:
-                    isActive ? FontWeight.bold : FontWeight.normal,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
                 color: isActive ? Colors.white : Colors.white54,
               ),
             ),
@@ -302,7 +300,8 @@ class BottomToolbar extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               label,
-              style: TextStyle(fontSize: 11, color: color.withValues(alpha: 0.8)),
+              style:
+                  TextStyle(fontSize: 11, color: color.withValues(alpha: 0.8)),
             ),
           ],
         ),

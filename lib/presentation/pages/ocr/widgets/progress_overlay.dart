@@ -20,7 +20,8 @@ class ProgressOverlay extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.9),
-          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+          borderRadius:
+              const BorderRadius.vertical(bottom: Radius.circular(12)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,

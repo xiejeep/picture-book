@@ -96,10 +96,15 @@ class TextBlockModel extends HiveObject {
       bottom: bottom ?? this.bottom,
       text: text ?? this.text,
       isDeleted: isDeleted ?? this.isDeleted,
-      translatedText: clearTranslatedText ? null : (translatedText ?? this.translatedText),
-      aiTranslatedText: clearAiTranslatedText ? null : (aiTranslatedText ?? this.aiTranslatedText),
-      originalText: clearOriginalText ? null : (originalText ?? this.originalText),
-      aiEnhancedText: clearAiEnhancedText ? null : (aiEnhancedText ?? this.aiEnhancedText),
+      translatedText:
+          clearTranslatedText ? null : (translatedText ?? this.translatedText),
+      aiTranslatedText: clearAiTranslatedText
+          ? null
+          : (aiTranslatedText ?? this.aiTranslatedText),
+      originalText:
+          clearOriginalText ? null : (originalText ?? this.originalText),
+      aiEnhancedText:
+          clearAiEnhancedText ? null : (aiEnhancedText ?? this.aiEnhancedText),
     );
   }
 }

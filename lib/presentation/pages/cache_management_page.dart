@@ -3,6 +3,7 @@ import '../../data/services/tts_cache_service.dart';
 import '../../data/services/translation_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/toast_util.dart';
+import '../../core/utils/file_utils.dart';
 
 class CacheManagementPage extends StatefulWidget {
   const CacheManagementPage({super.key});
@@ -109,17 +110,7 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
     }
   }
 
-  String _formatSize(int bytes) {
-    if (bytes < 1024) {
-      return '$bytes B';
-    } else if (bytes < 1024 * 1024) {
-      return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    } else if (bytes < 1024 * 1024 * 1024) {
-      return '${(bytes / 1024 / 1024).toStringAsFixed(1)} MB';
-    } else {
-      return '${(bytes / 1024 / 1024 / 1024).toStringAsFixed(2)} GB';
-    }
-  }
+  String _formatSize(int bytes) => FileUtils.formatFileSize(bytes);
 
   @override
   Widget build(BuildContext context) {
@@ -136,7 +127,9 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
         decoration: AppTheme.gradientBoxOf(context),
         child: SafeArea(
           child: _isLoading
-              ? Center(child: CircularProgressIndicator(color: AppTheme.primaryOf(context)))
+              ? Center(
+                  child: CircularProgressIndicator(
+                      color: AppTheme.primaryOf(context)))
               : SingleChildScrollView(
                   padding: const EdgeInsets.all(20),
                   child: Column(
@@ -167,14 +160,14 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-AppTheme.primaryOf(context).withValues(alpha: 0.8),
-             AppTheme.calmBlue.withValues(alpha: 0.8),
+            AppTheme.primaryOf(context).withValues(alpha: 0.8),
+            AppTheme.calmBlue.withValues(alpha: 0.8),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -216,7 +209,7 @@ AppTheme.primaryOf(context).withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -242,9 +235,11 @@ AppTheme.primaryOf(context).withValues(alpha: 0.8),
             value: _cacheSize > 0 ? '已有缓存' : '无缓存',
             trailing: _cacheSize > 0
                 ? Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppTheme.secondaryOf(context).withOpacity(0.2),
+                      color:
+                          AppTheme.secondaryOf(context).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -270,7 +265,7 @@ AppTheme.primaryOf(context).withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -287,10 +282,11 @@ AppTheme.primaryOf(context).withValues(alpha: 0.8),
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-color: AppTheme.calmBlue.withValues(alpha: 0.1),
+                    color: AppTheme.calmBlue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(Icons.translate, color: AppTheme.calmBlue, size: 20),
+                  child:
+                      Icon(Icons.translate, color: AppTheme.calmBlue, size: 20),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -314,7 +310,8 @@ color: AppTheme.calmBlue.withValues(alpha: 0.1),
                                 : '未下载',
                         style: TextStyle(
                           fontSize: 13,
-                          color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
+                          color: AppTheme.onSurfaceOf(context)
+                              .withValues(alpha: 0.6),
                         ),
                       ),
                     ],
@@ -323,7 +320,8 @@ color: AppTheme.calmBlue.withValues(alpha: 0.1),
                 if (_isTranslationModelDownloaded && !_isDeletingModel)
                   TextButton(
                     onPressed: _deleteTranslationModel,
-                    style: TextButton.styleFrom(foregroundColor: AppTheme.errorOf(context)),
+                    style: TextButton.styleFrom(
+                        foregroundColor: AppTheme.errorOf(context)),
                     child: const Text('删除', style: TextStyle(fontSize: 13)),
                   ),
                 if (_isDeletingModel)
@@ -332,7 +330,8 @@ color: AppTheme.calmBlue.withValues(alpha: 0.1),
                     child: SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryOf(context)),
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: AppTheme.primaryOf(context)),
                     ),
                   ),
               ],
@@ -343,17 +342,21 @@ color: AppTheme.calmBlue.withValues(alpha: 0.1),
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppTheme.accentOf(context).withOpacity(0.08),
+                color: AppTheme.accentOf(context).withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, size: 16, color: AppTheme.accentOf(context)),
+                  Icon(Icons.info_outline,
+                      size: 16, color: AppTheme.accentOf(context)),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       '删除后下次翻译时会自动重新下载',
-                      style: TextStyle(fontSize: 12, color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6)),
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.onSurfaceOf(context)
+                              .withValues(alpha: 0.6)),
                     ),
                   ),
                 ],
@@ -379,7 +382,7 @@ color: AppTheme.calmBlue.withValues(alpha: 0.1),
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppTheme.secondaryOf(context).withOpacity(0.1),
+              color: AppTheme.secondaryOf(context).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: AppTheme.secondaryOf(context), size: 20),
@@ -423,14 +426,18 @@ color: AppTheme.calmBlue.withValues(alpha: 0.1),
             ? const SizedBox(
                 width: 16,
                 height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: Colors.white),
               )
             : const Icon(Icons.delete_sweep),
         label: Text(_isClearing ? '清空中...' : '清空TTS缓存'),
         style: ElevatedButton.styleFrom(
-backgroundColor: _cacheSize > 0 ? AppTheme.errorOf(context) : AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
-           foregroundColor: Theme.of(context).colorScheme.onError,
-           disabledBackgroundColor: AppTheme.onSurfaceOf(context).withValues(alpha: 0.3),
+          backgroundColor: _cacheSize > 0
+              ? AppTheme.errorOf(context)
+              : AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
+          foregroundColor: Theme.of(context).colorScheme.onError,
+          disabledBackgroundColor:
+              AppTheme.onSurfaceOf(context).withValues(alpha: 0.3),
           padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -444,7 +451,7 @@ backgroundColor: _cacheSize > 0 ? AppTheme.errorOf(context) : AppTheme.onSurface
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.calmBlue.withOpacity(0.1),
+        color: AppTheme.calmBlue.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -496,7 +503,7 @@ backgroundColor: _cacheSize > 0 ? AppTheme.errorOf(context) : AppTheme.onSurface
             text,
             style: TextStyle(
               fontSize: 13,
-              color: AppTheme.onSurfaceOf(context).withOpacity(0.7),
+              color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.7),
             ),
           ),
         ),

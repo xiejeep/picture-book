@@ -15,12 +15,12 @@ class TtsCacheService {
   Future<void> initialize() async {
     final appDir = await getApplicationSupportDirectory();
     _cacheDir = Directory('${appDir.path}/tts_cache');
-    
+
     if (!await _cacheDir!.exists()) {
       await _cacheDir!.create(recursive: true);
       debugPrint('TTS缓存目录创建: ${_cacheDir!.path}');
     }
-    
+
     await _cleanOldCache();
   }
 
@@ -32,7 +32,8 @@ class TtsCacheService {
     return hash.toString();
   }
 
-  Future<String?> getCachedAudio(String text, String voice, double speechRate) async {
+  Future<String?> getCachedAudio(
+      String text, String voice, double speechRate) async {
     if (_cacheDir == null) {
       await initialize();
     }
@@ -48,7 +49,8 @@ class TtsCacheService {
     return null;
   }
 
-  Future<String> saveToCache(String tempAudioPath, String text, String voice, double speechRate) async {
+  Future<String> saveToCache(String tempAudioPath, String text, String voice,
+      double speechRate) async {
     if (_cacheDir == null) {
       await initialize();
     }
@@ -81,10 +83,10 @@ class TtsCacheService {
 
   Future<void> _cleanOldCache() async {
     final currentSize = await getCacheSize();
-    
+
     if (currentSize > _maxCacheSize) {
       debugPrint('缓存超限 (${currentSize ~/ 1024 ~/ 1024}MB)，开始清理旧文件');
-      
+
       final files = <File>[];
       await for (final entity in _cacheDir!.list()) {
         if (entity is File) {
@@ -92,13 +94,13 @@ class TtsCacheService {
         }
       }
 
-      files.sort((a, b) => 
-        a.lastModifiedSync().compareTo(b.lastModifiedSync()));
+      files
+          .sort((a, b) => a.lastModifiedSync().compareTo(b.lastModifiedSync()));
 
       int deletedSize = 0;
       for (final file in files) {
         if (currentSize - deletedSize <= _maxCacheSize * 0.8) break;
-        
+
         final fileSize = await file.length();
         await file.delete();
         deletedSize += fileSize;
@@ -115,7 +117,7 @@ class TtsCacheService {
         await entity.delete();
       }
     }
-    
+
     debugPrint('TTS缓存已清空');
   }
 

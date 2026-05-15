@@ -54,14 +54,17 @@ class _TutorialPageState extends State<TutorialPage> {
         decoration: AppTheme.gradientBoxOf(context),
         child: SafeArea(
           child: _isLoading
-              ? Center(child: CircularProgressIndicator(color: AppTheme.primaryOf(context)))
+              ? Center(
+                  child: CircularProgressIndicator(
+                      color: AppTheme.primaryOf(context)))
               : _markdownData.isEmpty
                   ? Center(
                       child: Text(
                         '教程加载失败，请稍后重试',
                         style: TextStyle(
                           fontSize: 16,
-                          color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
+                          color: AppTheme.onSurfaceOf(context)
+                              .withValues(alpha: 0.6),
                         ),
                       ),
                     )
@@ -98,10 +101,12 @@ class _TutorialPageState extends State<TutorialPage> {
                           fontSize: 14,
                           color: AppTheme.onSurfaceOf(context),
                         ),
-                        tableBody: TextStyle(fontSize: 14, color: AppTheme.onSurfaceOf(context)),
+                        tableBody: TextStyle(
+                            fontSize: 14, color: AppTheme.onSurfaceOf(context)),
                         blockquote: TextStyle(
                           fontSize: 14,
-                          color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
+                          color: AppTheme.onSurfaceOf(context)
+                              .withValues(alpha: 0.6),
                           height: 1.5,
                         ),
                         code: TextStyle(

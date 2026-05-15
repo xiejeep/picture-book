@@ -5,6 +5,7 @@ import 'text_block_data.dart';
 import 'canvas_mode.dart';
 import 'handle_position.dart';
 import '../../../../core/constants/constants.dart';
+import '../../../../core/utils/text_utils.dart';
 
 class TextDetectionState {
   final File? imageFile;
@@ -67,22 +68,9 @@ class TextDetectionState {
   List<TextBlockData> getVisibleBlocks() {
     return textBlocks.where((block) {
       if (block.isDeleted) return false;
-      if (!_isEnglishText(block.text)) return false;
+      if (!TextUtils.isEnglishText(block.text)) return false;
       return true;
     }).toList();
-  }
-
-  bool _isEnglishText(String text) {
-    final trimmed = text.trim();
-    if (trimmed.isEmpty) return false;
-    
-    for (final char in trimmed.split('')) {
-      final codeUnit = char.codeUnitAt(0);
-      if (codeUnit >= 0x4E00 && codeUnit <= 0x9FFF) {
-        return false;
-      }
-    }
-    return true;
   }
 
   TextDetectionState copyWith({
@@ -122,18 +110,31 @@ class TextDetectionState {
       backgroundImage: backgroundImage ?? this.backgroundImage,
       canvasSize: canvasSize ?? this.canvasSize,
       textBlocks: textBlocks ?? this.textBlocks,
-      selectedBlockId: clearSelectedBlockId ? null : (selectedBlockId ?? this.selectedBlockId),
+      selectedBlockId: clearSelectedBlockId
+          ? null
+          : (selectedBlockId ?? this.selectedBlockId),
       mode: mode ?? this.mode,
       editSubMode: editSubMode ?? this.editSubMode,
       isProcessing: isProcessing ?? this.isProcessing,
       isAiEnhancing: isAiEnhancing ?? this.isAiEnhancing,
-      errorMessage: clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
-      currentDrawRect: clearCurrentDrawRect ? null : (currentDrawRect ?? this.currentDrawRect),
-      drawStartPoint: clearDrawStartPoint ? null : (drawStartPoint ?? this.drawStartPoint),
-      movePointerStart: clearMovePointerStart ? null : (movePointerStart ?? this.movePointerStart),
-      moveRectOriginal: clearMoveRectOriginal ? null : (moveRectOriginal ?? this.moveRectOriginal),
-      activeHandle: clearActiveHandle ? null : (activeHandle ?? this.activeHandle),
-      resizeOriginalRect: clearResizeOriginalRect ? null : (resizeOriginalRect ?? this.resizeOriginalRect),
+      errorMessage:
+          clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
+      currentDrawRect: clearCurrentDrawRect
+          ? null
+          : (currentDrawRect ?? this.currentDrawRect),
+      drawStartPoint:
+          clearDrawStartPoint ? null : (drawStartPoint ?? this.drawStartPoint),
+      movePointerStart: clearMovePointerStart
+          ? null
+          : (movePointerStart ?? this.movePointerStart),
+      moveRectOriginal: clearMoveRectOriginal
+          ? null
+          : (moveRectOriginal ?? this.moveRectOriginal),
+      activeHandle:
+          clearActiveHandle ? null : (activeHandle ?? this.activeHandle),
+      resizeOriginalRect: clearResizeOriginalRect
+          ? null
+          : (resizeOriginalRect ?? this.resizeOriginalRect),
       hasChanges: hasChanges ?? this.hasChanges,
       currentAiModel: currentAiModel ?? this.currentAiModel,
       speechRate: speechRate ?? this.speechRate,

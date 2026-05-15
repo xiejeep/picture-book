@@ -20,7 +20,7 @@ class InfoContainer extends StatelessWidget {
     final onSurfaceColor = AppTheme.onSurfaceOf(context);
     final mutedColor = AppTheme.mutedOf(context);
     final surfaceColor = AppTheme.surfaceOf(context);
-    
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(10),
@@ -47,7 +47,8 @@ class InfoContainer extends StatelessWidget {
                 const Spacer(),
                 GestureDetector(
                   onTap: onEdit,
-                  child: Icon(Icons.edit, size: 16, color: mutedColor.withValues(alpha: 0.7)),
+                  child: Icon(Icons.edit,
+                      size: 16, color: mutedColor.withValues(alpha: 0.7)),
                 ),
               ],
             ],

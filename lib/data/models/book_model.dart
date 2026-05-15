@@ -62,7 +62,8 @@ class BookModel extends HiveObject {
       updatedAt: updatedAt ?? this.updatedAt,
       pages: pages ?? this.pages,
       currentPageIndex: currentPageIndex ?? this.currentPageIndex,
-      customCoverPath: clearCustomCover ? null : (customCoverPath ?? this.customCoverPath),
+      customCoverPath:
+          clearCustomCover ? null : (customCoverPath ?? this.customCoverPath),
     );
   }
 
@@ -89,21 +90,24 @@ class BookModel extends HiveObject {
       debugPrint('更新索引: $index');
       debugPrint('旧页面textBlocks:');
       for (int i = 0; i < pages[index].textBlocks.length; i++) {
-        debugPrint('  old[$i]: text="${pages[index].textBlocks[i].text}", isDeleted=${pages[index].textBlocks[i].isDeleted}');
+        debugPrint(
+            '  old[$i]: text="${pages[index].textBlocks[i].text}", isDeleted=${pages[index].textBlocks[i].isDeleted}');
       }
       debugPrint('新页面textBlocks:');
       for (int i = 0; i < newPage.textBlocks.length; i++) {
-        debugPrint('  new[$i]: text="${newPage.textBlocks[i].text}", isDeleted=${newPage.textBlocks[i].isDeleted}');
+        debugPrint(
+            '  new[$i]: text="${newPage.textBlocks[i].text}", isDeleted=${newPage.textBlocks[i].isDeleted}');
       }
-      
+
       pages[index] = newPage;
       updatedAt = DateTime.now();
-      
+
       debugPrint('更新后pages[$index].textBlocks:');
       for (int i = 0; i < pages[index].textBlocks.length; i++) {
-        debugPrint('  updated[$i]: text="${pages[index].textBlocks[i].text}", isDeleted=${pages[index].textBlocks[i].isDeleted}');
+        debugPrint(
+            '  updated[$i]: text="${pages[index].textBlocks[i].text}", isDeleted=${pages[index].textBlocks[i].isDeleted}');
       }
-      
+
       save();
       debugPrint('已调用save()');
     }

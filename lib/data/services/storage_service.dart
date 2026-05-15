@@ -23,14 +23,15 @@ class StorageService {
     if (_isInitialized) return;
 
     await Hive.initFlutter();
-    
+
     Hive.registerAdapter(BookModelAdapter());
     Hive.registerAdapter(PageModelAdapter());
     Hive.registerAdapter(TextBlockModelAdapter());
     Hive.registerAdapter(AiSettingsModelAdapter());
-    
+
     _booksBox = await Hive.openBox<BookModel>(AppConstants.hiveBoxName);
-    _aiSettingsBox = await Hive.openBox<AiSettingsModel>(AppConstants.aiSettingsBoxName);
+    _aiSettingsBox =
+        await Hive.openBox<AiSettingsModel>(AppConstants.aiSettingsBoxName);
     _appSettingsBox = await Hive.openBox<dynamic>('app_settings');
     _secureStorage = const FlutterSecureStorage();
     _isInitialized = true;
@@ -38,21 +39,24 @@ class StorageService {
 
   Box<BookModel> get booksBox {
     if (!_isInitialized) {
-      throw Exception('StorageService not initialized. Call initialize() first.');
+      throw Exception(
+          'StorageService not initialized. Call initialize() first.');
     }
     return _booksBox;
   }
 
   Box<AiSettingsModel> get aiSettingsBox {
     if (!_isInitialized) {
-      throw Exception('StorageService not initialized. Call initialize() first.');
+      throw Exception(
+          'StorageService not initialized. Call initialize() first.');
     }
     return _aiSettingsBox;
   }
 
   FlutterSecureStorage get secureStorage {
     if (!_isInitialized) {
-      throw Exception('StorageService not initialized. Call initialize() first.');
+      throw Exception(
+          'StorageService not initialized. Call initialize() first.');
     }
     return _secureStorage;
   }
@@ -69,7 +73,8 @@ class StorageService {
       for (int p = 0; p < book.pages.length; p++) {
         debugPrint('  pages[$p]:');
         for (int b = 0; b < book.pages[p].textBlocks.length; b++) {
-          debugPrint('    textBlocks[$b]: text="${book.pages[p].textBlocks[b].text}", isDeleted=${book.pages[p].textBlocks[b].isDeleted}');
+          debugPrint(
+              '    textBlocks[$b]: text="${book.pages[p].textBlocks[b].text}", isDeleted=${book.pages[p].textBlocks[b].isDeleted}');
         }
       }
     }
@@ -120,7 +125,8 @@ class StorageService {
   }
 
   Future<void> saveApiKey(String apiKey) async {
-    await _secureStorage.write(key: AppConstants.secureStorageApiKeyKey, value: apiKey);
+    await _secureStorage.write(
+        key: AppConstants.secureStorageApiKeyKey, value: apiKey);
   }
 
   Future<void> deleteApiKey() async {
@@ -128,12 +134,14 @@ class StorageService {
   }
 
   Future<bool> hasApiKey() async {
-    final key = await _secureStorage.read(key: AppConstants.secureStorageApiKeyKey);
+    final key =
+        await _secureStorage.read(key: AppConstants.secureStorageApiKeyKey);
     return key != null && key.isNotEmpty;
   }
 
   ThemeMode getThemeMode() {
-    final value = _appSettingsBox.get('theme_mode', defaultValue: 'system') as String;
+    final value =
+        _appSettingsBox.get('theme_mode', defaultValue: 'system') as String;
     switch (value) {
       case 'light':
         return ThemeMode.light;

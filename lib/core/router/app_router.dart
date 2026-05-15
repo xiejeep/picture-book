@@ -29,7 +29,8 @@ Widget _buildErrorPage(BuildContext context, GoRouterState state) {
               ),
               borderRadius: BorderRadius.circular(40),
             ),
-            child: const Icon(Icons.error_outline, color: Colors.white, size: 40),
+            child:
+                const Icon(Icons.error_outline, color: Colors.white, size: 40),
           ),
           const SizedBox(height: 24),
           Text(
@@ -45,7 +46,7 @@ Widget _buildErrorPage(BuildContext context, GoRouterState state) {
             '请返回首页继续使用',
             style: TextStyle(
               fontSize: 14,
-              color: AppTheme.warmBrown.withOpacity(0.7),
+              color: AppTheme.warmBrown.withValues(alpha: 0.7),
             ),
           ),
           const SizedBox(height: 32),

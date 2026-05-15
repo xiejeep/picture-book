@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/repository_providers.dart';
-import '../providers/settings_provider.dart';
 
 class TtsState {
   final bool isSpeaking;
@@ -53,10 +52,6 @@ class TtsNotifier extends Notifier<TtsState> {
 
   Future<void> setSpeechRate(double rate) async {
     await ref.read(ttsRepositoryProvider).setSpeechRate(rate);
-  }
-
-  void dispose() {
-    ref.read(ttsRepositoryProvider).dispose();
   }
 }
 

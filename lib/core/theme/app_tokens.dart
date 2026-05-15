@@ -51,9 +51,12 @@ class AppRadius {
   static BorderRadius borderRadiusLg = BorderRadius.circular(lg);
   static BorderRadius borderRadiusPill = BorderRadius.circular(pill);
 
-  static RoundedRectangleBorder shapeSm = RoundedRectangleBorder(borderRadius: borderRadiusSm);
-  static RoundedRectangleBorder shapeMd = RoundedRectangleBorder(borderRadius: borderRadiusMd);
-  static RoundedRectangleBorder shapeLg = RoundedRectangleBorder(borderRadius: borderRadiusLg);
+  static RoundedRectangleBorder shapeSm =
+      RoundedRectangleBorder(borderRadius: borderRadiusSm);
+  static RoundedRectangleBorder shapeMd =
+      RoundedRectangleBorder(borderRadius: borderRadiusMd);
+  static RoundedRectangleBorder shapeLg =
+      RoundedRectangleBorder(borderRadius: borderRadiusLg);
 }
 
 class AppIconSize {

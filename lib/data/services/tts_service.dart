@@ -42,31 +42,32 @@ class TtsService {
     }
 
     debugPrint('开始初始化TTS');
-    
+
     await TtsCacheService.instance.initialize();
-    
+
     await _flutterTts.setSharedInstance(true);
     debugPrint('设置SharedInstance完成');
-    
+
     await _flutterTts.setLanguage('en-US');
     debugPrint('设置语言完成');
-    
+
     final settings = StorageService.instance.getAiSettings();
-    final speechRate = settings?.speechRate ?? AppConstants.systemTtsDefaultSpeed;
+    final speechRate =
+        settings?.speechRate ?? AppConstants.systemTtsDefaultSpeed;
     await _flutterTts.setSpeechRate(speechRate);
     debugPrint('设置系统TTS语速: ${(speechRate * 100).toInt()}% ($speechRate)');
-    
+
     await _flutterTts.setVolume(1.0);
-    
+
     await _flutterTts.setPitch(1.0);
-    
+
     debugPrint('设置语音参数完成');
-    
+
     _flutterTts.setStartHandler(() {
       debugPrint('开始播放');
       _isSpeaking = true;
     });
-    
+
     _flutterTts.setCompletionHandler(() {
       debugPrint('播放完成');
       _isSpeaking = false;
@@ -74,7 +75,7 @@ class TtsService {
       _speakCompleter?.complete();
       _speakCompleter = null;
     });
-    
+
     _flutterTts.setCancelHandler(() {
       debugPrint('播放取消');
       _isSpeaking = false;
@@ -82,7 +83,7 @@ class TtsService {
       _speakCompleter?.complete();
       _speakCompleter = null;
     });
-    
+
     _flutterTts.setErrorHandler((message) {
       debugPrint('播放错误: $message');
       _isSpeaking = false;
@@ -115,7 +116,7 @@ class TtsService {
     }
 
     debugPrint('准备播放: $text');
-    
+
     if (_isSpeaking) {
       debugPrint('停止当前播放');
       await stop();
@@ -123,9 +124,10 @@ class TtsService {
 
     _currentText = text;
     _speakCompleter = Completer<void>();
-    
+
     final settings = StorageService.instance.getAiSettings();
-    final speechRate = settings?.speechRate ?? AppConstants.systemTtsDefaultSpeed;
+    final speechRate =
+        settings?.speechRate ?? AppConstants.systemTtsDefaultSpeed;
     await _flutterTts.setSpeechRate(speechRate);
     debugPrint('动态更新系统TTS语速: ${(speechRate * 100).toInt()}% ($speechRate)');
 
@@ -182,9 +184,9 @@ class TtsService {
     } catch (e) {
       final statusCode = _extractStatusCode(e);
       final errorMsg = _extractErrorMessage(e);
-      
+
       debugPrint('GLM-TTS播放错误: statusCode=$statusCode, error=$errorMsg');
-      
+
       throw GlmTtsException(statusCode, errorMsg);
     }
   }
@@ -223,8 +225,7 @@ class TtsService {
     }
   }
 
-  Future<void> _cleanupAudioFile() async {
-  }
+  Future<void> _cleanupAudioFile() async {}
 
   bool get isSpeaking => _isSpeaking;
   String? get currentText => _currentText;

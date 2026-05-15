@@ -11,15 +11,16 @@ import '../models/handle_position.dart';
 import '../models/text_detection_state.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../data/services/ocr_service.dart';
+import '../../../../core/utils/text_utils.dart';
 import '../../../../data/services/ai_service.dart';
-import '../../../../data/services/storage_service.dart';
-
+import '../../../providers/repository_providers.dart';
+import '../../../providers/settings_provider.dart';
 
 class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
-  final TransformationController transformController = TransformationController();
+  final TransformationController transformController =
+      TransformationController();
   final ImagePicker _picker = ImagePicker();
-  
+
   Size _viewportSize = Size.zero;
   Matrix4? _scaleStartMatrix;
   Matrix4? _panStartMatrix;
@@ -30,10 +31,11 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
     ref.onDispose(() {
       transformController.dispose();
     });
-    
-    final settings = StorageService.instance.getAiSettings();
+
+    final settings = ref.read(settingsProvider).settings;
     final savedModel = settings?.selectedModel ?? AppConstants.defaultModel;
-    final modelExists = AppConstants.availableModels.any((m) => m['name'] == savedModel);
+    final modelExists =
+        AppConstants.availableModels.any((m) => m['name'] == savedModel);
     return TextDetectionState(
       currentAiModel: modelExists ? savedModel : AppConstants.defaultModel,
       speechRate: settings?.speechRate ?? AppConstants.systemTtsDefaultSpeed,
@@ -74,7 +76,7 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
     if (pickedFile == null) return;
 
     final File imageFile = File(pickedFile.path);
-    
+
     final croppedFile = await ImageCropper().cropImage(
       sourcePath: imageFile.path,
       uiSettings: [
@@ -128,7 +130,8 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
     await recognizeText();
   }
 
-  Future<void> loadInitialData(File imageFile, List<dynamic>? initialBlocks) async {
+  Future<void> loadInitialData(
+      File imageFile, List<dynamic>? initialBlocks) async {
     final bytes = await imageFile.readAsBytes();
     final codec = await ui.instantiateImageCodec(bytes);
     final frame = await codec.getNextFrame();
@@ -159,8 +162,9 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
     state = state.copyWith(isProcessing: true, clearErrorMessage: true);
 
     try {
-      final result = await OcrService.instance.recognizeText(state.imageFile!);
-      
+      final result =
+          await ref.read(ocrRepositoryProvider).recognizeText(state.imageFile!);
+
       if (result == null) {
         state = state.copyWith(
           errorMessage: '文字识别失败: 无法识别',
@@ -168,8 +172,8 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
         );
         return;
       }
-      
-      final blocks = result.blocks.map((block) {
+
+      final blocks = result.map((block) {
         final inflatedRect = block.boundingBox.inflate(6.0);
         final clampedRect = Rect.fromLTRB(
           inflatedRect.left.clamp(0.0, state.canvasSize.width),
@@ -178,12 +182,13 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
           inflatedRect.bottom.clamp(0.0, state.canvasSize.height),
         );
         return TextBlockData(
-          id: DateTime.now().microsecondsSinceEpoch.toString() + block.text.hashCode.toString(),
+          id: DateTime.now().microsecondsSinceEpoch.toString() +
+              block.text.hashCode.toString(),
           boundingBox: clampedRect,
           text: block.text,
         );
       }).toList();
-      
+
       state = state.copyWith(
         textBlocks: blocks,
         clearSelectedBlockId: true,
@@ -264,7 +269,8 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
         break;
       case CanvasMode.draw:
         if (state.drawStartPoint == null) return;
-        final rect = Rect.fromPoints(state.drawStartPoint!, details.localFocalPoint);
+        final rect =
+            Rect.fromPoints(state.drawStartPoint!, details.localFocalPoint);
         state = state.copyWith(currentDrawRect: rect);
         break;
       case CanvasMode.edit:
@@ -293,7 +299,8 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
   }
 
   void _onEditStart(Offset canvasPoint) {
-    if (state.editSubMode == EditSubMode.resize && state.selectedBlock != null) {
+    if (state.editSubMode == EditSubMode.resize &&
+        state.selectedBlock != null) {
       final handle = _hitTestHandle(canvasPoint);
       if (handle != null) {
         state = state.copyWith(
@@ -325,11 +332,11 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
         state.resizeOriginalRect!,
         canvasPoint,
       );
-      final newBlocks = List<TextBlockData>.from(state.textBlocks);
-      final index = newBlocks.indexWhere((b) => b.id == state.selectedBlockId);
-      if (index != -1) {
-        newBlocks[index].boundingBox = newRect;
-      }
+      final newBlocks = state.textBlocks.map((b) {
+        return b.id == state.selectedBlockId
+            ? b.copyWith(boundingBox: newRect)
+            : b;
+      }).toList();
       state = state.copyWith(textBlocks: newBlocks);
       return;
     }
@@ -337,11 +344,11 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
     if (state.movePointerStart != null && state.moveRectOriginal != null) {
       final delta = canvasPoint - state.movePointerStart!;
       final newRect = state.moveRectOriginal!.translate(delta.dx, delta.dy);
-      final newBlocks = List<TextBlockData>.from(state.textBlocks);
-      final index = newBlocks.indexWhere((b) => b.id == state.selectedBlockId);
-      if (index != -1) {
-        newBlocks[index].boundingBox = newRect;
-      }
+      final newBlocks = state.textBlocks.map((b) {
+        return b.id == state.selectedBlockId
+            ? b.copyWith(boundingBox: newRect)
+            : b;
+      }).toList();
       state = state.copyWith(textBlocks: newBlocks);
     }
   }
@@ -352,11 +359,11 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
       final dx = (current.left - state.moveRectOriginal!.left).abs();
       final dy = (current.top - state.moveRectOriginal!.top).abs();
       if (dx < 3 && dy < 3) {
-        final newBlocks = List<TextBlockData>.from(state.textBlocks);
-        final index = newBlocks.indexWhere((b) => b.id == state.selectedBlockId);
-        if (index != -1) {
-          newBlocks[index].boundingBox = state.moveRectOriginal!;
-        }
+        final newBlocks = state.textBlocks.map((b) {
+          return b.id == state.selectedBlockId
+              ? b.copyWith(boundingBox: state.moveRectOriginal!)
+              : b;
+        }).toList();
         state = state.copyWith(textBlocks: newBlocks);
       }
     }
@@ -386,10 +393,10 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
       boundingBox: normalized,
       text: '',
     );
-    
+
     final newBlocks = List<TextBlockData>.from(state.textBlocks);
     newBlocks.add(newBlock);
-    
+
     state = state.copyWith(
       textBlocks: newBlocks,
       selectedBlockId: newBlock.id,
@@ -404,7 +411,8 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
     for (int i = state.textBlocks.length - 1; i >= 0; i--) {
       final block = state.textBlocks[i];
       if (block.isDeleted) continue;
-      if (block.text.isNotEmpty && !_isEnglishText(block.text)) continue;
+      if (block.text.isNotEmpty && !TextUtils.isEnglishText(block.text))
+        continue;
       if (block.boundingBox.contains(point)) {
         return block.id;
       }
@@ -416,9 +424,9 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
     final rect = state.selectedBlock?.boundingBox;
     if (rect == null) return null;
 
-    final scale = transformController.value.getMaxScaleOnAxis().clamp(0.01, 100.0);
+    final scale =
+        transformController.value.getMaxScaleOnAxis().clamp(0.01, 100.0);
     final handleSize = (40.0 / scale).clamp(12.0, 80.0);
-    final halfSize = handleSize / 2;
 
     final handles = {
       HandlePosition.topLeft: rect.topLeft,
@@ -500,28 +508,13 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
     );
   }
 
-  bool _isEnglishText(String text) {
-    final trimmed = text.trim();
-    if (trimmed.isEmpty) return false;
-    
-    for (final char in trimmed.split('')) {
-      final codeUnit = char.codeUnitAt(0);
-      if (codeUnit >= 0x4E00 && codeUnit <= 0x9FFF) {
-        return false;
-      }
-    }
-    return true;
-  }
-
   void deleteSelectedBlock() {
     if (state.selectedBlockId == null) return;
-    
-    final newBlocks = List<TextBlockData>.from(state.textBlocks);
-    final index = newBlocks.indexWhere((b) => b.id == state.selectedBlockId);
-    if (index != -1) {
-      newBlocks[index].isDeleted = true;
-    }
-    
+
+    final newBlocks = state.textBlocks.map((b) {
+      return b.id == state.selectedBlockId ? b.copyWith(isDeleted: true) : b;
+    }).toList();
+
     state = state.copyWith(
       textBlocks: newBlocks,
       clearSelectedBlockId: true,
@@ -529,34 +522,40 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
     );
   }
 
-  void updateBlockText(String blockId, String newText, {String? originalText, String? aiEnhancedText, String? translatedText, String? aiTranslatedText, bool? isDeleted}) {
-    final newBlocks = List<TextBlockData>.from(state.textBlocks);
-    final index = newBlocks.indexWhere((b) => b.id == blockId);
-    if (index != -1) {
-      final oldText = newBlocks[index].text;
-      final textChanged = oldText != newText;
-      newBlocks[index].text = newText;
-      if (originalText != null) newBlocks[index].originalText = originalText;
-      if (aiEnhancedText != null) newBlocks[index].aiEnhancedText = aiEnhancedText;
-      if (translatedText != null) newBlocks[index].translatedText = translatedText;
-      if (aiTranslatedText != null) newBlocks[index].aiTranslatedText = aiTranslatedText;
-      if (isDeleted != null) newBlocks[index].isDeleted = isDeleted;
-      if (textChanged) {
-        newBlocks[index].translatedText = null;
-        newBlocks[index].aiTranslatedText = null;
-      }
-    }
+  void updateBlockText(String blockId, String newText,
+      {String? originalText,
+      String? aiEnhancedText,
+      String? translatedText,
+      String? aiTranslatedText,
+      bool? isDeleted}) {
+    final newBlocks = state.textBlocks.map((b) {
+      if (b.id != blockId) return b;
+      final textChanged = b.text != newText;
+      return b.copyWith(
+        text: newText,
+        originalText: originalText,
+        aiEnhancedText: aiEnhancedText,
+        translatedText:
+            textChanged ? null : (translatedText ?? b.translatedText),
+        aiTranslatedText:
+            textChanged ? null : (aiTranslatedText ?? b.aiTranslatedText),
+        isDeleted: isDeleted,
+        clearTranslatedText: textChanged,
+        clearAiTranslatedText: textChanged,
+      );
+    }).toList();
     state = state.copyWith(textBlocks: newBlocks, hasChanges: true);
   }
 
   Future<void> reRecognizeBlock(String blockId) async {
     if (state.imageFile == null) return;
-    
+
     state = state.copyWith(isProcessing: true);
 
     try {
-      final result = await OcrService.instance.recognizeText(state.imageFile!);
-      
+      final result =
+          await ref.read(ocrRepositoryProvider).recognizeText(state.imageFile!);
+
       if (result == null) {
         state = state.copyWith(isProcessing: false);
         return;
@@ -565,23 +564,25 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
       final block = state.textBlocks.firstWhere((b) => b.id == blockId);
       String bestMatch = '';
       double bestOverlap = 0;
-      
-      for (final r in result.blocks) {
+
+      for (final r in result) {
         final intersect = block.boundingBox.intersect(r.boundingBox);
         if (!intersect.isEmpty) {
-          final overlap = (intersect.width * intersect.height) / 
-              ((block.boundingBox.width * block.boundingBox.height + r.boundingBox.width * r.boundingBox.height) / 2);
+          final overlap = (intersect.width * intersect.height) /
+              ((block.boundingBox.width * block.boundingBox.height +
+                      r.boundingBox.width * r.boundingBox.height) /
+                  2);
           if (overlap > bestOverlap) {
             bestOverlap = overlap;
             bestMatch = r.text;
           }
         }
       }
-      
+
       if (bestMatch.isNotEmpty && bestOverlap > 0.3) {
         updateBlockText(blockId, bestMatch);
       }
-      
+
       state = state.copyWith(isProcessing: false);
     } catch (e) {
       state = state.copyWith(isProcessing: false);
@@ -597,7 +598,10 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
     try {
       final blocksData = <Map<int, String>>[];
       for (int i = 0; i < visibleBlocks.length; i++) {
-        visibleBlocks[i].originalText ??= visibleBlocks[i].text;
+        if (visibleBlocks[i].originalText == null) {
+          visibleBlocks[i] =
+              visibleBlocks[i].copyWith(originalText: visibleBlocks[i].text);
+        }
         blocksData.add({i: visibleBlocks[i].text});
       }
 
@@ -614,8 +618,10 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
       for (int i = 0; i < visibleBlocks.length; i++) {
         final correctedText = correctedBlocks[i];
         if (correctedText != null) {
-          visibleBlocks[i].aiEnhancedText = correctedText;
-          visibleBlocks[i].text = correctedText;
+          visibleBlocks[i] = visibleBlocks[i].copyWith(
+            aiEnhancedText: correctedText,
+            text: correctedText,
+          );
           updatedCount++;
         }
       }
@@ -641,9 +647,13 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
 
     try {
       final block = state.selectedBlock!;
-      block.originalText ??= block.text;
+      final blockWithOriginal = block.originalText == null
+          ? block.copyWith(originalText: block.text)
+          : block;
 
-      final blocksData = [{0: block.text}];
+      final blocksData = [
+        {0: blockWithOriginal.text}
+      ];
 
       final correctedBlocks = await AiService.instance.enhanceTextBlocks(
         state.imageFile!,
@@ -655,15 +665,20 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
       );
 
       final correctedText = correctedBlocks[0];
-      final newBlocks = List<TextBlockData>.from(state.textBlocks);
-      final index = newBlocks.indexWhere((b) => b.id == state.selectedBlockId);
+      final newBlocks = state.textBlocks.map((b) {
+        if (b.id != state.selectedBlockId) return b;
+        final bWithOriginal =
+            b.originalText == null ? b.copyWith(originalText: b.text) : b;
+        if (correctedText != null) {
+          return bWithOriginal.copyWith(
+            aiEnhancedText: correctedText,
+            text: correctedText,
+          );
+        }
+        return bWithOriginal;
+      }).toList();
 
       if (correctedText != null) {
-        if (index != -1) {
-          newBlocks[index].originalText ??= newBlocks[index].text;
-          newBlocks[index].aiEnhancedText = correctedText;
-          newBlocks[index].text = correctedText;
-        }
         state = state.copyWith(
           textBlocks: newBlocks,
           isAiEnhancing: false,
@@ -713,7 +728,8 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
       ..translate(center.dx, center.dy)
       ..scale(scaleRatio, scaleRatio)
       ..translate(-center.dx, -center.dy);
-    transformController.value = zoomMatrix.multiplied(transformController.value);
+    transformController.value =
+        zoomMatrix.multiplied(transformController.value);
   }
 
   void zoomOut() {
@@ -725,7 +741,8 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
       ..translate(center.dx, center.dy)
       ..scale(scaleRatio, scaleRatio)
       ..translate(-center.dx, -center.dy);
-    transformController.value = zoomMatrix.multiplied(transformController.value);
+    transformController.value =
+        zoomMatrix.multiplied(transformController.value);
   }
 
   void resetZoom() {
@@ -737,6 +754,7 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
   }
 }
 
-final textDetectionProvider = NotifierProvider.autoDispose<TextDetectionNotifier, TextDetectionState>(() {
+final textDetectionProvider =
+    NotifierProvider.autoDispose<TextDetectionNotifier, TextDetectionState>(() {
   return TextDetectionNotifier();
 });

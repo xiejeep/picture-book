@@ -14,7 +14,7 @@ class AppTheme {
   static const Color warmBrown = Color(0xFF6B4423);
   static const Color softGray = Color(0xFF9E9E9E);
   static const Color lightGray = Color(0xFFF5F5F5);
-  
+
   // === Dark Mode Colors ===
   static const Color darkBackground = Color(0xFF1A1520);
   static const Color darkSurface = Color(0xFF2A2230);
@@ -25,7 +25,7 @@ class AppTheme {
   static const Color darkAccent = Color(0xFFFFE066);
   static const Color darkError = Color(0xFFFCA5A5);
   static const Color darkMuted = Color(0xFF6B5B5B);
-  
+
   static const Color primaryColor = softOrange;
   static const Color secondaryColor = gentleGreen;
   static const Color accentColor = honeyYellow;
@@ -33,7 +33,7 @@ class AppTheme {
   static const Color surfaceColor = Color(0xFFFFFDF5);
   static const Color cardColor = Color(0xFFFFFBF0);
   static const Color errorColor = Color(0xFFFF6B6B);
-  
+
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
@@ -72,7 +72,7 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: cardColor,
         elevation: 4,
-        shadowColor: warmBrown.withOpacity(0.15),
+        shadowColor: warmBrown.withValues(alpha: 0.15),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
@@ -83,7 +83,7 @@ class AppTheme {
           backgroundColor: primaryColor,
           foregroundColor: Colors.white,
           elevation: 3,
-          shadowColor: primaryColor.withOpacity(0.4),
+          shadowColor: primaryColor.withValues(alpha: 0.4),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -119,14 +119,17 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: softGray.withOpacity(0.3), width: 1.5),
+          borderSide:
+              BorderSide(color: softGray.withValues(alpha: 0.3), width: 1.5),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: softGray.withOpacity(0.3), width: 1.5),
+          borderSide:
+              BorderSide(color: softGray.withValues(alpha: 0.3), width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
@@ -136,8 +139,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: Color(0xFFFF6B6B), width: 1.5),
         ),
-        labelStyle: TextStyle(color: warmBrown.withOpacity(0.7), fontSize: 15),
-        hintStyle: TextStyle(color: softGray.withOpacity(0.6), fontSize: 15),
+        labelStyle:
+            TextStyle(color: warmBrown.withValues(alpha: 0.7), fontSize: 15),
+        hintStyle:
+            TextStyle(color: softGray.withValues(alpha: 0.6), fontSize: 15),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: surfaceColor,
@@ -152,7 +157,7 @@ class AppTheme {
         ),
         contentTextStyle: TextStyle(
           fontSize: 16,
-          color: warmBrown.withOpacity(0.8),
+          color: warmBrown.withValues(alpha: 0.8),
         ),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
@@ -168,12 +173,12 @@ class AppTheme {
         ),
       ),
       dividerTheme: DividerThemeData(
-        color: softGray.withOpacity(0.2),
+        color: softGray.withValues(alpha: 0.2),
         thickness: 1,
         space: 20,
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: honeyYellow.withOpacity(0.15),
+        backgroundColor: honeyYellow.withValues(alpha: 0.15),
         selectedColor: primaryColor,
         labelStyle: TextStyle(color: warmBrown, fontSize: 13),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -187,11 +192,11 @@ class AppTheme {
       ),
       tabBarTheme: TabBarThemeData(
         labelColor: Colors.white,
-        unselectedLabelColor: Colors.white.withOpacity(0.6),
+        unselectedLabelColor: Colors.white.withValues(alpha: 0.6),
         indicatorSize: TabBarIndicatorSize.label,
         indicator: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withValues(alpha: 0.2),
         ),
         labelStyle: const TextStyle(
           fontSize: 16,
@@ -252,17 +257,17 @@ class AppTheme {
         bodyLarge: GoogleFonts.nunito(
           fontSize: 16,
           fontWeight: FontWeight.w400,
-          color: warmBrown.withOpacity(0.9),
+          color: warmBrown.withValues(alpha: 0.9),
         ),
         bodyMedium: GoogleFonts.nunito(
           fontSize: 14,
           fontWeight: FontWeight.w400,
-          color: warmBrown.withOpacity(0.8),
+          color: warmBrown.withValues(alpha: 0.8),
         ),
         bodySmall: GoogleFonts.nunito(
           fontSize: 12,
           fontWeight: FontWeight.w400,
-          color: warmBrown.withOpacity(0.6),
+          color: warmBrown.withValues(alpha: 0.6),
         ),
         labelLarge: GoogleFonts.nunito(
           fontSize: 14,
@@ -272,17 +277,17 @@ class AppTheme {
         labelMedium: GoogleFonts.nunito(
           fontSize: 12,
           fontWeight: FontWeight.w500,
-          color: warmBrown.withOpacity(0.8),
+          color: warmBrown.withValues(alpha: 0.8),
         ),
         labelSmall: GoogleFonts.nunito(
           fontSize: 11,
           fontWeight: FontWeight.w500,
-          color: warmBrown.withOpacity(0.6),
+          color: warmBrown.withValues(alpha: 0.6),
         ),
       ),
     );
   }
-  
+
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
@@ -321,7 +326,7 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: darkCard,
         elevation: 4,
-        shadowColor: darkOnSurface.withOpacity(0.15),
+        shadowColor: darkOnSurface.withValues(alpha: 0.15),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
@@ -332,7 +337,7 @@ class AppTheme {
           backgroundColor: darkPrimary,
           foregroundColor: Colors.white,
           elevation: 3,
-          shadowColor: darkPrimary.withOpacity(0.4),
+          shadowColor: darkPrimary.withValues(alpha: 0.4),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -368,14 +373,17 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: darkCard,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: darkMuted.withOpacity(0.3), width: 1.5),
+          borderSide:
+              BorderSide(color: darkMuted.withValues(alpha: 0.3), width: 1.5),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: darkMuted.withOpacity(0.3), width: 1.5),
+          borderSide:
+              BorderSide(color: darkMuted.withValues(alpha: 0.3), width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
@@ -385,8 +393,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: darkError, width: 1.5),
         ),
-        labelStyle: TextStyle(color: darkOnSurface.withOpacity(0.7), fontSize: 15),
-        hintStyle: TextStyle(color: darkMuted.withOpacity(0.6), fontSize: 15),
+        labelStyle: TextStyle(
+            color: darkOnSurface.withValues(alpha: 0.7), fontSize: 15),
+        hintStyle:
+            TextStyle(color: darkMuted.withValues(alpha: 0.6), fontSize: 15),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: darkSurface,
@@ -401,7 +411,7 @@ class AppTheme {
         ),
         contentTextStyle: TextStyle(
           fontSize: 16,
-          color: darkOnSurface.withOpacity(0.8),
+          color: darkOnSurface.withValues(alpha: 0.8),
         ),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
@@ -417,12 +427,12 @@ class AppTheme {
         ),
       ),
       dividerTheme: DividerThemeData(
-        color: darkMuted.withOpacity(0.2),
+        color: darkMuted.withValues(alpha: 0.2),
         thickness: 1,
         space: 20,
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: darkAccent.withOpacity(0.15),
+        backgroundColor: darkAccent.withValues(alpha: 0.15),
         selectedColor: darkPrimary,
         labelStyle: TextStyle(color: darkOnSurface, fontSize: 13),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -436,11 +446,11 @@ class AppTheme {
       ),
       tabBarTheme: TabBarThemeData(
         labelColor: darkOnSurface,
-        unselectedLabelColor: darkOnSurface.withOpacity(0.6),
+        unselectedLabelColor: darkOnSurface.withValues(alpha: 0.6),
         indicatorSize: TabBarIndicatorSize.label,
         indicator: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
-          color: darkPrimary.withOpacity(0.2),
+          color: darkPrimary.withValues(alpha: 0.2),
         ),
         labelStyle: const TextStyle(
           fontSize: 16,
@@ -455,7 +465,8 @@ class AppTheme {
         color: darkOnSurface,
         size: 24,
       ),
-      textTheme: GoogleFonts.nunitoTextTheme(ThemeData.dark().textTheme).copyWith(
+      textTheme:
+          GoogleFonts.nunitoTextTheme(ThemeData.dark().textTheme).copyWith(
         displayLarge: GoogleFonts.fredoka(
           fontSize: 40,
           fontWeight: FontWeight.w700,
@@ -501,17 +512,17 @@ class AppTheme {
         bodyLarge: GoogleFonts.nunito(
           fontSize: 16,
           fontWeight: FontWeight.w400,
-          color: darkOnSurface.withOpacity(0.9),
+          color: darkOnSurface.withValues(alpha: 0.9),
         ),
         bodyMedium: GoogleFonts.nunito(
           fontSize: 14,
           fontWeight: FontWeight.w400,
-          color: darkOnSurface.withOpacity(0.8),
+          color: darkOnSurface.withValues(alpha: 0.8),
         ),
         bodySmall: GoogleFonts.nunito(
           fontSize: 12,
           fontWeight: FontWeight.w400,
-          color: darkOnSurface.withOpacity(0.6),
+          color: darkOnSurface.withValues(alpha: 0.6),
         ),
         labelLarge: GoogleFonts.nunito(
           fontSize: 14,
@@ -521,17 +532,17 @@ class AppTheme {
         labelMedium: GoogleFonts.nunito(
           fontSize: 12,
           fontWeight: FontWeight.w500,
-          color: darkOnSurface.withOpacity(0.8),
+          color: darkOnSurface.withValues(alpha: 0.8),
         ),
         labelSmall: GoogleFonts.nunito(
           fontSize: 11,
           fontWeight: FontWeight.w500,
-          color: darkOnSurface.withOpacity(0.6),
+          color: darkOnSurface.withValues(alpha: 0.6),
         ),
       ),
     );
   }
-  
+
   static BoxDecoration get warmGradientBox {
     return BoxDecoration(
       gradient: LinearGradient(
@@ -545,55 +556,55 @@ class AppTheme {
       ),
     );
   }
-  
+
   static BoxDecoration get playfulCardDecoration {
     return BoxDecoration(
       color: cardColor,
       borderRadius: BorderRadius.circular(20),
       boxShadow: [
         BoxShadow(
-          color: primaryColor.withOpacity(0.1),
+          color: primaryColor.withValues(alpha: 0.1),
           blurRadius: 8,
           offset: const Offset(0, 4),
         ),
         BoxShadow(
-          color: warmBrown.withOpacity(0.08),
+          color: warmBrown.withValues(alpha: 0.08),
           blurRadius: 12,
           offset: const Offset(0, 6),
         ),
       ],
     );
   }
-  
+
   static BoxDecoration get readingPageGradient {
     return BoxDecoration(
       gradient: LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          Color(0xFFFFF8E7).withOpacity(0.95),
-          Color(0xFFFFF0D8).withOpacity(0.98),
+          Color(0xFFFFF8E7).withValues(alpha: 0.95),
+          Color(0xFFFFF0D8).withValues(alpha: 0.98),
           warmCream,
         ],
       ),
     );
   }
-  
+
   static List<BoxShadow> get playfulShadow {
     return [
       BoxShadow(
-        color: primaryColor.withOpacity(0.15),
+        color: primaryColor.withValues(alpha: 0.15),
         blurRadius: 12,
         offset: const Offset(2, 4),
       ),
       BoxShadow(
-        color: warmBrown.withOpacity(0.1),
+        color: warmBrown.withValues(alpha: 0.1),
         blurRadius: 8,
         offset: const Offset(0, 2),
       ),
     ];
   }
-  
+
   static BoxDecoration get cuteButtonDecoration {
     return BoxDecoration(
       gradient: LinearGradient(
@@ -607,54 +618,54 @@ class AppTheme {
       borderRadius: BorderRadius.circular(16),
       boxShadow: [
         BoxShadow(
-          color: primaryColor.withOpacity(0.4),
+          color: primaryColor.withValues(alpha: 0.4),
           blurRadius: 8,
           offset: const Offset(0, 4),
         ),
       ],
     );
   }
-  
+
   static bool isDarkMode(BuildContext context) {
     return Theme.of(context).brightness == Brightness.dark;
   }
-  
+
   static Color primaryOf(BuildContext context) {
     return isDarkMode(context) ? darkPrimary : primaryColor;
   }
-  
+
   static Color secondaryOf(BuildContext context) {
     return isDarkMode(context) ? darkSecondary : secondaryColor;
   }
-  
+
   static Color accentOf(BuildContext context) {
     return isDarkMode(context) ? darkAccent : accentColor;
   }
-  
+
   static Color backgroundOf(BuildContext context) {
     return isDarkMode(context) ? darkBackground : backgroundColor;
   }
-  
+
   static Color surfaceOf(BuildContext context) {
     return isDarkMode(context) ? darkSurface : surfaceColor;
   }
-  
+
   static Color cardOf(BuildContext context) {
     return isDarkMode(context) ? darkCard : cardColor;
   }
-  
+
   static Color onSurfaceOf(BuildContext context) {
     return isDarkMode(context) ? darkOnSurface : warmBrown;
   }
-  
+
   static Color errorOf(BuildContext context) {
     return isDarkMode(context) ? darkError : errorColor;
   }
-  
+
   static Color mutedOf(BuildContext context) {
     return isDarkMode(context) ? darkMuted : softGray;
   }
-  
+
   static BoxDecoration gradientBoxOf(BuildContext context) {
     if (isDarkMode(context)) {
       return BoxDecoration(
@@ -679,12 +690,12 @@ class AppTheme {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: darkPrimary.withOpacity(0.1),
+            color: darkPrimary.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
           BoxShadow(
-            color: darkOnSurface.withOpacity(0.08),
+            color: darkOnSurface.withValues(alpha: 0.08),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -717,7 +728,9 @@ class AppTheme {
   }
 
   static Color dividerColorOf(BuildContext context) {
-    return isDarkMode(context) ? darkMuted.withOpacity(0.2) : softGray.withOpacity(0.2);
+    return isDarkMode(context)
+        ? darkMuted.withValues(alpha: 0.2)
+        : softGray.withValues(alpha: 0.2);
   }
 
   static const LinearGradient appBarGradient = LinearGradient(
@@ -725,29 +738,23 @@ class AppTheme {
     end: Alignment.centerRight,
     colors: [softOrange, Color(0xFFFF8C42)],
   );
-  
+
   static const LinearGradient appBarGradientDark = LinearGradient(
     begin: Alignment.centerLeft,
     end: Alignment.centerRight,
     colors: [Color(0xFF3D5A80), Color(0xFF5C4D7D)],
   );
-  
+
   static LinearGradient appBarGradientOf(BuildContext context) {
     return isDarkMode(context) ? appBarGradientDark : appBarGradient;
   }
-  
-  static const LinearGradient settingsAppBarGradient = LinearGradient(
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
-    colors: [softOrange, Color(0xFFFF8C42)],
-  );
-  
+
   static const LinearGradient greenAppBarGradient = LinearGradient(
     begin: Alignment.centerLeft,
     end: Alignment.centerRight,
     colors: [gentleGreen, calmBlue],
   );
-  
+
   static const LinearGradient pinkAppBarGradient = LinearGradient(
     begin: Alignment.centerLeft,
     end: Alignment.centerRight,

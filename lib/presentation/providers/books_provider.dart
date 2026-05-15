@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:ui';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/book_model.dart';
 import '../../data/models/text_block_model.dart';
@@ -59,40 +58,14 @@ class BooksNotifier extends Notifier<BooksState> {
 
   Future<void> addPageToBook(
     String bookId,
-    dynamic imageFile,
-    List<dynamic> textBlocks,
+    File imageFile,
+    List<TextBlockModel> textBlocks,
   ) async {
-    final blocks = textBlocks.map((block) {
-      if (block is TextBlockModel) {
-        return block;
-      }
-      if (block is Map) {
-        return TextBlockModel.fromData(
-          boundingBox: block['boundingBox'] as Rect,
-          text: block['text'] as String,
-          isDeleted: block['isDeleted'] as bool? ?? false,
-          translatedText: block['translatedText'] as String?,
-          aiTranslatedText: block['aiTranslatedText'] as String?,
-        );
-      }
-      final dynamic b = block;
-      if (b.boundingBox is Rect && b.text is String) {
-        return TextBlockModel.fromData(
-          boundingBox: b.boundingBox as Rect,
-          text: b.text as String,
-          isDeleted: (b.isDeleted as bool?) ?? false,
-          translatedText: b.translatedText as String?,
-          aiTranslatedText: b.aiTranslatedText as String?,
-        );
-      }
-      throw ArgumentError('Invalid text block type: ${block.runtimeType}');
-    }).toList();
-    
     await ref.read(bookRepositoryProvider).addPageToBook(
-      bookId,
-      imageFile as File,
-      blocks,
-    );
+          bookId,
+          imageFile,
+          textBlocks,
+        );
     refresh();
   }
 }
@@ -105,11 +78,13 @@ final bookCountProvider = Provider<int>((ref) {
   return ref.watch(booksProvider).books.length;
 });
 
-final searchBooksProvider = Provider.family<List<BookModel>, String>((ref, query) {
+final searchBooksProvider =
+    Provider.family<List<BookModel>, String>((ref, query) {
   if (query.isEmpty) return ref.watch(booksProvider).books;
   return ref.read(bookRepositoryProvider).searchBooks(query);
 });
 
-final sortedBooksProvider = Provider.family<List<BookModel>, bool>((ref, descending) {
+final sortedBooksProvider =
+    Provider.family<List<BookModel>, bool>((ref, descending) {
   return ref.read(bookRepositoryProvider).sortBooksByDate(descending);
 });

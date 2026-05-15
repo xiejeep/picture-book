@@ -19,7 +19,8 @@ class BookCard extends StatefulWidget {
   State<BookCard> createState() => _BookCardState();
 }
 
-class _BookCardState extends State<BookCard> with SingleTickerProviderStateMixin {
+class _BookCardState extends State<BookCard>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Animation<double> _shadowAnimation;
@@ -62,7 +63,7 @@ class _BookCardState extends State<BookCard> with SingleTickerProviderStateMixin
     final primaryColor = AppTheme.primaryOf(context);
     final cardColor = AppTheme.cardOf(context);
     final onSurfaceColor = AppTheme.onSurfaceOf(context);
-    
+
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
@@ -80,48 +81,48 @@ class _BookCardState extends State<BookCard> with SingleTickerProviderStateMixin
               onTap: widget.onTap,
               onLongPress: widget.onLongPress,
               child: Container(
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: primaryColor.withOpacity(0.12),
-                    blurRadius: 12 + _shadowAnimation.value,
-                    offset: Offset(0, 4 + _shadowAnimation.value / 2),
-                  ),
-                  BoxShadow(
-                    color: onSurfaceColor.withOpacity(0.08),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Stack(
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          flex: 4,
-                          child: _buildCover(context),
-                        ),
-                        _buildInfo(context),
-                      ],
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryColor.withValues(alpha: 0.12),
+                      blurRadius: 12 + _shadowAnimation.value,
+                      offset: Offset(0, 4 + _shadowAnimation.value / 2),
                     ),
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: _buildPageBadge(context),
+                    BoxShadow(
+                      color: onSurfaceColor.withValues(alpha: 0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
                   ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Stack(
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            flex: 4,
+                            child: _buildCover(context),
+                          ),
+                          _buildInfo(context),
+                        ],
+                      ),
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: _buildPageBadge(context),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      );
+        );
       },
     );
   }
@@ -155,7 +156,7 @@ class _BookCardState extends State<BookCard> with SingleTickerProviderStateMixin
                         begin: Alignment.bottomCenter,
                         end: Alignment.topCenter,
                         colors: [
-                          cardColor.withOpacity(0.3),
+                          cardColor.withValues(alpha: 0.3),
                           Colors.transparent,
                         ],
                         stops: const [0.0, 0.5],
@@ -177,16 +178,16 @@ class _BookCardState extends State<BookCard> with SingleTickerProviderStateMixin
     final primaryColor = AppTheme.primaryOf(context);
     final accentColor = AppTheme.accentOf(context);
     final onSurfaceColor = AppTheme.onSurfaceOf(context);
-    
+
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppTheme.calmBlue.withOpacity(0.3),
-            AppTheme.gentleGreen.withOpacity(0.3),
-            AppTheme.sweetPink.withOpacity(0.2),
+            AppTheme.calmBlue.withValues(alpha: 0.3),
+            AppTheme.gentleGreen.withValues(alpha: 0.3),
+            AppTheme.sweetPink.withValues(alpha: 0.2),
           ],
         ),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -198,7 +199,7 @@ class _BookCardState extends State<BookCard> with SingleTickerProviderStateMixin
             Icon(
               Icons.auto_stories_rounded,
               size: 48,
-              color: primaryColor.withOpacity(0.8),
+              color: primaryColor.withValues(alpha: 0.8),
             ),
             const SizedBox(height: 8),
             Container(
@@ -211,7 +212,7 @@ class _BookCardState extends State<BookCard> with SingleTickerProviderStateMixin
                 '读本',
                 style: TextStyle(
                   fontSize: 12,
-                  color: onSurfaceColor.withOpacity(0.7),
+                  color: onSurfaceColor.withValues(alpha: 0.7),
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -225,7 +226,7 @@ class _BookCardState extends State<BookCard> with SingleTickerProviderStateMixin
   Widget _buildInfo(BuildContext context) {
     final cardColor = AppTheme.cardOf(context);
     final onSurfaceColor = AppTheme.onSurfaceOf(context);
-    
+
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
@@ -248,7 +249,7 @@ class _BookCardState extends State<BookCard> with SingleTickerProviderStateMixin
   Widget _buildPageBadge(BuildContext context) {
     final accentColor = AppTheme.accentOf(context);
     final onPrimaryColor = Theme.of(context).colorScheme.onPrimary;
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(

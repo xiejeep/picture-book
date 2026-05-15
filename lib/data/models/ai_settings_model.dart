@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+import '../../core/constants/constants.dart';
 
 part 'ai_settings_model.g.dart';
 
@@ -15,7 +16,7 @@ class AiSettingsModel extends HiveObject {
 
   @HiveField(3)
   double speechRate;
-  
+
   @HiveField(4)
   bool useSlowSpeed;
 
@@ -25,11 +26,11 @@ class AiSettingsModel extends HiveObject {
   AiSettingsModel({
     required this.selectedModel,
     this.useGlmTts = false,
-    this.ttsVoice = 'tongtong',
+    this.ttsVoice = AppConstants.defaultTtsVoice,
     this.speechRate = 0.5,
     this.useSlowSpeed = false,
     String? selectedTextModel,
-  }) : selectedTextModel = selectedTextModel ?? 'glm-4.7-flash';
+  }) : selectedTextModel = selectedTextModel ?? AppConstants.defaultTextModel;
 
   AiSettingsModel copyWith({
     String? selectedModel,

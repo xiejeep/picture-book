@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import '../../core/constants/constants.dart';
+import '../../core/utils/file_utils.dart';
 
 class ImageService {
   static final ImageService _instance = ImageService._internal();
@@ -12,7 +13,7 @@ class ImageService {
 
   Future<void> initialize() async {
     if (_isInitialized) return;
-    
+
     _appDir = await getApplicationDocumentsDirectory();
     _isInitialized = true;
   }
@@ -24,17 +25,19 @@ class ImageService {
       await initialize();
     }
 
-    final bookDir = Directory('${_appDir.path}/${AppConstants.booksDirectoryName}/$bookId');
-    if (!bookDir.existsSync()) {
-      bookDir.createSync(recursive: true);
+    final bookDir =
+        Directory('${_appDir.path}/${AppConstants.booksDirectoryName}/$bookId');
+    if (!await bookDir.exists()) {
+      await bookDir.create(recursive: true);
     }
 
     final extension = imageFile.path.split('.').last.toLowerCase();
     final newImagePath = '${bookDir.path}/${pageId}.$extension';
-    
+
     await imageFile.copy(newImagePath);
-    
-    final relativePath = '${AppConstants.booksDirectoryName}/$bookId/${pageId}.$extension';
+
+    final relativePath =
+        '${AppConstants.booksDirectoryName}/$bookId/${pageId}.$extension';
     return relativePath;
   }
 
@@ -43,37 +46,39 @@ class ImageService {
       await initialize();
     }
 
-    final bookDir = Directory('${_appDir.path}/${AppConstants.booksDirectoryName}/$bookId');
-    if (!bookDir.existsSync()) {
-      bookDir.createSync(recursive: true);
+    final bookDir =
+        Directory('${_appDir.path}/${AppConstants.booksDirectoryName}/$bookId');
+    if (!await bookDir.exists()) {
+      await bookDir.create(recursive: true);
     }
 
     final extension = imageFile.path.split('.').last.toLowerCase();
     final coverFileName = 'cover_$bookId';
     final newImagePath = '${bookDir.path}/$coverFileName.$extension';
-    
+
     await imageFile.copy(newImagePath);
-    
-    final relativePath = '${AppConstants.booksDirectoryName}/$bookId/$coverFileName.$extension';
+
+    final relativePath =
+        '${AppConstants.booksDirectoryName}/$bookId/$coverFileName.$extension';
     return relativePath;
   }
 
   String _resolveImagePath(String imagePath) {
-    if (imagePath.startsWith(AppConstants.booksDirectoryName) || 
+    if (imagePath.startsWith(AppConstants.booksDirectoryName) ||
         imagePath.startsWith('/${AppConstants.booksDirectoryName}')) {
-      final relativePath = imagePath.startsWith('/') 
-          ? imagePath.substring(1) 
-          : imagePath;
+      final relativePath =
+          imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
       return '${_appDir.path}/$relativePath';
     }
-    
-    if (imagePath.contains('/Application/') && imagePath.contains('/Documents/')) {
+
+    if (imagePath.contains('/Application/') &&
+        imagePath.contains('/Documents/')) {
       final parts = imagePath.split('/Documents/');
       if (parts.length == 2) {
         return '${_appDir.path}/${parts[1]}';
       }
     }
-    
+
     return imagePath;
   }
 
@@ -83,14 +88,15 @@ class ImageService {
     }
     final resolvedPath = _resolveImagePath(imagePath);
     final file = File(resolvedPath);
-    if (file.existsSync()) {
+    if (await file.exists()) {
       await file.delete();
     }
   }
 
   Future<void> deleteBookDirectory(String bookId) async {
-    final bookDir = Directory('${_appDir.path}/${AppConstants.booksDirectoryName}/$bookId');
-    if (bookDir.existsSync()) {
+    final bookDir =
+        Directory('${_appDir.path}/${AppConstants.booksDirectoryName}/$bookId');
+    if (await bookDir.exists()) {
       await bookDir.delete(recursive: true);
     }
   }
@@ -104,37 +110,34 @@ class ImageService {
     return file.existsSync() ? file : null;
   }
 
-  bool imageExists(String imagePath) {
+  Future<bool> imageExists(String imagePath) async {
     if (!_isInitialized) {
       return false;
     }
     final resolvedPath = _resolveImagePath(imagePath);
-    return File(resolvedPath).existsSync();
+    return await File(resolvedPath).exists();
   }
 
   Future<int> getBookStorageSize(String bookId) async {
-    final bookDir = Directory('${_appDir.path}/${AppConstants.booksDirectoryName}/$bookId');
-    if (!bookDir.existsSync()) return 0;
+    final bookDir =
+        Directory('${_appDir.path}/${AppConstants.booksDirectoryName}/$bookId');
+    if (!await bookDir.exists()) return 0;
 
     int totalSize = 0;
-    for (final file in bookDir.listSync()) {
-      if (file is File) {
-        totalSize += await file.length();
+    await for (final entity in bookDir.list()) {
+      if (entity is File) {
+        totalSize += await entity.length();
       }
     }
     return totalSize;
   }
 
-  String formatFileSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(2)} KB';
-    if (bytes < 1024 * 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
-    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
-  }
+  String formatFileSize(int bytes) => FileUtils.formatFileSize(bytes);
 
   Future<void> clearAllBooksDirectory() async {
-    final booksDir = Directory('${_appDir.path}/${AppConstants.booksDirectoryName}');
-    if (booksDir.existsSync()) {
+    final booksDir =
+        Directory('${_appDir.path}/${AppConstants.booksDirectoryName}');
+    if (await booksDir.exists()) {
       await booksDir.delete(recursive: true);
     }
   }

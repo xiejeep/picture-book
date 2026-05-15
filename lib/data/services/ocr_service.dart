@@ -31,26 +31,29 @@ class OcrService {
   Future<OcrResult?> recognizeText(File imageFile) async {
     try {
       _recognizer ??= TextRecognizer(script: TextRecognitionScript.latin);
-      
+
       final inputImage = InputImage.fromFile(imageFile);
       final recognizedText = await _recognizer!.processImage(inputImage);
-      
+
       final blocks = <OcrBlock>[];
       for (final block in recognizedText.blocks) {
         final langs = block.recognizedLanguages.toList();
         final nonLatin = langs.where((l) => l != 'en' && l != 'und').toList();
         if (nonLatin.isNotEmpty) {
-          debugPrint('OCR过滤: "${block.text}" recognizedLanguages=$langs (非英文, 跳过)');
+          debugPrint(
+              'OCR过滤: "${block.text}" recognizedLanguages=$langs (非英文, 跳过)');
           continue;
         }
         blocks.add(_OcrBlockImpl(
           text: block.text,
           boundingBox: block.boundingBox,
-          cornerPoints: block.cornerPoints.map((p) => Point<int>(p.x.toInt(), p.y.toInt())).toList(),
+          cornerPoints: block.cornerPoints
+              .map((p) => Point<int>(p.x.toInt(), p.y.toInt()))
+              .toList(),
           recognizedLanguages: langs,
         ));
       }
-      
+
       return _OcrResultImpl(
         text: recognizedText.text,
         blocks: blocks,
@@ -74,33 +77,35 @@ class OcrService {
       final top = region.top.toInt().clamp(0, originalImage.height);
       final right = region.right.toInt().clamp(0, originalImage.width);
       final bottom = region.bottom.toInt().clamp(0, originalImage.height);
-      
+
       final width = right - left;
       final height = bottom - top;
-      
+
       if (width <= 0 || height <= 0) {
         debugPrint('OCR recognizeTextInRegion: Invalid region size');
         return null;
       }
 
-      final croppedImage = img.copyCrop(originalImage, x: left, y: top, width: width, height: height);
-      
+      final croppedImage = img.copyCrop(originalImage,
+          x: left, y: top, width: width, height: height);
+
       final tempDir = await getTemporaryDirectory();
-      final tempFile = File('${tempDir.path}/ocr_region_${DateTime.now().millisecondsSinceEpoch}.png');
+      final tempFile = File(
+          '${tempDir.path}/ocr_region_${DateTime.now().millisecondsSinceEpoch}.png');
       await tempFile.writeAsBytes(img.encodePng(croppedImage));
-      
+
       _recognizer ??= TextRecognizer(script: TextRecognitionScript.latin);
       final inputImage = InputImage.fromFile(tempFile);
       final recognizedText = await _recognizer!.processImage(inputImage);
-      
+
       await tempFile.delete();
-      
+
       final text = recognizedText.text.trim();
       if (text.isEmpty) {
         debugPrint('OCR recognizeTextInRegion: No text found in region');
         return null;
       }
-      
+
       return text;
     } catch (e) {
       debugPrint('OCR recognizeTextInRegion failed: $e');

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../data/models/book_model.dart';
+import '../../data/models/text_block_model.dart';
 import '../providers/books_provider.dart';
 import '../widgets/book_card.dart';
 import '../../core/utils/toast_util.dart';
@@ -20,17 +21,28 @@ class _HomePageState extends ConsumerState<HomePage> {
     final title = await _showCreateBookDialog();
     if (title == null) return;
 
-    final book = await ref.read(booksProvider.notifier).createBook(title);
-
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => TextDetectionPage(
           onSave: (textBlocks, imageFile) async {
+            final book =
+                await ref.read(booksProvider.notifier).createBook(title);
+            final blocks = textBlocks
+                .map((b) => TextBlockModel.fromData(
+                      boundingBox: b.boundingBox,
+                      text: b.text,
+                      isDeleted: b.isDeleted,
+                      originalText: b.originalText,
+                      aiEnhancedText: b.aiEnhancedText,
+                      translatedText: b.translatedText,
+                      aiTranslatedText: b.aiTranslatedText,
+                    ))
+                .toList();
             await ref.read(booksProvider.notifier).addPageToBook(
                   book.id,
                   imageFile,
-                  textBlocks,
+                  blocks,
                 );
             Navigator.pop(context);
           },
@@ -73,7 +85,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   hintText: '给读本起个名字',
                   prefixIcon: Icon(
                     Icons.edit_note_rounded,
-                    color: AppTheme.primaryOf(context).withOpacity(0.7),
+                    color: AppTheme.primaryOf(context).withValues(alpha: 0.7),
                   ),
                 ),
                 autofocus: true,
@@ -86,7 +98,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                     onPressed: () => Navigator.pop(context),
                     child: Text(
                       '取消',
-                      style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6)),
+                      style: TextStyle(
+                          color: AppTheme.onSurfaceOf(context)
+                              .withValues(alpha: 0.6)),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -122,7 +136,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppTheme.errorOf(context).withOpacity(0.15),
+                  color: AppTheme.errorOf(context).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(
@@ -145,7 +159,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 '确定删除 "${book.title}" 吗？',
                 style: TextStyle(
                   fontSize: 16,
-                  color: AppTheme.onSurfaceOf(context).withOpacity(0.7),
+                  color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.7),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -154,7 +168,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: AppTheme.errorOf(context).withOpacity(0.1),
+                  color: AppTheme.errorOf(context).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -173,7 +187,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                     onPressed: () => Navigator.pop(context, false),
                     child: Text(
                       '取消',
-                      style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6)),
+                      style: TextStyle(
+                          color: AppTheme.onSurfaceOf(context)
+                              .withValues(alpha: 0.6)),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -220,7 +236,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppTheme.mutedOf(context).withOpacity(0.3),
+                color: AppTheme.mutedOf(context).withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -230,7 +246,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: AppTheme.accentOf(context).withOpacity(0.2),
+                  color: AppTheme.accentOf(context).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -254,7 +270,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: AppTheme.errorOf(context).withOpacity(0.15),
+                  color: AppTheme.errorOf(context).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -297,18 +313,21 @@ class _HomePageState extends ConsumerState<HomePage> {
       appBar: AppBar(
         title: Row(
           children: [
-Container(
-               padding: const EdgeInsets.all(6),
-               decoration: BoxDecoration(
-                 color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
-                 borderRadius: BorderRadius.circular(8),
-               ),
-               child: Icon(
-                 Icons.auto_stories_rounded,
-                 size: 22,
-                 color: Theme.of(context).colorScheme.onPrimary,
-               ),
-             ),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onPrimary
+                    .withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.auto_stories_rounded,
+                size: 22,
+                color: Theme.of(context).colorScheme.onPrimary,
+              ),
+            ),
             const SizedBox(width: 12),
             const Text('我的读本'),
           ],
@@ -322,7 +341,10 @@ Container(
               icon: Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.15),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onPrimary
+                      .withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -360,7 +382,8 @@ Container(
                       Text(
                         '正在加载...',
                         style: TextStyle(
-color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
+                          color: AppTheme.onSurfaceOf(context)
+                              .withValues(alpha: 0.6),
                         ),
                       ),
                     ],
@@ -389,7 +412,8 @@ color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.primaryOf(context).withValues(alpha: 0.3),
+                        color:
+                            AppTheme.primaryOf(context).withValues(alpha: 0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -418,9 +442,9 @@ color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  AppTheme.calmBlue.withOpacity(0.2),
-                  AppTheme.gentleGreen.withOpacity(0.2),
-                  AppTheme.sweetPink.withOpacity(0.15),
+                  AppTheme.calmBlue.withValues(alpha: 0.2),
+                  AppTheme.gentleGreen.withValues(alpha: 0.2),
+                  AppTheme.sweetPink.withValues(alpha: 0.15),
                 ],
               ),
               borderRadius: BorderRadius.circular(32),
@@ -428,7 +452,7 @@ color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
             child: Icon(
               Icons.auto_stories_rounded,
               size: 64,
-              color: AppTheme.primaryOf(context).withOpacity(0.7),
+              color: AppTheme.primaryOf(context).withValues(alpha: 0.7),
             ),
           ),
           const SizedBox(height: 24),
@@ -445,7 +469,7 @@ color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
             '创建一个读本，开始互动阅读吧！',
             style: TextStyle(
               fontSize: 14,
-              color: AppTheme.onSurfaceOf(context).withOpacity(0.6),
+              color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 32),
@@ -462,15 +486,15 @@ color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
   Widget _buildBooksGrid(List<BookModel> books) {
     const double largeScreenMinWidth = 600.0;
     const double maxCardWidth = 200.0;
-    
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final isLargeScreen = constraints.maxWidth > largeScreenMinWidth;
-        final crossAxisCount = isLargeScreen 
+        final crossAxisCount = isLargeScreen
             ? (constraints.maxWidth / maxCardWidth).floor().clamp(2, 6)
             : 2;
         final childAspectRatio = isLargeScreen ? 0.75 : 0.75;
-        
+
         return GridView.builder(
           padding: EdgeInsets.only(
             left: MediaQuery.of(context).padding.left + 20,

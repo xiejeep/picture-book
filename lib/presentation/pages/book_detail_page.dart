@@ -1,21 +1,21 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../data/models/book_model.dart';
 import '../../data/models/page_model.dart';
 import '../../data/models/text_block_model.dart';
 import '../../data/services/tts_service.dart';
-import '../../data/services/image_service.dart';
-import '../../data/services/storage_service.dart';
 import '../../data/services/translation_service.dart';
 import '../../data/models/ai_settings_model.dart';
 import '../../core/constants/constants.dart';
+import '../providers/service_providers.dart';
 import '../widgets/page_indicator.dart';
 import '../widgets/reading_text_block_painter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/toast_util.dart';
 
-class BookDetailPage extends StatefulWidget {
+class BookDetailPage extends ConsumerStatefulWidget {
   final BookModel book;
 
   const BookDetailPage({
@@ -24,10 +24,10 @@ class BookDetailPage extends StatefulWidget {
   });
 
   @override
-  State<BookDetailPage> createState() => _BookDetailPageState();
+  ConsumerState<BookDetailPage> createState() => _BookDetailPageState();
 }
 
-class _BookDetailPageState extends State<BookDetailPage> {
+class _BookDetailPageState extends ConsumerState<BookDetailPage> {
   late BookModel _book;
   int _currentPageIndex = 0;
   bool _showBorders = true;
@@ -51,20 +51,14 @@ class _BookDetailPageState extends State<BookDetailPage> {
 
     _initTts();
     _loadVoiceSettings();
-
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        setState(() {});
-      }
-    });
   }
 
   Future<void> _initTts() async {
-    await TtsService.instance.initialize();
+    await ref.read(ttsServiceProvider).initialize();
   }
 
   void _loadVoiceSettings() {
-    final settings = StorageService.instance.getAiSettings();
+    final settings = ref.read(storageServiceProvider).getAiSettings();
     setState(() {
       _currentUseGlmTts = settings?.useGlmTts ?? false;
       if (settings?.speechRate != null && settings!.speechRate > 0) {
@@ -79,7 +73,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
 
   @override
   void dispose() {
-    TtsService.instance.stop();
+    ref.read(ttsServiceProvider).stop();
     super.dispose();
   }
 
@@ -106,7 +100,8 @@ class _BookDetailPageState extends State<BookDetailPage> {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: AppTheme.primaryOf(context).withValues(alpha: 0.15),
+                          color: AppTheme.primaryOf(context)
+                              .withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(
@@ -128,7 +123,8 @@ class _BookDetailPageState extends State<BookDetailPage> {
                   ),
                   const SizedBox(height: 20),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
                       color: AppTheme.cardOf(context),
                       borderRadius: BorderRadius.circular(12),
@@ -140,44 +136,57 @@ class _BookDetailPageState extends State<BookDetailPage> {
                           '当前语速',
                           style: TextStyle(
                             fontSize: 14,
-                            color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
+                            color: AppTheme.onSurfaceOf(context)
+                                .withValues(alpha: 0.6),
                           ),
                         ),
-Text(
-                           '${(_currentSpeechRate * 100).toInt()}%',
-                           style: TextStyle(
-                             fontSize: 20,
-                             fontWeight: FontWeight.bold,
-                             color: AppTheme.primaryOf(context),
-                           ),
-                         ),
+                        Text(
+                          '${(_currentSpeechRate * 100).toInt()}%',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primaryOf(context),
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 16),
-Slider(
-                     value: _currentSpeechRate,
-                     min: _currentUseGlmTts ? AppConstants.glmTtsMinSpeed : AppConstants.systemTtsMinSpeed,
-                     max: _currentUseGlmTts ? AppConstants.glmTtsMaxSpeed : AppConstants.systemTtsMaxSpeed,
-                     divisions: _currentUseGlmTts ? AppConstants.glmTtsSpeedDivisions : AppConstants.systemTtsSpeedDivisions,
-                     activeColor: AppTheme.primaryOf(context),
-                     onChanged: (value) {
-                       setDialogState(() {
-                         _currentSpeechRate = value;
-                       });
-                     },
-                   ),
+                  Slider(
+                    value: _currentSpeechRate,
+                    min: _currentUseGlmTts
+                        ? AppConstants.glmTtsMinSpeed
+                        : AppConstants.systemTtsMinSpeed,
+                    max: _currentUseGlmTts
+                        ? AppConstants.glmTtsMaxSpeed
+                        : AppConstants.systemTtsMaxSpeed,
+                    divisions: _currentUseGlmTts
+                        ? AppConstants.glmTtsSpeedDivisions
+                        : AppConstants.systemTtsSpeedDivisions,
+                    activeColor: AppTheme.primaryOf(context),
+                    onChanged: (value) {
+                      setDialogState(() {
+                        _currentSpeechRate = value;
+                      });
+                    },
+                  ),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         _currentUseGlmTts ? '慢速' : '最慢',
-                        style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6), fontSize: 12),
+                        style: TextStyle(
+                            color: AppTheme.onSurfaceOf(context)
+                                .withValues(alpha: 0.6),
+                            fontSize: 12),
                       ),
                       Text(
                         _currentUseGlmTts ? '快速' : '最快',
-                        style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6), fontSize: 12),
+                        style: TextStyle(
+                            color: AppTheme.onSurfaceOf(context)
+                                .withValues(alpha: 0.6),
+                            fontSize: 12),
                       ),
                     ],
                   ),
@@ -192,14 +201,17 @@ Slider(
                           },
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 12),
-                            backgroundColor: AppTheme.primaryOf(context).withValues(alpha: 0.1),
+                            backgroundColor: AppTheme.primaryOf(context)
+                                .withValues(alpha: 0.1),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
                           child: Text(
                             '更多设置',
-                            style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6)),
+                            style: TextStyle(
+                                color: AppTheme.onSurfaceOf(context)
+                                    .withValues(alpha: 0.6)),
                           ),
                         ),
                       ),
@@ -207,14 +219,20 @@ Slider(
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () async {
-                            final currentSettings = StorageService.instance.getAiSettings();
-                            final settings = AiSettingsModel(
-                              selectedModel: currentSettings?.selectedModel ?? AppConstants.defaultModel,
+                            final currentSettings = ref
+                                .read(storageServiceProvider)
+                                .getAiSettings();
+                            final settings = (currentSettings ??
+                                    AiSettingsModel(
+                                      selectedModel: AppConstants.defaultModel,
+                                    ))
+                                .copyWith(
                               useGlmTts: _currentUseGlmTts,
-                              ttsVoice: currentSettings?.ttsVoice ?? AppConstants.defaultTtsVoice,
                               speechRate: _currentSpeechRate,
                             );
-                            await StorageService.instance.saveAiSettings(settings);
+                            await ref
+                                .read(storageServiceProvider)
+                                .saveAiSettings(settings);
 
                             setState(() {});
                             Navigator.pop(context);
@@ -222,8 +240,10 @@ Slider(
                             ToastUtil.success('语速已调整');
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryOf(context).withValues(alpha: 0.85),
-                            foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                            backgroundColor: AppTheme.primaryOf(context)
+                                .withValues(alpha: 0.85),
+                            foregroundColor:
+                                Theme.of(context).colorScheme.onPrimary,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -282,7 +302,7 @@ Slider(
     _translateBlock(block, blockIndex);
 
     if (_playingText != null) {
-      await TtsService.instance.stop();
+      await ref.read(ttsServiceProvider).stop();
     }
 
     setState(() {
@@ -291,7 +311,7 @@ Slider(
     });
 
     try {
-      await TtsService.instance.speak(block.text);
+      await ref.read(ttsServiceProvider).speak(block.text);
     } catch (e) {
       if (e is GlmTtsException) {
         if (!mounted) return;
@@ -336,7 +356,8 @@ Slider(
                     e.userMessage,
                     style: TextStyle(
                       fontSize: 14,
-                      color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.7),
+                      color:
+                          AppTheme.onSurfaceOf(context).withValues(alpha: 0.7),
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -348,13 +369,12 @@ Slider(
                         onPressed: () => Navigator.pop(context),
                         child: const Text('确定'),
                       ),
-                      if (e.isBalanceInsufficient())
-                        const SizedBox(width: 8),
+                      if (e.isBalanceInsufficient()) const SizedBox(width: 8),
                       if (e.isBalanceInsufficient())
                         ElevatedButton(
                           onPressed: () {
                             Navigator.pop(context);
-                            Navigator.pushNamed(context, '/settings');
+                            context.push('/settings');
                           },
                           child: const Text('去设置'),
                         ),
@@ -385,7 +405,7 @@ Slider(
   }
 
   void _stopPlaying() {
-    TtsService.instance.stop();
+    ref.read(ttsServiceProvider).stop();
     setState(() {
       _playingText = null;
       _playingBlockIndex = null;
@@ -422,7 +442,9 @@ Slider(
       _translationStatus = TranslationStatus.translating;
     });
 
-    final result = await TranslationService.instance.translateWithStatus(block.text);
+    final result = await ref
+        .read(translationServiceProvider)
+        .translateWithStatus(block.text);
 
     if (!mounted) return;
 
@@ -432,8 +454,10 @@ Slider(
       _translatedText = result.translatedText;
     });
 
-    if (result.status == TranslationStatus.done && result.translatedText != null) {
-      final updatedBlock = block.copyWith(aiTranslatedText: result.translatedText);
+    if (result.status == TranslationStatus.done &&
+        result.translatedText != null) {
+      final updatedBlock =
+          block.copyWith(aiTranslatedText: result.translatedText);
       final page = _book.pages[_currentPageIndex];
       final updatedTextBlocks = List<TextBlockModel>.from(page.textBlocks);
       updatedTextBlocks[blockIndex] = updatedBlock;
@@ -460,7 +484,9 @@ Slider(
       extendBodyBehindAppBar: true,
       appBar: _showAppBar
           ? AppBar(
-              backgroundColor: isDark ? AppTheme.darkSurface.withValues(alpha: 0.85) : AppTheme.softOrange.withValues(alpha: 0.85),
+              backgroundColor: isDark
+                  ? AppTheme.darkSurface.withValues(alpha: 0.85)
+                  : AppTheme.softOrange.withValues(alpha: 0.85),
               elevation: 0,
               title: Text(_book.title),
               actions: [
@@ -518,9 +544,13 @@ Slider(
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
-                        _showTranslation ? Icons.translate_rounded : Icons.translate_outlined,
+                        _showTranslation
+                            ? Icons.translate_rounded
+                            : Icons.translate_outlined,
                         size: 18,
-                        color: _showTranslation ? Colors.white : Colors.white.withValues(alpha: 0.6),
+                        color: _showTranslation
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.6),
                       ),
                     ),
                     onPressed: _toggleTranslation,
@@ -539,7 +569,9 @@ Slider(
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
-                        _showBorders ? Icons.border_color_rounded : Icons.border_clear_rounded,
+                        _showBorders
+                            ? Icons.border_color_rounded
+                            : Icons.border_clear_rounded,
                         size: 18,
                         color: Colors.white,
                       ),
@@ -558,15 +590,16 @@ Slider(
             )
           : null,
       body: Container(
-        decoration: isDark ? BoxDecoration(color: AppTheme.darkBackground) : AppTheme.readingPageGradient,
+        decoration: isDark
+            ? BoxDecoration(color: AppTheme.darkBackground)
+            : AppTheme.readingPageGradient,
         child: Stack(
           children: [
             SafeArea(
               child: GestureDetector(
                 onDoubleTap: _toggleAppBar,
-                child: _book.pages.isEmpty
-                    ? _buildEmptyState()
-                    : _buildPageView(),
+                child:
+                    _book.pages.isEmpty ? _buildEmptyState() : _buildPageView(),
               ),
             ),
             if (!_showAppBar)
@@ -582,8 +615,7 @@ Slider(
                   ),
                 ),
               ),
-            if (_translatedBlockIndex != null)
-              _buildReadingBar(),
+            if (_translatedBlockIndex != null) _buildReadingBar(),
             if (_book.pages.isNotEmpty)
               Positioned(
                 bottom: 24,
@@ -639,11 +671,13 @@ Slider(
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
-            onPressed: () => context.push('/book/${_book.id}/manage', extra: _book),
+            onPressed: () =>
+                context.push('/book/${_book.id}/manage', extra: _book),
             icon: const Icon(Icons.add_photo_alternate_rounded),
             label: const Text('添加页面'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryOf(context).withValues(alpha: 0.85),
+              backgroundColor:
+                  AppTheme.primaryOf(context).withValues(alpha: 0.85),
               foregroundColor: Theme.of(context).colorScheme.onPrimary,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(
@@ -662,7 +696,8 @@ Slider(
   }
 
   Widget _buildPageContent(PageModel page) {
-    final imageFile = ImageService.instance.getImageFile(page.imagePath);
+    final imageFile =
+        ref.read(imageServiceProvider).getImageFile(page.imagePath);
 
     if (imageFile == null) {
       return Center(
@@ -712,8 +747,8 @@ Slider(
                 }
 
                 final imageSize = snapshot.data!;
-                final displaySize = _calculateDisplaySize(
-                    imageSize, Size(constraints.maxWidth, constraints.maxHeight));
+                final displaySize = _calculateDisplaySize(imageSize,
+                    Size(constraints.maxWidth, constraints.maxHeight));
 
                 return Center(
                   child: Container(
@@ -752,7 +787,8 @@ Slider(
                                 ),
                               ),
                             if (page.textBlocks.isNotEmpty)
-                              ..._buildTextBlockTapAreas(page, displaySize, imageSize),
+                              ..._buildTextBlockTapAreas(
+                                  page, displaySize, imageSize),
                           ],
                         ),
                       ),
@@ -812,21 +848,22 @@ Slider(
                   child: SizedBox(
                     width: displayRect.width,
                     height: displayRect.height,
-child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        decoration: BoxDecoration(
-                          color: isTapped
-                              ? AppTheme.accentOf(context).withValues(alpha: 0.3)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(4),
-                          border: isTapped
-                              ? Border.all(
-                                  color: AppTheme.accentOf(context).withValues(alpha: 0.6),
-                                  width: 2,
-                                )
-                              : null,
-                        ),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      decoration: BoxDecoration(
+                        color: isTapped
+                            ? AppTheme.accentOf(context).withValues(alpha: 0.3)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(4),
+                        border: isTapped
+                            ? Border.all(
+                                color: AppTheme.accentOf(context)
+                                    .withValues(alpha: 0.6),
+                                width: 2,
+                              )
+                            : null,
                       ),
+                    ),
                   ),
                 ),
               ),
@@ -840,7 +877,8 @@ child: AnimatedContainer(
   }
 
   Widget _buildReadingBar() {
-    final block = _book.pages[_currentPageIndex].textBlocks[_translatedBlockIndex!];
+    final block =
+        _book.pages[_currentPageIndex].textBlocks[_translatedBlockIndex!];
     final isPlaying = _playingText != null;
 
     String statusText;
@@ -863,7 +901,9 @@ child: AnimatedContainer(
           constraints: const BoxConstraints(maxWidth: 400),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: AppTheme.isDarkMode(context) ? AppTheme.darkCard : const Color(0xFF2D2D3A),
+            color: AppTheme.isDarkMode(context)
+                ? AppTheme.darkCard
+                : const Color(0xFF2D2D3A),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
@@ -903,7 +943,9 @@ child: AnimatedContainer(
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
-                          isPlaying ? Icons.stop_rounded : Icons.volume_up_rounded,
+                          isPlaying
+                              ? Icons.stop_rounded
+                              : Icons.volume_up_rounded,
                           size: 24,
                           color: Colors.white,
                         ),
@@ -944,13 +986,15 @@ child: AnimatedContainer(
                         height: 14,
                         child: CircularProgressIndicator(
                           strokeWidth: 1.5,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white54),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white54),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Text(
                         statusText,
-                        style: const TextStyle(color: Colors.white54, fontSize: 13),
+                        style: const TextStyle(
+                            color: Colors.white54, fontSize: 13),
                       ),
                     ],
                   ),
@@ -975,7 +1019,8 @@ child: AnimatedContainer(
                     ),
                   ),
                 )
-              else if (_showTranslation && _translationStatus == TranslationStatus.failed)
+              else if (_showTranslation &&
+                  _translationStatus == TranslationStatus.failed)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(

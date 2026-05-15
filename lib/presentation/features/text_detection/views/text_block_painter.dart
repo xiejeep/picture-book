@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/canvas_mode.dart';
 import '../models/handle_position.dart';
 import '../models/text_detection_state.dart';
+import '../../../../core/utils/text_utils.dart';
 
 class TextBlockPainter extends CustomPainter {
   final TextDetectionState state;
@@ -43,15 +44,18 @@ class TextBlockPainter extends CustomPainter {
   void _drawBlocks(Canvas canvas) {
     for (final block in state.textBlocks) {
       if (block.isDeleted) continue;
-      if (block.text.isNotEmpty && !_isEnglishText(block.text)) continue;
+      if (block.text.isNotEmpty && !TextUtils.isEnglishText(block.text))
+        continue;
 
       final isSelected = block.id == state.selectedBlockId;
       final isEditMode = state.mode == CanvasMode.edit;
       final isResizeMode = state.editSubMode == EditSubMode.resize;
 
       final fillColor = isSelected
-          ? (isResizeMode ? Colors.green.withOpacity(0.3) : Colors.orange.withOpacity(0.3))
-          : Colors.blue.withOpacity(0.2);
+          ? (isResizeMode
+              ? Colors.green.withValues(alpha: 0.3)
+              : Colors.orange.withValues(alpha: 0.3))
+          : Colors.blue.withValues(alpha: 0.2);
 
       final borderColor = isSelected
           ? (isResizeMode ? Colors.green : Colors.orange)
@@ -73,8 +77,8 @@ class TextBlockPainter extends CustomPainter {
         _drawDeleteButton(canvas, block.boundingBox);
       }
 
-      final displayText = block.text.length > 20 
-          ? '${block.text.substring(0, 20)}...' 
+      final displayText = block.text.length > 20
+          ? '${block.text.substring(0, 20)}...'
           : block.text;
       _drawTextLabel(canvas, block.boundingBox, displayText, borderColor);
     }
@@ -85,7 +89,7 @@ class TextBlockPainter extends CustomPainter {
     if (rect == null) return;
 
     final fillPaint = Paint()
-      ..color = Colors.red.withOpacity(0.3)
+      ..color = Colors.red.withValues(alpha: 0.3)
       ..style = PaintingStyle.fill;
 
     final strokePaint = Paint()
@@ -100,11 +104,12 @@ class TextBlockPainter extends CustomPainter {
   void _drawSelectionHandles(Canvas canvas) {
     if (state.mode != CanvasMode.edit) return;
     if (state.editSubMode != EditSubMode.resize) return;
-    
+
     final selected = state.selectedBlock;
     if (selected == null) return;
 
-    final scale = transformController.value.getMaxScaleOnAxis().clamp(0.01, 100.0);
+    final scale =
+        transformController.value.getMaxScaleOnAxis().clamp(0.01, 100.0);
     final handleSize = (20.0 / scale).clamp(10.0, 60.0);
 
     final handlePaint = Paint()
@@ -162,7 +167,8 @@ class TextBlockPainter extends CustomPainter {
   }
 
   void _drawDeleteButton(Canvas canvas, Rect rect) {
-    final scale = transformController.value.getMaxScaleOnAxis().clamp(0.01, 100.0);
+    final scale =
+        transformController.value.getMaxScaleOnAxis().clamp(0.01, 100.0);
     final buttonSize = (24.0 / scale).clamp(16.0, 40.0);
 
     final deletePaint = Paint()
@@ -180,7 +186,8 @@ class TextBlockPainter extends CustomPainter {
       ..strokeWidth = (3.0 / scale).clamp(1.5, 4.0)
       ..strokeCap = StrokeCap.round;
 
-    final Offset deletePos = Offset(rect.right + buttonSize / 2, rect.top - buttonSize / 2);
+    final Offset deletePos =
+        Offset(rect.right + buttonSize / 2, rect.top - buttonSize / 2);
 
     canvas.drawCircle(deletePos, buttonSize / 2, deletePaint);
     canvas.drawCircle(deletePos, buttonSize / 2, deleteBorderPaint);
@@ -199,7 +206,8 @@ class TextBlockPainter extends CustomPainter {
   }
 
   void _drawTextLabel(Canvas canvas, Rect rect, String text, Color color) {
-    final scale = transformController.value.getMaxScaleOnAxis().clamp(0.01, 100.0);
+    final scale =
+        transformController.value.getMaxScaleOnAxis().clamp(0.01, 100.0);
     final fontSize = (12.0 / scale).clamp(8.0, 24.0);
 
     final textPainter = TextPainter(
@@ -209,28 +217,15 @@ class TextBlockPainter extends CustomPainter {
           color: color,
           fontSize: fontSize,
           fontWeight: FontWeight.bold,
-          backgroundColor: Colors.white.withOpacity(0.8),
+          backgroundColor: Colors.white.withValues(alpha: 0.8),
         ),
       ),
       textDirection: TextDirection.ltr,
     );
     textPainter.layout();
-    
+
     final yOffset = rect.top - (fontSize + 4);
     textPainter.paint(canvas, Offset(rect.left, yOffset.clamp(0, rect.top)));
-  }
-
-  bool _isEnglishText(String text) {
-    final trimmed = text.trim();
-    if (trimmed.isEmpty) return false;
-    
-    for (final char in trimmed.split('')) {
-      final codeUnit = char.codeUnitAt(0);
-      if (codeUnit >= 0x4E00 && codeUnit <= 0x9FFF) {
-        return false;
-      }
-    }
-    return true;
   }
 
   @override

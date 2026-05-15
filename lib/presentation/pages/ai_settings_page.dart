@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../data/services/ai_service.dart';
-import '../../data/services/storage_service.dart';
 import '../../data/models/ai_settings_model.dart';
 import '../../core/constants/constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/toast_util.dart';
 import '../providers/settings_provider.dart';
+import '../providers/repository_providers.dart';
+import '../providers/service_providers.dart';
 
 class AiSettingsPage extends ConsumerStatefulWidget {
   const AiSettingsPage({super.key});
@@ -33,8 +33,8 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
   }
 
   Future<void> _loadSettings() async {
-    final apiKey = await AiService.instance.getApiKey();
-    final settings = StorageService.instance.getAiSettings();
+    final apiKey = await ref.read(aiRepositoryProvider).getApiKey();
+    final settings = ref.read(settingsProvider).settings;
 
     setState(() {
       if (apiKey != null && apiKey.isNotEmpty) {
@@ -43,12 +43,16 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
       }
 
       final savedModel = settings?.selectedModel ?? AppConstants.defaultModel;
-      final modelExists = AppConstants.availableModels.any((m) => m['name'] == savedModel);
+      final modelExists =
+          AppConstants.availableModels.any((m) => m['name'] == savedModel);
       _selectedModel = modelExists ? savedModel : AppConstants.defaultModel;
 
-      final savedTextModel = settings?.selectedTextModel ?? AppConstants.defaultTextModel;
-      final textModelExists = AppConstants.availableTextModels.any((m) => m['name'] == savedTextModel);
-      _selectedTextModel = textModelExists ? savedTextModel : AppConstants.defaultTextModel;
+      final savedTextModel =
+          settings?.selectedTextModel ?? AppConstants.defaultTextModel;
+      final textModelExists = AppConstants.availableTextModels
+          .any((m) => m['name'] == savedTextModel);
+      _selectedTextModel =
+          textModelExists ? savedTextModel : AppConstants.defaultTextModel;
     });
   }
 
@@ -61,17 +65,18 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
     setState(() => _isSaving = true);
 
     try {
-      await AiService.instance.saveApiKey(_apiKeyController.text);
+      await ref.read(aiRepositoryProvider).saveApiKey(_apiKeyController.text);
 
-      final currentSettings = StorageService.instance.getAiSettings();
+      final currentSettings = ref.read(settingsProvider).settings;
       final settings = AiSettingsModel(
         selectedModel: _selectedModel,
         useGlmTts: currentSettings?.useGlmTts ?? false,
         ttsVoice: currentSettings?.ttsVoice ?? AppConstants.defaultTtsVoice,
-        speechRate: currentSettings?.speechRate ?? AppConstants.systemTtsDefaultSpeed,
+        speechRate:
+            currentSettings?.speechRate ?? AppConstants.systemTtsDefaultSpeed,
         selectedTextModel: _selectedTextModel,
       );
-      await StorageService.instance.saveAiSettings(settings);
+      await ref.read(storageServiceProvider).saveAiSettings(settings);
       await ref.read(settingsProvider.notifier).refresh();
 
       setState(() => _hasExistingKey = true);
@@ -93,10 +98,10 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
     setState(() => _isTesting = true);
 
     try {
-      final success = await AiService.instance.testConnection(
-        _apiKeyController.text,
-        _selectedModel,
-      );
+      final success = await ref.read(aiRepositoryProvider).testConnection(
+            _apiKeyController.text,
+            _selectedModel,
+          );
 
       if (success) {
         ToastUtil.success('连接成功！');
@@ -131,8 +136,8 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
     );
 
     if (confirm == true) {
-      await AiService.instance.deleteApiKey();
-      await StorageService.instance.deleteAiSettings();
+      await ref.read(aiRepositoryProvider).deleteApiKey();
+      await ref.read(storageServiceProvider).deleteAiSettings();
       await ref.read(settingsProvider.notifier).refresh();
 
       setState(() {
@@ -203,12 +208,13 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
                 margin: const EdgeInsets.only(left: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: AppTheme.secondaryOf(context).withOpacity(0.2),
+                  color: AppTheme.secondaryOf(context).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   '已配置',
-                  style: TextStyle(color: AppTheme.secondaryOf(context), fontSize: 12),
+                  style: TextStyle(
+                      color: AppTheme.secondaryOf(context), fontSize: 12),
                 ),
               ),
           ],
@@ -235,7 +241,8 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
                 ),
                 if (_hasExistingKey)
                   IconButton(
-                    icon: Icon(Icons.delete_outline, color: AppTheme.errorOf(context)),
+                    icon: Icon(Icons.delete_outline,
+                        color: AppTheme.errorOf(context)),
                     onPressed: _deleteApiKey,
                     tooltip: '删除API Key',
                   ),
@@ -246,7 +253,9 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
         const SizedBox(height: 8),
         Text.rich(
           TextSpan(
-            style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6), fontSize: 12),
+            style: TextStyle(
+                color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
+                fontSize: 12),
             children: [
               const TextSpan(text: 'API Key可在 '),
               TextSpan(
@@ -257,9 +266,11 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
                 ),
                 recognizer: TapGestureRecognizer()
                   ..onTap = () async {
-                    final uri = Uri.parse('https://www.bigmodel.cn/glm-coding?ic=PP52KPSJX5');
+                    final uri = Uri.parse(
+                        'https://www.bigmodel.cn/glm-coding?ic=PP52KPSJX5');
                     if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      await launchUrl(uri,
+                          mode: LaunchMode.externalApplication);
                     }
                   },
               ),
@@ -282,7 +293,9 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
         const SizedBox(height: 4),
         Text(
           '用于图片识别与OCR文本清洗',
-          style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6), fontSize: 12),
+          style: TextStyle(
+              color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
+              fontSize: 12),
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
@@ -319,7 +332,9 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
         const SizedBox(height: 4),
         Text(
           '用于结构化输出，确保JSON格式稳定',
-          style: TextStyle(color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6), fontSize: 12),
+          style: TextStyle(
+              color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
+              fontSize: 12),
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
@@ -360,7 +375,8 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
                 : const Icon(Icons.save),
             label: Text(_isSaving ? '保存中...' : '保存设置'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryOf(context).withValues(alpha: 0.85),
+              backgroundColor:
+                  AppTheme.primaryOf(context).withValues(alpha: 0.85),
               foregroundColor: Theme.of(context).colorScheme.onPrimary,
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
@@ -421,23 +437,33 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
           SizedBox(height: 4),
           Text(
             '• 去除音标符号（如 /æ/, /ɪ/ 等）',
-            style: TextStyle(fontSize: 13, color: AppTheme.onSurfaceOf(context).withOpacity(0.7)),
+            style: TextStyle(
+                fontSize: 13,
+                color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.7)),
           ),
           Text(
             '• 去除序号标记（如 1., 2., ③ 等）',
-            style: TextStyle(fontSize: 13, color: AppTheme.onSurfaceOf(context).withOpacity(0.7)),
+            style: TextStyle(
+                fontSize: 13,
+                color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.7)),
           ),
           Text(
             '• 去除装饰符号（如 ##, |, **, → 等）',
-            style: TextStyle(fontSize: 13, color: AppTheme.onSurfaceOf(context).withOpacity(0.7)),
+            style: TextStyle(
+                fontSize: 13,
+                color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.7)),
           ),
           Text(
             '• 保留纯净的英文单词或句子',
-            style: TextStyle(fontSize: 13, color: AppTheme.onSurfaceOf(context).withOpacity(0.7)),
+            style: TextStyle(
+                fontSize: 13,
+                color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.7)),
           ),
           Text(
             '• 提升点读体验，更适合儿童学习',
-            style: TextStyle(fontSize: 13, color: AppTheme.onSurfaceOf(context).withOpacity(0.7)),
+            style: TextStyle(
+                fontSize: 13,
+                color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.7)),
           ),
         ],
       ),

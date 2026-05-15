@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 
 class TextBlockData {
   final String id;
-  Rect boundingBox;
-  String text;
-  bool isDeleted;
-  String? originalText;
-  String? aiEnhancedText;
-  String? translatedText;
-  String? aiTranslatedText;
+  final Rect boundingBox;
+  final String text;
+  final bool isDeleted;
+  final String? originalText;
+  final String? aiEnhancedText;
+  final String? translatedText;
+  final String? aiTranslatedText;
 
   TextBlockData({
     required this.id,
@@ -66,10 +66,15 @@ class TextBlockData {
       boundingBox: boundingBox ?? this.boundingBox,
       text: text ?? this.text,
       isDeleted: isDeleted ?? this.isDeleted,
-      originalText: clearOriginalText ? null : (originalText ?? this.originalText),
-      aiEnhancedText: clearAiEnhancedText ? null : (aiEnhancedText ?? this.aiEnhancedText),
-      translatedText: clearTranslatedText ? null : (translatedText ?? this.translatedText),
-      aiTranslatedText: clearAiTranslatedText ? null : (aiTranslatedText ?? this.aiTranslatedText),
+      originalText:
+          clearOriginalText ? null : (originalText ?? this.originalText),
+      aiEnhancedText:
+          clearAiEnhancedText ? null : (aiEnhancedText ?? this.aiEnhancedText),
+      translatedText:
+          clearTranslatedText ? null : (translatedText ?? this.translatedText),
+      aiTranslatedText: clearAiTranslatedText
+          ? null
+          : (aiTranslatedText ?? this.aiTranslatedText),
     );
   }
 }

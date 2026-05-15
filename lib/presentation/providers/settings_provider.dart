@@ -37,15 +37,19 @@ class SettingsNotifier extends Notifier<SettingsState> {
   }
 
   Future<void> _loadSettings() async {
-    final storage = StorageService.instance;
-    final settings = storage.getAiSettings();
-    final hasKey = await ref.read(aiRepositoryProvider).hasApiKey();
-    
-    state = SettingsState(
-      settings: settings,
-      hasApiKey: hasKey,
-      isLoading: false,
-    );
+    try {
+      final storage = StorageService.instance;
+      final settings = storage.getAiSettings();
+      final hasKey = await ref.read(aiRepositoryProvider).hasApiKey();
+
+      state = SettingsState(
+        settings: settings,
+        hasApiKey: hasKey,
+        isLoading: false,
+      );
+    } catch (_) {
+      state = const SettingsState(isLoading: false);
+    }
   }
 
   Future<void> refresh() async {
@@ -66,11 +70,13 @@ final hasApiKeyProvider = Provider<bool>((ref) {
 });
 
 final selectedModelProvider = Provider<String>((ref) {
-  return ref.watch(settingsProvider).settings?.selectedModel ?? AppConstants.defaultModel;
+  return ref.watch(settingsProvider).settings?.selectedModel ??
+      AppConstants.defaultModel;
 });
 
 final selectedTextModelProvider = Provider<String>((ref) {
-  return ref.watch(settingsProvider).settings?.selectedTextModel ?? AppConstants.defaultTextModel;
+  return ref.watch(settingsProvider).settings?.selectedTextModel ??
+      AppConstants.defaultTextModel;
 });
 
 class ThemeModeNotifier extends Notifier<ThemeMode> {
