@@ -25,6 +25,9 @@ class AppTheme {
   static const Color darkAccent = Color(0xFFFFE066);
   static const Color darkError = Color(0xFFFCA5A5);
   static const Color darkMuted = Color(0xFF6B5B5B);
+  static const Color darkFocusHighlight = Color(0xFFEF5350);
+
+  static const Color focusHighlightColor = Color(0xFFE53935);
 
   static const Color primaryColor = softOrange;
   static const Color secondaryColor = gentleGreen;
@@ -664,6 +667,10 @@ class AppTheme {
 
   static Color mutedOf(BuildContext context) {
     return isDarkMode(context) ? darkMuted : softGray;
+  }
+
+  static Color focusHighlightOf(BuildContext context) {
+    return isDarkMode(context) ? darkFocusHighlight : focusHighlightColor;
   }
 
   static BoxDecoration gradientBoxOf(BuildContext context) {

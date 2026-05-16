@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,6 +16,7 @@ import '../providers/service_providers.dart';
 import '../widgets/page_indicator.dart';
 import '../widgets/reading_text_block_painter.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/app_tokens.dart';
 import '../../core/utils/toast_util.dart';
 
 class BookDetailPage extends ConsumerStatefulWidget {
@@ -59,7 +61,6 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
   Rect? _previousFocusRect;
   Rect? _currentFocusRect;
   bool _hasPlayedBefore = false;
-  bool _isSameBlockBounce = false;
   Size? _displaySize;
   Size? _imageSize;
 
@@ -70,12 +71,12 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
     _currentPageIndex = _book.currentPageIndex;
 
     _focusAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 200),
+      duration: AppAnim.quick,
       vsync: this,
     );
 
     _bounceAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
+      duration: AppAnim.slow,
       vsync: this,
     );
 
@@ -445,7 +446,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: AppTheme.primaryOf(context),
+color: AppTheme.focusHighlightOf(context),
                           ),
                         ),
                       ],
@@ -594,7 +595,10 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
   }
 
   Future<void> _playTextBlock(TextBlockModel block, int blockIndex) async {
-    debugPrint('>>> _playTextBlock called: blockIndex=$blockIndex, text=${block.text.length > 20 ? block.text.substring(0, 20) : block.text}...');
+    if (kDebugMode) {
+      debugPrint(
+          '>>> _playTextBlock called: blockIndex=$blockIndex, text=${block.text.length > 20 ? block.text.substring(0, 20) : block.text}...');
+    }
     _updateFocusAnimation(block);
 
     _translateBlock(block, blockIndex);
@@ -611,7 +615,9 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
     _loadingIndicatorTimer?.cancel();
     if (_currentUseGlmTts) {
       _loadingIndicatorTimer = Timer(const Duration(milliseconds: 300), () {
-        if (mounted && _playingBlockIndex == blockIndex && _loadingBlockIndex == null) {
+        if (mounted &&
+            _playingBlockIndex == blockIndex &&
+            _loadingBlockIndex == null) {
           setState(() => _loadingBlockIndex = blockIndex);
         }
       });
@@ -709,77 +715,87 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
 
   void _updateFocusAnimation(TextBlockModel block) {
     if (_displaySize == null || _imageSize == null) return;
-    
+
     final page = _book.pages[_currentPageIndex];
     final scaleX = _displaySize!.width /
         (page.imageWidth > 0 ? page.imageWidth : _imageSize!.width);
     final scaleY = _displaySize!.height /
         (page.imageHeight > 0 ? page.imageHeight : _imageSize!.height);
-    
+
     final blockRect = Rect.fromLTRB(
       block.boundingBox.left * scaleX,
       block.boundingBox.top * scaleY,
       block.boundingBox.right * scaleX,
       block.boundingBox.bottom * scaleY,
     );
-    
+
     final targetRect = Rect.fromCenter(
       center: blockRect.center,
       width: blockRect.width * 1.1,
       height: blockRect.height * 1.2,
     );
-    
+
     final isSameBlock = _previousFocusRect != null &&
         targetRect.left == _previousFocusRect!.left &&
         targetRect.top == _previousFocusRect!.top &&
         targetRect.width == _previousFocusRect!.width &&
         targetRect.height == _previousFocusRect!.height;
-    
-    debugPrint('=== Focus Animation Debug ===');
-    debugPrint('isSameBlock: $isSameBlock');
-    debugPrint('_previousFocusRect: $_previousFocusRect');
-    debugPrint('targetRect: $targetRect');
-    debugPrint('_hasPlayedBefore: $_hasPlayedBefore');
-    
+
+    if (kDebugMode) {
+      debugPrint('=== Focus Animation Debug ===');
+      debugPrint('isSameBlock: $isSameBlock');
+      debugPrint('_previousFocusRect: $_previousFocusRect');
+      debugPrint('targetRect: $targetRect');
+      debugPrint('_hasPlayedBefore: $_hasPlayedBefore');
+    }
+
     Rect beginRect;
     Rect endRect;
     Curve curve;
-    
+
     if (!_hasPlayedBefore) {
-      debugPrint('Case: First play - full screen to target');
+      if (kDebugMode) {
+        debugPrint('Case: First play - full screen to target');
+      }
       beginRect = Rect.fromLTWH(
-        0, 0, _displaySize!.width, _displaySize!.height,
+        0,
+        0,
+        _displaySize!.width,
+        _displaySize!.height,
       );
       endRect = targetRect;
       curve = Curves.easeInOut;
-      _focusAnimationController.duration = const Duration(milliseconds: 200);
+      _focusAnimationController.duration = AppAnim.quick;
       _hasPlayedBefore = true;
-      _isSameBlockBounce = false;
     } else if (isSameBlock) {
-      debugPrint('Case: Same block - direct bounce (no fly animation)');
-      _isSameBlockBounce = true;
+      if (kDebugMode) {
+        debugPrint('Case: Same block - direct bounce (no fly animation)');
+      }
       _focusAnimation = RectTween(
         begin: targetRect,
         end: targetRect,
       ).animate(_focusAnimationController);
-      _focusAnimationController.duration = const Duration(milliseconds: 0);
+      _focusAnimationController.duration = Duration.zero;
       _focusAnimationController.forward(from: 0.0);
       _startBounceAnimation();
       return;
     } else {
-      debugPrint('Case: Different block - transition');
+      if (kDebugMode) {
+        debugPrint('Case: Different block - transition');
+      }
       beginRect = _previousFocusRect ?? targetRect;
       endRect = targetRect;
       curve = Curves.easeInOut;
-      _focusAnimationController.duration = const Duration(milliseconds: 200);
-      _isSameBlockBounce = false;
+      _focusAnimationController.duration = AppAnim.quick;
     }
-    
-    debugPrint('beginRect: $beginRect');
-    debugPrint('endRect: $endRect');
-    debugPrint('curve: $curve');
-    debugPrint('============================');
-    
+
+    if (kDebugMode) {
+      debugPrint('beginRect: $beginRect');
+      debugPrint('endRect: $endRect');
+      debugPrint('curve: $curve');
+      debugPrint('============================');
+    }
+
     _focusAnimation = RectTween(
       begin: beginRect,
       end: endRect,
@@ -787,58 +803,37 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
       parent: _focusAnimationController,
       curve: curve,
     ));
-    
+
     _previousFocusRect = targetRect;
     _currentFocusRect = targetRect;
-    
+
     _bounceAnimationController.reset();
-    
+
     _focusAnimationController.forward(from: 0.0);
   }
 
   void _startBounceAnimation() {
     if (_currentFocusRect == null) return;
-    
-    if (_isSameBlockBounce) {
-      _bounceAnimation = TweenSequence<double>([
-        TweenSequenceItem(
-          tween: Tween(begin: 1.0, end: 1.2)
-              .chain(CurveTween(curve: Curves.easeOut)),
-          weight: 25,
-        ),
-        TweenSequenceItem(
-          tween: Tween(begin: 1.2, end: 0.85)
-              .chain(CurveTween(curve: Curves.easeInOut)),
-          weight: 30,
-        ),
-        TweenSequenceItem(
-          tween: Tween(begin: 0.85, end: 1.0)
-              .chain(CurveTween(curve: Curves.elasticOut)),
-          weight: 45,
-        ),
-      ]).animate(_bounceAnimationController);
-      _bounceAnimationController.duration = const Duration(milliseconds: 400);
-    } else {
-      _bounceAnimation = TweenSequence<double>([
-        TweenSequenceItem(
-          tween: Tween(begin: 1.0, end: 1.2)
-              .chain(CurveTween(curve: Curves.easeOut)),
-          weight: 25,
-        ),
-        TweenSequenceItem(
-          tween: Tween(begin: 1.2, end: 0.85)
-              .chain(CurveTween(curve: Curves.easeInOut)),
-          weight: 30,
-        ),
-        TweenSequenceItem(
-          tween: Tween(begin: 0.85, end: 1.0)
-              .chain(CurveTween(curve: Curves.elasticOut)),
-          weight: 45,
-        ),
-      ]).animate(_bounceAnimationController);
-      _bounceAnimationController.duration = const Duration(milliseconds: 400);
-    }
-    
+
+    _bounceAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(begin: 1.0, end: 1.2)
+            .chain(CurveTween(curve: Curves.easeOut)),
+        weight: 25,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.2, end: 0.85)
+            .chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 30,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 0.85, end: 1.0)
+            .chain(CurveTween(curve: Curves.elasticOut)),
+        weight: 45,
+      ),
+    ]).animate(_bounceAnimationController);
+    _bounceAnimationController.duration = AppAnim.slow;
+
     _bounceAnimationController.forward(from: 0.0);
   }
 
@@ -1197,7 +1192,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
                 final imageSize = snapshot.data!;
                 final displaySize = _calculateDisplaySize(imageSize,
                     Size(constraints.maxWidth, constraints.maxHeight));
-                
+
                 _displaySize = displaySize;
                 _imageSize = imageSize;
 
@@ -1270,7 +1265,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
       builder: (context, child) {
         final flyRect = _focusAnimation!.value ?? _currentFocusRect!;
         final bounceScale = _bounceAnimation?.value ?? 1.0;
-        
+
         final center = flyRect.center;
         final scaledWidth = flyRect.width * bounceScale;
         final scaledHeight = flyRect.height * bounceScale;
@@ -1279,7 +1274,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
           width: scaledWidth,
           height: scaledHeight,
         );
-        
+
         return Positioned(
           left: scaledRect.left,
           top: scaledRect.top,
@@ -1289,7 +1284,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
             child: Container(
               decoration: BoxDecoration(
                 border: Border.all(
-                  color: const Color(0xFFE53935),
+                  color: AppTheme.primaryOf(context),
                   width: (scaledRect.height * 0.03).clamp(2.0, 6.0),
                 ),
                 borderRadius: BorderRadius.circular(
@@ -1365,7 +1360,8 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
                 ),
                 decoration: BoxDecoration(
                   color: AppTheme.primaryOf(context).withValues(alpha: 0.9),
-                  borderRadius: BorderRadius.circular((displayRect.height * 0.04).clamp(4.0, 6.0)),
+                  borderRadius: BorderRadius.circular(
+                      (displayRect.height * 0.04).clamp(4.0, 6.0)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.2),
@@ -1386,7 +1382,8 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
                         color: Theme.of(context).colorScheme.onPrimary,
                       ),
                     ),
-                    SizedBox(width: (displayRect.height * 0.04).clamp(4.0, 6.0)),
+                    SizedBox(
+                        width: (displayRect.height * 0.04).clamp(4.0, 6.0)),
                     Text(
                       '加载中',
                       style: TextStyle(

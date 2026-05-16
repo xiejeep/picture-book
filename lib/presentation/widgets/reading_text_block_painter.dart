@@ -37,16 +37,16 @@ class ReadingTextBlockPainter extends CustomPainter {
       final block = textBlocks[i];
       if (block.isDeleted) continue;
 
-      final displayRect = _convertRect(block.boundingBox);
       final isPlaying = i == playingBlockIndex;
+      if (isPlaying) continue;
+
+      final displayRect = _convertRect(block.boundingBox);
 
       final strokeWidth = (displayRect.height * 0.03).clamp(2.0, 6.0);
       final borderRadius = (displayRect.height * 0.08).clamp(4.0, 12.0);
 
       final borderPaint = Paint()
-        ..color = isPlaying
-            ? AppTheme.honeyYellow.withValues(alpha: 0.9)
-            : AppTheme.gentleGreen.withValues(alpha: 0.6)
+        ..color = AppTheme.gentleGreen.withValues(alpha: 0.6)
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth;
 
