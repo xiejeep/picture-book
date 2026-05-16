@@ -33,7 +33,8 @@ class BookDetailPage extends ConsumerStatefulWidget {
   ConsumerState<BookDetailPage> createState() => _BookDetailPageState();
 }
 
-class _BookDetailPageState extends ConsumerState<BookDetailPage> {
+class _BookDetailPageState extends ConsumerState<BookDetailPage>
+    with TickerProviderStateMixin {
   late BookModel _book;
   int _currentPageIndex = 0;
   bool _showBorders = true;
@@ -41,7 +42,8 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
   bool _showTranslation = true;
   String? _playingText;
   int? _playingBlockIndex;
-  int? _tappedBlockIndex;
+  int? _loadingBlockIndex;
+  Timer? _loadingIndicatorTimer;
   double _currentSpeechRate = AppConstants.systemTtsDefaultSpeed;
   bool _currentUseGlmTts = false;
   StreamSubscription<NfcAction>? _nfcSubscription;
@@ -50,13 +52,41 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
   bool _isTranslating = false;
   TranslationStatus _translationStatus = TranslationStatus.idle;
 
+  late AnimationController _focusAnimationController;
+  late AnimationController _bounceAnimationController;
+  Animation<Rect?>? _focusAnimation;
+  Animation<double>? _bounceAnimation;
+  Rect? _previousFocusRect;
+  Rect? _currentFocusRect;
+  bool _hasPlayedBefore = false;
+  bool _isSameBlockBounce = false;
+  Size? _displaySize;
+  Size? _imageSize;
+
   @override
   void initState() {
     super.initState();
     _book = widget.book;
     _currentPageIndex = _book.currentPageIndex;
 
+    _focusAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+
+    _bounceAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+
+    _focusAnimationController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _startBounceAnimation();
+      }
+    });
+
     _initNfc();
+    _initTtsCallbacks();
     _loadVoiceSettings();
 
     if (widget.autoPlayPageId != null && widget.autoPlayBlockId != null) {
@@ -64,6 +94,21 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
         if (mounted) _autoPlayFromNfc();
       });
     }
+  }
+
+  void _initTtsCallbacks() {
+    final ttsService = ref.read(ttsServiceProvider);
+    ttsService.onLoadingStarted = () {
+      if (mounted) setState(() {});
+    };
+    ttsService.onPlayingStarted = () {
+      if (mounted) {
+        _loadingIndicatorTimer?.cancel();
+        setState(() {
+          _loadingBlockIndex = null;
+        });
+      }
+    };
   }
 
   void _initNfc() {
@@ -322,7 +367,13 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
 
   @override
   void dispose() {
+    final ttsService = ref.read(ttsServiceProvider);
+    ttsService.onLoadingStarted = null;
+    ttsService.onPlayingStarted = null;
     _nfcSubscription?.cancel();
+    _loadingIndicatorTimer?.cancel();
+    _focusAnimationController.dispose();
+    _bounceAnimationController.dispose();
     super.dispose();
   }
 
@@ -543,10 +594,8 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
   }
 
   Future<void> _playTextBlock(TextBlockModel block, int blockIndex) async {
-    setState(() => _tappedBlockIndex = blockIndex);
-    Future.delayed(const Duration(milliseconds: 200), () {
-      if (mounted) setState(() => _tappedBlockIndex = null);
-    });
+    debugPrint('>>> _playTextBlock called: blockIndex=$blockIndex, text=${block.text.length > 20 ? block.text.substring(0, 20) : block.text}...');
+    _updateFocusAnimation(block);
 
     _translateBlock(block, blockIndex);
 
@@ -559,11 +608,24 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
       _playingBlockIndex = blockIndex;
     });
 
+    _loadingIndicatorTimer?.cancel();
+    if (_currentUseGlmTts) {
+      _loadingIndicatorTimer = Timer(const Duration(milliseconds: 300), () {
+        if (mounted && _playingBlockIndex == blockIndex && _loadingBlockIndex == null) {
+          setState(() => _loadingBlockIndex = blockIndex);
+        }
+      });
+    }
+
     try {
       await ref.read(ttsServiceProvider).speak(block.text);
     } catch (e) {
       if (e is GlmTtsException) {
         if (!mounted) return;
+        _loadingIndicatorTimer?.cancel();
+        setState(() {
+          _loadingBlockIndex = null;
+        });
         showDialog(
           context: context,
           builder: (context) => Dialog(
@@ -645,6 +707,141 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
     }
   }
 
+  void _updateFocusAnimation(TextBlockModel block) {
+    if (_displaySize == null || _imageSize == null) return;
+    
+    final page = _book.pages[_currentPageIndex];
+    final scaleX = _displaySize!.width /
+        (page.imageWidth > 0 ? page.imageWidth : _imageSize!.width);
+    final scaleY = _displaySize!.height /
+        (page.imageHeight > 0 ? page.imageHeight : _imageSize!.height);
+    
+    final blockRect = Rect.fromLTRB(
+      block.boundingBox.left * scaleX,
+      block.boundingBox.top * scaleY,
+      block.boundingBox.right * scaleX,
+      block.boundingBox.bottom * scaleY,
+    );
+    
+    final targetRect = Rect.fromCenter(
+      center: blockRect.center,
+      width: blockRect.width * 1.1,
+      height: blockRect.height * 1.2,
+    );
+    
+    final isSameBlock = _previousFocusRect != null &&
+        targetRect.left == _previousFocusRect!.left &&
+        targetRect.top == _previousFocusRect!.top &&
+        targetRect.width == _previousFocusRect!.width &&
+        targetRect.height == _previousFocusRect!.height;
+    
+    debugPrint('=== Focus Animation Debug ===');
+    debugPrint('isSameBlock: $isSameBlock');
+    debugPrint('_previousFocusRect: $_previousFocusRect');
+    debugPrint('targetRect: $targetRect');
+    debugPrint('_hasPlayedBefore: $_hasPlayedBefore');
+    
+    Rect beginRect;
+    Rect endRect;
+    Curve curve;
+    
+    if (!_hasPlayedBefore) {
+      debugPrint('Case: First play - full screen to target');
+      beginRect = Rect.fromLTWH(
+        0, 0, _displaySize!.width, _displaySize!.height,
+      );
+      endRect = targetRect;
+      curve = Curves.easeInOut;
+      _focusAnimationController.duration = const Duration(milliseconds: 200);
+      _hasPlayedBefore = true;
+      _isSameBlockBounce = false;
+    } else if (isSameBlock) {
+      debugPrint('Case: Same block - direct bounce (no fly animation)');
+      _isSameBlockBounce = true;
+      _focusAnimation = RectTween(
+        begin: targetRect,
+        end: targetRect,
+      ).animate(_focusAnimationController);
+      _focusAnimationController.duration = const Duration(milliseconds: 0);
+      _focusAnimationController.forward(from: 0.0);
+      _startBounceAnimation();
+      return;
+    } else {
+      debugPrint('Case: Different block - transition');
+      beginRect = _previousFocusRect ?? targetRect;
+      endRect = targetRect;
+      curve = Curves.easeInOut;
+      _focusAnimationController.duration = const Duration(milliseconds: 200);
+      _isSameBlockBounce = false;
+    }
+    
+    debugPrint('beginRect: $beginRect');
+    debugPrint('endRect: $endRect');
+    debugPrint('curve: $curve');
+    debugPrint('============================');
+    
+    _focusAnimation = RectTween(
+      begin: beginRect,
+      end: endRect,
+    ).animate(CurvedAnimation(
+      parent: _focusAnimationController,
+      curve: curve,
+    ));
+    
+    _previousFocusRect = targetRect;
+    _currentFocusRect = targetRect;
+    
+    _bounceAnimationController.reset();
+    
+    _focusAnimationController.forward(from: 0.0);
+  }
+
+  void _startBounceAnimation() {
+    if (_currentFocusRect == null) return;
+    
+    if (_isSameBlockBounce) {
+      _bounceAnimation = TweenSequence<double>([
+        TweenSequenceItem(
+          tween: Tween(begin: 1.0, end: 1.2)
+              .chain(CurveTween(curve: Curves.easeOut)),
+          weight: 25,
+        ),
+        TweenSequenceItem(
+          tween: Tween(begin: 1.2, end: 0.85)
+              .chain(CurveTween(curve: Curves.easeInOut)),
+          weight: 30,
+        ),
+        TweenSequenceItem(
+          tween: Tween(begin: 0.85, end: 1.0)
+              .chain(CurveTween(curve: Curves.elasticOut)),
+          weight: 45,
+        ),
+      ]).animate(_bounceAnimationController);
+      _bounceAnimationController.duration = const Duration(milliseconds: 400);
+    } else {
+      _bounceAnimation = TweenSequence<double>([
+        TweenSequenceItem(
+          tween: Tween(begin: 1.0, end: 1.2)
+              .chain(CurveTween(curve: Curves.easeOut)),
+          weight: 25,
+        ),
+        TweenSequenceItem(
+          tween: Tween(begin: 1.2, end: 0.85)
+              .chain(CurveTween(curve: Curves.easeInOut)),
+          weight: 30,
+        ),
+        TweenSequenceItem(
+          tween: Tween(begin: 0.85, end: 1.0)
+              .chain(CurveTween(curve: Curves.elasticOut)),
+          weight: 45,
+        ),
+      ]).animate(_bounceAnimationController);
+      _bounceAnimationController.duration = const Duration(milliseconds: 400);
+    }
+    
+    _bounceAnimationController.forward(from: 0.0);
+  }
+
   void _replayCurrentBlock() {
     if (_translatedBlockIndex == null) return;
     final page = _book.pages[_currentPageIndex];
@@ -655,9 +852,11 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
 
   void _stopPlaying() {
     ref.read(ttsServiceProvider).stop();
+    _loadingIndicatorTimer?.cancel();
     setState(() {
       _playingText = null;
       _playingBlockIndex = null;
+      _loadingBlockIndex = null;
     });
   }
 
@@ -998,6 +1197,9 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
                 final imageSize = snapshot.data!;
                 final displaySize = _calculateDisplaySize(imageSize,
                     Size(constraints.maxWidth, constraints.maxHeight));
+                
+                _displaySize = displaySize;
+                _imageSize = imageSize;
 
                 return Center(
                   child: Container(
@@ -1038,6 +1240,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
                             if (page.textBlocks.isNotEmpty)
                               ..._buildTextBlockTapAreas(
                                   page, displaySize, imageSize),
+                            _buildFocusBorder(),
                           ],
                         ),
                       ),
@@ -1045,6 +1248,54 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
                   ),
                 );
               },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFocusBorder() {
+    if (_focusAnimation == null || _currentFocusRect == null) {
+      return const SizedBox.shrink();
+    }
+
+    final animation = Listenable.merge([
+      _focusAnimationController,
+      _bounceAnimationController,
+    ]);
+
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        final flyRect = _focusAnimation!.value ?? _currentFocusRect!;
+        final bounceScale = _bounceAnimation?.value ?? 1.0;
+        
+        final center = flyRect.center;
+        final scaledWidth = flyRect.width * bounceScale;
+        final scaledHeight = flyRect.height * bounceScale;
+        final scaledRect = Rect.fromCenter(
+          center: center,
+          width: scaledWidth,
+          height: scaledHeight,
+        );
+        
+        return Positioned(
+          left: scaledRect.left,
+          top: scaledRect.top,
+          width: scaledRect.width,
+          height: scaledRect.height,
+          child: IgnorePointer(
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: const Color(0xFFE53935),
+                  width: (scaledRect.height * 0.03).clamp(2.0, 6.0),
+                ),
+                borderRadius: BorderRadius.circular(
+                  (scaledRect.height * 0.08).clamp(4.0, 12.0),
+                ),
+              ),
             ),
           ),
         );
@@ -1072,8 +1323,6 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
         block.boundingBox.bottom * scaleY,
       );
 
-      final isTapped = _tappedBlockIndex == i;
-
       final padding = 12.0;
       widgets.add(
         Positioned(
@@ -1089,38 +1338,70 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
               behavior: HitTestBehavior.opaque,
               onTap: () => _playTextBlock(block, i),
               onLongPress: () => _showNfcBindDialog(block, i),
-              child: AnimatedScale(
-                scale: isTapped ? 1.05 : 1.0,
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOut,
-                child: Padding(
-                  padding: EdgeInsets.all(padding),
-                  child: SizedBox(
-                    width: displayRect.width,
-                    height: displayRect.height,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      decoration: BoxDecoration(
-                        color: isTapped
-                            ? AppTheme.accentOf(context).withValues(alpha: 0.3)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(4),
-                        border: isTapped
-                            ? Border.all(
-                                color: AppTheme.accentOf(context)
-                                    .withValues(alpha: 0.6),
-                                width: 2,
-                              )
-                            : null,
-                      ),
-                    ),
-                  ),
-                ),
+              child: Padding(
+                padding: EdgeInsets.all(padding),
               ),
             ),
           ),
         ),
       );
+
+      if (_loadingBlockIndex == i) {
+        final tipHeight = (displayRect.height * 0.15).clamp(24.0, 40.0);
+        final tipGap = (displayRect.height * 0.04).clamp(2.0, 8.0);
+        final iconSize = (displayRect.height * 0.08).clamp(12.0, 16.0);
+        widgets.add(
+          Positioned(
+            left: displayRect.left,
+            top: displayRect.top - tipHeight - tipGap,
+            width: displayRect.width,
+            height: tipHeight,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: (displayRect.height * 0.06).clamp(6.0, 10.0),
+                  vertical: (displayRect.height * 0.04).clamp(4.0, 6.0),
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryOf(context).withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular((displayRect.height * 0.04).clamp(4.0, 6.0)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: iconSize,
+                      height: iconSize,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Theme.of(context).colorScheme.onPrimary,
+                      ),
+                    ),
+                    SizedBox(width: (displayRect.height * 0.04).clamp(4.0, 6.0)),
+                    Text(
+                      '加载中',
+                      style: TextStyle(
+                        fontSize: (displayRect.height * 0.1).clamp(10.0, 13.0),
+                        fontWeight: FontWeight.w500,
+                        color: Theme.of(context).colorScheme.onPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }
     }
 
     return widgets;

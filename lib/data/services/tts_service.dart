@@ -32,8 +32,12 @@ class TtsService {
   AudioPlayer _audioPlayer = AudioPlayer();
   bool _isInitialized = false;
   bool _isSpeaking = false;
+  bool _isLoading = false;
   String? _currentText;
   Completer<void>? _speakCompleter;
+
+  VoidCallback? onLoadingStarted;
+  VoidCallback? onPlayingStarted;
 
   Future<void> initialize() async {
     if (_isInitialized) {
@@ -168,13 +172,21 @@ class TtsService {
 
   Future<void> _speakWithGlmTts(String text, double speechRate) async {
     debugPrint('使用GLM-TTS播放');
+    
+    _isLoading = true;
+    onLoadingStarted?.call();
+    
     try {
       final audioPath = await AiService.instance.synthesizeSpeech(
         text,
         speechRate: speechRate,
       );
+      
+      _isLoading = false;
+      _isSpeaking = true;
+      onPlayingStarted?.call();
+      
       if (audioPath != null) {
-        _isSpeaking = true;
         await _audioPlayer.play(DeviceFileSource(audioPath));
         debugPrint('GLM-TTS开始播放');
       } else {
@@ -182,6 +194,8 @@ class TtsService {
         await _speakWithFlutterTts(text);
       }
     } catch (e) {
+      _isLoading = false;
+      
       final statusCode = _extractStatusCode(e);
       final errorMsg = _extractErrorMessage(e);
 
@@ -214,10 +228,11 @@ class TtsService {
   }
 
   Future<void> stop() async {
-    if (_isSpeaking) {
+    if (_isSpeaking || _isLoading) {
       await _flutterTts.stop();
       await _audioPlayer.stop();
       _isSpeaking = false;
+      _isLoading = false;
       _currentText = null;
       _speakCompleter?.complete();
       _speakCompleter = null;
@@ -228,6 +243,7 @@ class TtsService {
   Future<void> _cleanupAudioFile() async {}
 
   bool get isSpeaking => _isSpeaking;
+  bool get isLoading => _isLoading;
   String? get currentText => _currentText;
 
   Future<void> setSpeechRate(double rate) async {
@@ -258,9 +274,12 @@ class TtsService {
     _cleanupAudioFile();
     _isInitialized = false;
     _isSpeaking = false;
+    _isLoading = false;
     _currentText = null;
     _speakCompleter?.complete();
     _speakCompleter = null;
+    onLoadingStarted = null;
+    onPlayingStarted = null;
     _flutterTts = FlutterTts();
     _audioPlayer = AudioPlayer();
   }
