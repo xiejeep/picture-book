@@ -163,117 +163,161 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
     }
 
     final page = _book.pages[_currentPageIndex];
-    final confirmed = await showDialog<bool>(
+    bool isWriting = false;
+    String? errorMessage;
+
+    await showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryOf(context).withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                Icons.nfc,
-                color: AppTheme.primaryOf(context),
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                '绑定 NFC 标签',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.onSurfaceOf(context),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryOf(context).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.nfc,
+                  color: AppTheme.primaryOf(context),
+                  size: 24,
                 ),
               ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  '绑定 NFC 标签',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.onSurfaceOf(context),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '将此文本块绑定到一张 NFC 标签：',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.7),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.cardOf(context),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  block.text,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: AppTheme.onSurfaceOf(context),
+                  ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (isWriting)
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppTheme.primaryOf(context),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      '请将 NFC 标签贴近手机背面...',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.primaryOf(context),
+                      ),
+                    ),
+                  ],
+                )
+              else if (errorMessage != null)
+                Text(
+                  errorMessage!,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.errorOf(context),
+                  ),
+                )
+              else
+                Text(
+                  '点击"开始绑定"后请将 NFC 标签贴近手机背面',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.primaryOf(context),
+                  ),
+                ),
+            ],
+          ),
+          actions: [
+            if (!isWriting)
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  errorMessage != null ? '关闭' : '取消',
+                  style: TextStyle(
+                    color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
+                  ),
+                ),
+              ),
+            ElevatedButton(
+              onPressed: isWriting
+                  ? null
+                  : () async {
+                      setDialogState(() {
+                        isWriting = true;
+                        errorMessage = null;
+                      });
+                      try {
+                        await nfcService.writeTag(_book.id, page.id, block.id);
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          ToastUtil.success('NFC 标签绑定成功');
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          setDialogState(() {
+                            isWriting = false;
+                            errorMessage = '绑定失败：$e';
+                          });
+                        }
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    AppTheme.primaryOf(context).withValues(alpha: 0.85),
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(errorMessage != null ? '重新绑定' : '开始绑定'),
             ),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '将此文本块绑定到一张 NFC 标签：',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.7),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.cardOf(context),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                block.text,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: AppTheme.onSurfaceOf(context),
-                ),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              '确认后请将 NFC 标签贴近手机背面',
-              style: TextStyle(
-                fontSize: 13,
-                color: AppTheme.primaryOf(context),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              '取消',
-              style: TextStyle(
-                color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor:
-                  AppTheme.primaryOf(context).withValues(alpha: 0.85),
-              foregroundColor: Theme.of(context).colorScheme.onPrimary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text('开始绑定'),
-          ),
-        ],
       ),
     );
-
-    if (confirmed != true || !mounted) return;
-
-    try {
-      await nfcService.writeTag(_book.id, page.id, block.id);
-      if (mounted) {
-        ToastUtil.success('NFC 标签绑定成功');
-      }
-    } catch (e) {
-      if (mounted) {
-        ToastUtil.error('绑定失败：$e');
-      }
-    }
   }
 
   @override
