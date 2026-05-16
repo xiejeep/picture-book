@@ -708,7 +708,6 @@ color: AppTheme.focusHighlightOf(context),
     if (mounted) {
       setState(() {
         _playingText = null;
-        _playingBlockIndex = null;
       });
     }
   }
@@ -852,6 +851,10 @@ color: AppTheme.focusHighlightOf(context),
       _playingText = null;
       _playingBlockIndex = null;
       _loadingBlockIndex = null;
+      _currentFocusRect = null;
+      _focusAnimation = null;
+      _previousFocusRect = null;
+      _hasPlayedBefore = false;
     });
   }
 
@@ -917,6 +920,11 @@ color: AppTheme.focusHighlightOf(context),
       _translatedText = null;
       _isTranslating = false;
       _translationStatus = TranslationStatus.idle;
+      _playingBlockIndex = null;
+      _currentFocusRect = null;
+      _focusAnimation = null;
+      _previousFocusRect = null;
+      _hasPlayedBefore = false;
     });
   }
 
