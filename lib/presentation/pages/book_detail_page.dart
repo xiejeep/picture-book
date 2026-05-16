@@ -326,12 +326,6 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
     super.dispose();
   }
 
-  @override
-  void deactivate() {
-    _nfcSubscription?.cancel();
-    super.deactivate();
-  }
-
   void _showVoiceSettingsDialog() {
     showDialog(
       context: context,

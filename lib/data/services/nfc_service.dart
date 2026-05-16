@@ -8,6 +8,19 @@ import 'package:nfc_manager/nfc_manager.dart';
 import 'package:nfc_manager/nfc_manager_android.dart';
 import 'package:nfc_manager/nfc_manager_ios.dart';
 
+/// Type-safe wrapper for platform-specific NDEF tags.
+sealed class NdefTag {}
+
+final class NdefTagAndroid extends NdefTag {
+  final NdefAndroid ndef;
+  NdefTagAndroid(this.ndef);
+}
+
+final class NdefTagIos extends NdefTag {
+  final NdefIos ndef;
+  NdefTagIos(this.ndef);
+}
+
 class NfcAction {
   final String bookId;
   final String pageId;
@@ -40,7 +53,8 @@ class NfcAction {
     return id;
   }
 
-  String toUri() => '$scheme://$host/${_strip(bookId)}/${_strip(pageId)}/${_strip(blockId)}';
+  String toUri() =>
+      '$scheme://$host/${_strip(bookId)}/${_strip(pageId)}/${_strip(blockId)}';
 
   static String _strip(String uuid) => uuid.replaceAll('-', '');
 
@@ -81,9 +95,11 @@ class NfcService {
 
   Future<void> _checkPendingNfcIntent() async {
     try {
-      final result = await _nfcChannel.invokeMethod<List<dynamic>>('getPendingNfcIntent');
+      final result =
+          await _nfcChannel.invokeMethod<List<dynamic>>('getPendingNfcIntent');
       if (result != null && result.isNotEmpty) {
-        debugPrint('NFC [INTENT]: got ${result.length} pending URI(s) from cold start');
+        debugPrint(
+            'NFC [INTENT]: got ${result.length} pending URI(s) from cold start');
         _handleNfcUris(result);
       }
     } catch (e) {
@@ -116,6 +132,8 @@ class NfcService {
         _emit(action);
         return;
       }
+      // Some Android devices prepend 2-byte URI encoding prefix (e.g., 0x00 prefix or BOM-like artifacts)
+      // Strip first 2 characters as fallback for cross-device compatibility
       final cleanUri = uri.toString().replaceFirst(RegExp(r'^[\s\S]{2}'), '');
       final action2 = NfcAction.tryParse(cleanUri);
       if (action2 != null) {
@@ -221,7 +239,8 @@ class NfcService {
               ),
             ],
           );
-          debugPrint('NFC [WRITE]: writing NDEF message (${message.records.length} record(s), '
+          debugPrint(
+              'NFC [WRITE]: writing NDEF message (${message.records.length} record(s), '
               '${message.byteLength} bytes)...');
           await _writeNdef(ndef, message);
           debugPrint('NFC [WRITE]: write successful, stopping session');
@@ -251,34 +270,35 @@ class NfcService {
     return completer.future;
   }
 
-  dynamic _getNdefFromTag(NfcTag tag) {
+  NdefTag? _getNdefFromTag(NfcTag tag) {
     if (Platform.isAndroid) {
       final ndef = NdefAndroid.from(tag);
-      debugPrint('NFC: NdefAndroid.from(tag) => ${ndef != null ? "found (type=${ndef.type}, writable=${ndef.isWritable}, maxSize=${ndef.maxSize})" : "null"}');
-      return ndef;
+      debugPrint(
+          'NFC: NdefAndroid.from(tag) => ${ndef != null ? "found (type=${ndef.type}, writable=${ndef.isWritable}, maxSize=${ndef.maxSize})" : "null"}');
+      return ndef != null ? NdefTagAndroid(ndef) : null;
     } else if (Platform.isIOS) {
       final ndef = NdefIos.from(tag);
-      debugPrint('NFC: NdefIos.from(tag) => ${ndef != null ? "found (status=${ndef.status}, capacity=${ndef.capacity})" : "null"}');
-      return ndef;
+      debugPrint(
+          'NFC: NdefIos.from(tag) => ${ndef != null ? "found (status=${ndef.status}, capacity=${ndef.capacity})" : "null"}');
+      return ndef != null ? NdefTagIos(ndef) : null;
     }
     return null;
   }
 
-  Future<void> _writeNdef(dynamic ndef, NdefMessage message) async {
-    if (Platform.isAndroid && ndef is NdefAndroid) {
-      await ndef.writeNdefMessage(message);
-    } else if (Platform.isIOS && ndef is NdefIos) {
-      await ndef.writeNdef(message);
+  Future<void> _writeNdef(NdefTag ndef, NdefMessage message) async {
+    switch (ndef) {
+      case NdefTagAndroid():
+        await ndef.ndef.writeNdefMessage(message);
+      case NdefTagIos():
+        await ndef.ndef.writeNdef(message);
     }
   }
 
-  NdefMessage? _getCachedMessage(dynamic ndef) {
-    if (Platform.isAndroid && ndef is NdefAndroid) {
-      return ndef.cachedNdefMessage;
-    } else if (Platform.isIOS && ndef is NdefIos) {
-      return ndef.cachedNdefMessage;
-    }
-    return null;
+  NdefMessage? _getCachedMessage(NdefTag ndef) {
+    return switch (ndef) {
+      NdefTagAndroid() => ndef.ndef.cachedNdefMessage,
+      NdefTagIos() => ndef.ndef.cachedNdefMessage,
+    };
   }
 
   void _handleTag(NfcTag tag) {
@@ -295,7 +315,8 @@ class NfcService {
       return;
     }
 
-    debugPrint('NFC [READ]: cached NDEF message has ${cachedMessage.records.length} record(s)');
+    debugPrint(
+        'NFC [READ]: cached NDEF message has ${cachedMessage.records.length} record(s)');
     for (int i = 0; i < cachedMessage.records.length; i++) {
       final record = cachedMessage.records[i];
       try {
@@ -313,11 +334,13 @@ class NfcService {
           return;
         }
 
+        // Strip 2-byte prefix fallback (same as _handleNfcUris)
         final cleanPayload = payload.replaceFirst(RegExp(r'^[\s\S]{2}'), '');
         debugPrint('NFC [READ]: record[$i] clean payload: $cleanPayload');
         final action2 = NfcAction.tryParse(cleanPayload);
         if (action2 != null) {
-          debugPrint('NFC [READ]: record[$i] parsed action (cleaned): $action2');
+          debugPrint(
+              'NFC [READ]: record[$i] parsed action (cleaned): $action2');
           _emit(action2);
           return;
         }
@@ -329,6 +352,9 @@ class NfcService {
     }
   }
 
+  /// Internal cleanup. Not called during normal app lifecycle
+  /// since NfcService is a singleton that lives for the entire app duration.
+  /// Resources are reclaimed when the process terminates.
   void dispose() {
     stopListening();
     _controller.close();

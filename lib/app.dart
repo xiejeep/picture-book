@@ -14,38 +14,43 @@ class BookApp extends ConsumerStatefulWidget {
   ConsumerState<BookApp> createState() => _BookAppState();
 }
 
-class _BookAppState extends ConsumerState<BookApp> {
+class _BookAppState extends ConsumerState<BookApp> with WidgetsBindingObserver {
   StreamSubscription<NfcAction>? _nfcSubscription;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     TtsService.instance.initialize();
     _initNfcListener();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      NfcService.instance.stopListening();
+    } else if (state == AppLifecycleState.resumed) {
+      NfcService.instance.startForegroundListening();
+    }
   }
 
   void _initNfcListener() {
     NfcService.instance.startForegroundListening();
     _nfcSubscription = NfcService.instance.onTagDetected.listen((action) {
-      WidgetsBinding.instance.scheduleFrame();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        if (NfcService.instance.isLastActionConsumed) return;
-        final router = ref.read(goRouterProvider);
-        final config = router.routerDelegate.currentConfiguration;
-        final targetPath = '/book/${action.bookId}';
-        if (config.uri.path == targetPath) return;
-        router.go('/');
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          router.push(nfcPlayRoute(action));
-        });
-      });
+      if (!mounted) return;
+      if (NfcService.instance.isLastActionConsumed) return;
+      final router = ref.read(goRouterProvider);
+      final currentPath = router.routerDelegate.currentConfiguration.uri.path;
+      final targetPath = '/book/${action.bookId}';
+      if (currentPath == targetPath) return;
+      router.push(nfcPlayRoute(action));
     });
     NfcService.instance.initIntentListener();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _nfcSubscription?.cancel();
     super.dispose();
   }
