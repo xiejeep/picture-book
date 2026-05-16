@@ -63,6 +63,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
   bool _hasPlayedBefore = false;
   Size? _displaySize;
   Size? _imageSize;
+  ({TextBlockModel block, int index})? _pendingAutoPlay;
 
   @override
   void initState() {
@@ -149,7 +150,11 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
     });
 
     final block = page.textBlocks[targetBlockIndex];
-    _playTextBlock(block, targetBlockIndex);
+    if (_displaySize == null || _imageSize == null) {
+      _pendingAutoPlay = (block: block, index: targetBlockIndex);
+    } else {
+      _playTextBlock(block, targetBlockIndex);
+    }
   }
 
   void _loadVoiceSettings() {
@@ -195,7 +200,11 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
     });
 
     final block = page.textBlocks[targetBlockIndex];
-    _playTextBlock(block, targetBlockIndex);
+    if (_displaySize == null || _imageSize == null) {
+      _pendingAutoPlay = (block: block, index: targetBlockIndex);
+    } else {
+      _playTextBlock(block, targetBlockIndex);
+    }
   }
 
   void _showNfcBindDialog(TextBlockModel block, int blockIndex) async {
@@ -368,7 +377,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
 
   @override
   void dispose() {
-    final ttsService = ref.read(ttsServiceProvider);
+    final ttsService = TtsService.instance;
     ttsService.onLoadingStarted = null;
     ttsService.onPlayingStarted = null;
     _nfcSubscription?.cancel();
@@ -599,14 +608,30 @@ color: AppTheme.focusHighlightOf(context),
       debugPrint(
           '>>> _playTextBlock called: blockIndex=$blockIndex, text=${block.text.length > 20 ? block.text.substring(0, 20) : block.text}...');
     }
+
+    final ttsService = TtsService.instance;
+    ttsService.onLoadingStarted = () {
+      if (mounted) setState(() {});
+    };
+    ttsService.onPlayingStarted = () {
+      if (mounted) {
+        _loadingIndicatorTimer?.cancel();
+        setState(() {
+          _loadingBlockIndex = null;
+        });
+      }
+    };
+
     _updateFocusAnimation(block);
 
     _translateBlock(block, blockIndex);
 
     if (_playingText != null) {
+      if (!mounted) return;
       await ref.read(ttsServiceProvider).stop();
     }
 
+    if (!mounted) return;
     setState(() {
       _playingText = block.text;
       _playingBlockIndex = blockIndex;
@@ -624,10 +649,11 @@ color: AppTheme.focusHighlightOf(context),
     }
 
     try {
+      if (!mounted) return;
       await ref.read(ttsServiceProvider).speak(block.text);
     } catch (e) {
+      if (!mounted) return;
       if (e is GlmTtsException) {
-        if (!mounted) return;
         _loadingIndicatorTimer?.cancel();
         setState(() {
           _loadingBlockIndex = null;
@@ -1203,6 +1229,14 @@ color: AppTheme.focusHighlightOf(context),
 
                 _displaySize = displaySize;
                 _imageSize = imageSize;
+
+                if (_pendingAutoPlay != null) {
+                  final pending = _pendingAutoPlay!;
+                  _pendingAutoPlay = null;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) _playTextBlock(pending.block, pending.index);
+                  });
+                }
 
                 return Center(
                   child: Container(

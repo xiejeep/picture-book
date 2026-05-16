@@ -40,10 +40,30 @@ class _BookAppState extends ConsumerState<BookApp> with WidgetsBindingObserver {
       if (!mounted) return;
       if (NfcService.instance.isLastActionConsumed) return;
       final router = ref.read(goRouterProvider);
-      final currentPath = router.routerDelegate.currentConfiguration.uri.path;
+      final matches = router.routerDelegate.currentConfiguration.matches;
       final targetPath = '/book/${action.bookId}';
-      if (currentPath == targetPath) return;
-      router.push(nfcPlayRoute(action));
+      
+      int targetIndex = -1;
+      for (int i = 0; i < matches.length; i++) {
+        if (matches[i].matchedLocation.startsWith(targetPath)) {
+          targetIndex = i;
+          break;
+        }
+      }
+      
+      if (targetIndex >= 0) {
+        final isCurrentPage = targetIndex == matches.length - 1;
+        if (isCurrentPage) {
+          NfcService.instance.markActionConsumed();
+          return;
+        }
+        final popsNeeded = matches.length - 1 - targetIndex;
+        for (int i = 0; i < popsNeeded; i++) {
+          router.pop();
+        }
+      } else {
+        router.push(nfcPlayRoute(action));
+      }
     });
     NfcService.instance.initIntentListener();
   }
