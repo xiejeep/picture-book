@@ -62,6 +62,7 @@ class PageModel extends HiveObject {
       'imagePath': imagePath,
       'textBlocks': textBlocks
           .map((block) => {
+                'id': block.id,
                 'left': block.left,
                 'top': block.top,
                 'right': block.right,
@@ -85,6 +86,7 @@ class PageModel extends HiveObject {
       imagePath: json['imagePath'] as String,
       textBlocks: (json['textBlocks'] as List).map((blockJson) {
         return TextBlockModel(
+          id: blockJson['id'] as String?,
           left: blockJson['left'] as double,
           top: blockJson['top'] as double,
           right: blockJson['right'] as double,

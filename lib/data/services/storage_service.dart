@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 import '../models/book_model.dart';
 import '../models/page_model.dart';
 import '../models/text_block_model.dart';
@@ -35,6 +36,36 @@ class StorageService {
     _appSettingsBox = await Hive.openBox<dynamic>('app_settings');
     _secureStorage = const FlutterSecureStorage();
     _isInitialized = true;
+
+    _migrateBlockIdsIfNeeded();
+  }
+
+  void _migrateBlockIdsIfNeeded() {
+    final migrated = _appSettingsBox.get('block_id_migrated') as bool? ?? false;
+    if (migrated) return;
+
+    final uuid = const Uuid();
+    for (final book in _booksBox.values) {
+      bool bookChanged = false;
+      for (int p = 0; p < book.pages.length; p++) {
+        final blocks = book.pages[p].textBlocks;
+        final newBlocks = <TextBlockModel>[];
+        for (final block in blocks) {
+          newBlocks.add(block.copyWith(id: uuid.v4()));
+          bookChanged = true;
+        }
+        if (bookChanged) {
+          book.pages[p] =
+              book.pages[p].copyWith(textBlocks: newBlocks);
+        }
+      }
+      if (bookChanged) {
+        book.save();
+      }
+    }
+
+    _appSettingsBox.put('block_id_migrated', true);
+    debugPrint('Storage: migrated block IDs for existing books');
   }
 
   Box<BookModel> get booksBox {

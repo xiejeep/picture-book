@@ -11,6 +11,8 @@ import '../../presentation/pages/voice_settings_page.dart';
 import '../../presentation/pages/cache_management_page.dart';
 import '../../presentation/pages/tutorial_page.dart';
 import '../../data/models/book_model.dart';
+import '../../data/services/storage_service.dart';
+import '../../data/services/nfc_service.dart';
 import '../../core/theme/app_theme.dart';
 
 Widget _buildErrorPage(BuildContext context, GoRouterState state) {
@@ -71,6 +73,19 @@ Widget _buildErrorPage(BuildContext context, GoRouterState state) {
 final goRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
+    redirect: (context, state) {
+      final uri = state.uri;
+      if (uri.scheme == 'dianduya' && uri.host == 'play') {
+        final segments = uri.pathSegments;
+        if (segments.length == 3) {
+          final bookId = segments[0];
+          final pageId = segments[1];
+          final blockId = segments[2];
+          return '/book/$bookId?autoPlayPageId=$pageId&autoPlayBlockId=$blockId';
+        }
+      }
+      return null;
+    },
     routes: [
       GoRoute(
         path: '/',
@@ -81,11 +96,28 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/book/:id',
         name: 'book_detail',
         builder: (context, state) {
-          final book = state.extra;
-          if (book == null || book is! BookModel) {
+          final bookId = state.pathParameters['id']!;
+          final extra = state.extra;
+
+          BookModel? book;
+          if (extra is BookModel) {
+            book = extra;
+          } else {
+            book = StorageService.instance.getBook(bookId);
+          }
+
+          if (book == null) {
             return _buildErrorPage(context, state);
           }
-          return BookDetailPage(book: book);
+
+          final autoPlayPageId = state.uri.queryParameters['autoPlayPageId'];
+          final autoPlayBlockId = state.uri.queryParameters['autoPlayBlockId'];
+
+          return BookDetailPage(
+            book: book,
+            autoPlayPageId: autoPlayPageId,
+            autoPlayBlockId: autoPlayBlockId,
+          );
         },
       ),
       GoRoute(
@@ -130,3 +162,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     errorBuilder: _buildErrorPage,
   );
 });
+
+String nfcPlayRoute(NfcAction action) {
+  return '/book/${action.bookId}?autoPlayPageId=${action.pageId}&autoPlayBlockId=${action.blockId}';
+}

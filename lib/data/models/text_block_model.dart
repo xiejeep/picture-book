@@ -1,5 +1,6 @@
 import 'package:hive/hive.dart';
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 
 part 'text_block_model.g.dart';
 
@@ -35,6 +36,9 @@ class TextBlockModel extends HiveObject {
   @HiveField(9)
   final String? aiEnhancedText;
 
+  @HiveField(10)
+  final String id;
+
   TextBlockModel({
     required this.left,
     required this.top,
@@ -46,7 +50,8 @@ class TextBlockModel extends HiveObject {
     this.aiTranslatedText,
     this.originalText,
     this.aiEnhancedText,
-  });
+    String? id,
+  }) : id = id ?? const Uuid().v4();
 
   Rect get boundingBox => Rect.fromLTRB(left, top, right, bottom);
 
@@ -58,6 +63,7 @@ class TextBlockModel extends HiveObject {
     String? aiTranslatedText,
     String? originalText,
     String? aiEnhancedText,
+    String? id,
   }) {
     return TextBlockModel(
       left: boundingBox.left,
@@ -70,6 +76,7 @@ class TextBlockModel extends HiveObject {
       aiTranslatedText: aiTranslatedText,
       originalText: originalText,
       aiEnhancedText: aiEnhancedText,
+      id: id,
     );
   }
 
@@ -84,6 +91,7 @@ class TextBlockModel extends HiveObject {
     String? aiTranslatedText,
     String? originalText,
     String? aiEnhancedText,
+    String? id,
     bool clearTranslatedText = false,
     bool clearAiTranslatedText = false,
     bool clearOriginalText = false,
@@ -105,6 +113,7 @@ class TextBlockModel extends HiveObject {
           clearOriginalText ? null : (originalText ?? this.originalText),
       aiEnhancedText:
           clearAiEnhancedText ? null : (aiEnhancedText ?? this.aiEnhancedText),
+      id: id,
     );
   }
 }

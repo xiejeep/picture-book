@@ -6,6 +6,7 @@ import '../../data/services/ocr_service.dart';
 import '../../data/services/ai_service.dart';
 import '../../data/services/tts_service.dart';
 import '../../data/services/translation_service.dart';
+import '../../data/services/nfc_service.dart';
 
 final storageServiceProvider = Provider<StorageService>((ref) {
   return StorageService.instance;
@@ -33,4 +34,8 @@ final ttsServiceProvider = Provider<TtsService>((ref) {
 
 final translationServiceProvider = Provider<TranslationService>((ref) {
   return TranslationService.instance;
+});
+
+final nfcServiceProvider = Provider<NfcService>((ref) {
+  return NfcService.instance;
 });

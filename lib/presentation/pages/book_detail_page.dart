@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +7,7 @@ import '../../data/models/book_model.dart';
 import '../../data/models/page_model.dart';
 import '../../data/models/text_block_model.dart';
 import '../../data/services/tts_service.dart';
+import '../../data/services/nfc_service.dart';
 import '../../data/services/translation_service.dart';
 import '../../data/models/ai_settings_model.dart';
 import '../../core/constants/constants.dart';
@@ -17,10 +19,14 @@ import '../../core/utils/toast_util.dart';
 
 class BookDetailPage extends ConsumerStatefulWidget {
   final BookModel book;
+  final String? autoPlayPageId;
+  final String? autoPlayBlockId;
 
   const BookDetailPage({
     super.key,
     required this.book,
+    this.autoPlayPageId,
+    this.autoPlayBlockId,
   });
 
   @override
@@ -38,6 +44,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
   int? _tappedBlockIndex;
   double _currentSpeechRate = AppConstants.systemTtsDefaultSpeed;
   bool _currentUseGlmTts = false;
+  StreamSubscription<NfcAction>? _nfcSubscription;
   int? _translatedBlockIndex;
   String? _translatedText;
   bool _isTranslating = false;
@@ -49,12 +56,54 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
     _book = widget.book;
     _currentPageIndex = _book.currentPageIndex;
 
-    _initTts();
+    _initNfc();
     _loadVoiceSettings();
+
+    if (widget.autoPlayPageId != null && widget.autoPlayBlockId != null) {
+      TtsService.instance.initialize().then((_) {
+        if (mounted) _autoPlayFromNfc();
+      });
+    }
   }
 
-  Future<void> _initTts() async {
-    await ref.read(ttsServiceProvider).initialize();
+  void _initNfc() {
+    final nfcService = ref.read(nfcServiceProvider);
+    nfcService.startForegroundListening();
+    _nfcSubscription = nfcService.onTagDetected.listen((action) {
+      if (action.bookId == _book.id) {
+        nfcService.markActionConsumed();
+        _playFromNfcAction(action);
+      }
+    });
+  }
+
+  void _playFromNfcAction(NfcAction action) {
+    int? targetPageIndex;
+    for (int i = 0; i < _book.pages.length; i++) {
+      if (_book.pages[i].id == action.pageId) {
+        targetPageIndex = i;
+        break;
+      }
+    }
+    if (targetPageIndex == null) return;
+
+    final page = _book.pages[targetPageIndex];
+    int? targetBlockIndex;
+    for (int i = 0; i < page.textBlocks.length; i++) {
+      if (page.textBlocks[i].id == action.blockId) {
+        targetBlockIndex = i;
+        break;
+      }
+    }
+    if (targetBlockIndex == null) return;
+
+    if (!mounted) return;
+    setState(() {
+      _currentPageIndex = targetPageIndex!;
+    });
+
+    final block = page.textBlocks[targetBlockIndex];
+    _playTextBlock(block, targetBlockIndex);
   }
 
   void _loadVoiceSettings() {
@@ -71,10 +120,172 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
     });
   }
 
+  void _autoPlayFromNfc() {
+    final pageId = widget.autoPlayPageId;
+    final blockId = widget.autoPlayBlockId;
+    if (pageId == null || blockId == null) return;
+
+    int? targetPageIndex;
+    for (int i = 0; i < _book.pages.length; i++) {
+      if (_book.pages[i].id == pageId) {
+        targetPageIndex = i;
+        break;
+      }
+    }
+    if (targetPageIndex == null) return;
+
+    final page = _book.pages[targetPageIndex];
+    int? targetBlockIndex;
+    for (int i = 0; i < page.textBlocks.length; i++) {
+      if (page.textBlocks[i].id == blockId) {
+        targetBlockIndex = i;
+        break;
+      }
+    }
+    if (targetBlockIndex == null) return;
+
+    setState(() {
+      _currentPageIndex = targetPageIndex!;
+    });
+
+    final block = page.textBlocks[targetBlockIndex];
+    _playTextBlock(block, targetBlockIndex);
+  }
+
+  void _showNfcBindDialog(TextBlockModel block, int blockIndex) async {
+    final nfcService = ref.read(nfcServiceProvider);
+    final available = await nfcService.isAvailable();
+    if (!available) {
+      if (mounted) {
+        ToastUtil.warning('此设备不支持 NFC 功能');
+      }
+      return;
+    }
+
+    final page = _book.pages[_currentPageIndex];
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryOf(context).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.nfc,
+                color: AppTheme.primaryOf(context),
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '绑定 NFC 标签',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.onSurfaceOf(context),
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '将此文本块绑定到一张 NFC 标签：',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.7),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.cardOf(context),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                block.text,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.onSurfaceOf(context),
+                ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '确认后请将 NFC 标签贴近手机背面',
+              style: TextStyle(
+                fontSize: 13,
+                color: AppTheme.primaryOf(context),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              '取消',
+              style: TextStyle(
+                color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor:
+                  AppTheme.primaryOf(context).withValues(alpha: 0.85),
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('开始绑定'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await nfcService.writeTag(_book.id, page.id, block.id);
+      if (mounted) {
+        ToastUtil.success('NFC 标签绑定成功');
+      }
+    } catch (e) {
+      if (mounted) {
+        ToastUtil.error('绑定失败：$e');
+      }
+    }
+  }
+
   @override
   void dispose() {
-    ref.read(ttsServiceProvider).stop();
+    _nfcSubscription?.cancel();
     super.dispose();
+  }
+
+  @override
+  void deactivate() {
+    _nfcSubscription?.cancel();
+    super.deactivate();
   }
 
   void _showVoiceSettingsDialog() {
@@ -839,6 +1050,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage> {
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () => _playTextBlock(block, i),
+              onLongPress: () => _showNfcBindDialog(block, i),
               child: AnimatedScale(
                 scale: isTapped ? 1.05 : 1.0,
                 duration: const Duration(milliseconds: 200),

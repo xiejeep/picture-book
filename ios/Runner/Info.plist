@@ -30,6 +30,8 @@
 	<string>需要使用相机拍摄绘本页面图片，以便进行文字识别和添加点读功能</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>需要访问相册以选择绘本页面图片，用于文字识别和点读功能</string>
+	<key>NFCReaderUsageDescription</key>
+	<string>点读鸭需要使用NFC来快速打开绘本并朗读对应内容</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
