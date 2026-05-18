@@ -11,6 +11,8 @@ class SettingsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final nfcAvailableAsync = ref.watch(nfcAvailableProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('设置'),
@@ -32,6 +34,10 @@ class SettingsPage extends ConsumerWidget {
               const SizedBox(height: 16),
               _buildAiSettingsSection(context, ref),
               const SizedBox(height: 16),
+              if (nfcAvailableAsync.hasValue && nfcAvailableAsync.value == true)
+                _buildDeviceSection(context, ref),
+              if (nfcAvailableAsync.hasValue && nfcAvailableAsync.value == true)
+                const SizedBox(height: 16),
               _buildAboutSection(context),
             ],
           ),
@@ -113,6 +119,85 @@ class SettingsPage extends ConsumerWidget {
             onTap: () {
               context.push('/tutorial');
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeviceSection(BuildContext context, WidgetRef ref) {
+    final nfcEnabled = ref.watch(nfcEnabledProvider);
+
+    return Container(
+      decoration: AppTheme.playfulCardDecorationOf(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.nfc_rounded,
+                  size: 18,
+                  color: AppTheme.isDarkMode(context)
+                      ? AppTheme.darkAccent
+                      : AppTheme.softOrange,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '设备功能',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Semantics(
+            label: 'NFC功能',
+            hint: nfcEnabled ? '点击关闭NFC功能' : '点击开启NFC功能',
+            container: true,
+            child: ListTile(
+              leading: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      AppTheme.softOrange.withValues(alpha: 0.8),
+                      AppTheme.honeyYellow.withValues(alpha: 0.8),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.nfc_rounded, color: Colors.white),
+              ),
+              title: const Text('NFC功能'),
+              subtitle: Text(
+                nfcEnabled ? '已开启，可使用NFC标签点读' : '未开启',
+                style: TextStyle(
+                  color: nfcEnabled
+                      ? AppTheme.secondaryOf(context)
+                      : AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
+                ),
+              ),
+              trailing: Switch(
+                value: nfcEnabled,
+                onChanged: (value) {
+                  ref.read(nfcEnabledProvider.notifier).setNfcEnabled(value);
+                },
+                activeTrackColor: AppTheme.primaryOf(context).withValues(alpha: 0.5),
+                activeThumbColor: AppTheme.primaryOf(context),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
           ),
         ],
       ),

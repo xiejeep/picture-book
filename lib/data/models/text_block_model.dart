@@ -113,7 +113,7 @@ class TextBlockModel extends HiveObject {
           clearOriginalText ? null : (originalText ?? this.originalText),
       aiEnhancedText:
           clearAiEnhancedText ? null : (aiEnhancedText ?? this.aiEnhancedText),
-      id: id,
+      id: id ?? this.id,
     );
   }
 }

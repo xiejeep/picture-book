@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/ai_settings_model.dart';
 import '../../data/services/storage_service.dart';
+import '../../data/services/nfc_service.dart';
 import '../../core/constants/constants.dart';
 import '../providers/repository_providers.dart';
 
@@ -94,3 +95,23 @@ class ThemeModeNotifier extends Notifier<ThemeMode> {
 final themeModeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(() {
   return ThemeModeNotifier();
 });
+
+final nfcAvailableProvider = FutureProvider<bool>((ref) async {
+  return await NfcService.instance.isAvailable();
+});
+
+final nfcEnabledProvider = NotifierProvider<NfcEnabledNotifier, bool>(() {
+  return NfcEnabledNotifier();
+});
+
+class NfcEnabledNotifier extends Notifier<bool> {
+  @override
+  bool build() {
+    return StorageService.instance.getNfcEnabled();
+  }
+
+  Future<void> setNfcEnabled(bool enabled) async {
+    await StorageService.instance.saveNfcEnabled(enabled);
+    state = enabled;
+  }
+}

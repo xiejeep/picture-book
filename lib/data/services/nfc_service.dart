@@ -261,7 +261,7 @@ class NfcService {
           _isListening = false;
           startForegroundListening();
           if (!completer.isCompleted) {
-            completer.completeError(NfcException('写入 NFC 标签失败: $e'));
+            completer.completeError(NfcException('写入失败'));
           }
         }
       },

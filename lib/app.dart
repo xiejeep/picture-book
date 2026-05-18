@@ -16,21 +16,41 @@ class BookApp extends ConsumerStatefulWidget {
 
 class _BookAppState extends ConsumerState<BookApp> with WidgetsBindingObserver {
   StreamSubscription<NfcAction>? _nfcSubscription;
+  bool _nfcInitialized = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     TtsService.instance.initialize();
-    _initNfcListener();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    final nfcEnabled = ref.read(nfcEnabledProvider);
+    if (!nfcEnabled || !_nfcInitialized) return;
+
     if (state == AppLifecycleState.paused) {
       NfcService.instance.stopListening();
     } else if (state == AppLifecycleState.resumed) {
       NfcService.instance.startForegroundListening();
+    }
+  }
+
+  void _initNfcIfNeeded() {
+    final nfcEnabled = ref.read(nfcEnabledProvider);
+    if (nfcEnabled && !_nfcInitialized) {
+      _initNfcListener();
+      _nfcInitialized = true;
+    }
+  }
+
+  void _stopNfcIfNeeded() {
+    if (_nfcInitialized) {
+      NfcService.instance.stopListening();
+      _nfcSubscription?.cancel();
+      _nfcSubscription = null;
+      _nfcInitialized = false;
     }
   }
 
@@ -42,7 +62,7 @@ class _BookAppState extends ConsumerState<BookApp> with WidgetsBindingObserver {
       final router = ref.read(goRouterProvider);
       final matches = router.routerDelegate.currentConfiguration.matches;
       final targetPath = '/book/${action.bookId}';
-      
+
       int targetIndex = -1;
       for (int i = 0; i < matches.length; i++) {
         if (matches[i].matchedLocation.startsWith(targetPath)) {
@@ -50,7 +70,7 @@ class _BookAppState extends ConsumerState<BookApp> with WidgetsBindingObserver {
           break;
         }
       }
-      
+
       if (targetIndex >= 0) {
         final isCurrentPage = targetIndex == matches.length - 1;
         if (isCurrentPage) {
@@ -72,6 +92,7 @@ class _BookAppState extends ConsumerState<BookApp> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _nfcSubscription?.cancel();
+    NfcService.instance.stopListening();
     super.dispose();
   }
 
@@ -79,6 +100,13 @@ class _BookAppState extends ConsumerState<BookApp> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final router = ref.watch(goRouterProvider);
     final themeMode = ref.watch(themeModeProvider);
+    final nfcEnabled = ref.watch(nfcEnabledProvider);
+
+    if (nfcEnabled && !_nfcInitialized) {
+      Future.microtask(() => _initNfcIfNeeded());
+    } else if (!nfcEnabled && _nfcInitialized) {
+      Future.microtask(() => _stopNfcIfNeeded());
+    }
 
     return MaterialApp.router(
       title: '点读鸭',

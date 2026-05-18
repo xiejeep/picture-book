@@ -191,4 +191,12 @@ class StorageService {
     };
     await _appSettingsBox.put('theme_mode', value);
   }
+
+  bool getNfcEnabled() {
+    return _appSettingsBox.get('nfc_enabled', defaultValue: false) as bool;
+  }
+
+  Future<void> saveNfcEnabled(bool enabled) async {
+    await _appSettingsBox.put('nfc_enabled', enabled);
+  }
 }

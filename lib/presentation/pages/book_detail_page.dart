@@ -18,6 +18,7 @@ import '../widgets/reading_text_block_painter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/utils/toast_util.dart';
+import '../providers/settings_provider.dart';
 
 class BookDetailPage extends ConsumerStatefulWidget {
   final BookModel book;
@@ -114,6 +115,9 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
   }
 
   void _initNfc() {
+    final nfcEnabled = ref.read(nfcEnabledProvider);
+    if (!nfcEnabled) return;
+
     final nfcService = ref.read(nfcServiceProvider);
     nfcService.startForegroundListening();
     _nfcSubscription = nfcService.onTagDetected.listen((action) {
@@ -354,7 +358,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
                         if (context.mounted) {
                           setDialogState(() {
                             isWriting = false;
-                            errorMessage = '绑定失败：$e';
+                            errorMessage = '绑定失败，请重试';
                           });
                         }
                       }
@@ -1374,7 +1378,12 @@ color: AppTheme.focusHighlightOf(context),
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () => _playTextBlock(block, i),
-              onLongPress: () => _showNfcBindDialog(block, i),
+              onLongPress: () {
+                final nfcEnabled = ref.read(nfcEnabledProvider);
+                if (nfcEnabled) {
+                  _showNfcBindDialog(block, i);
+                }
+              },
               child: Padding(
                 padding: EdgeInsets.all(padding),
               ),
