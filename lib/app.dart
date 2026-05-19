@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'core/utils/toast_util.dart';
 import 'data/services/nfc_service.dart';
 import 'data/services/tts_service.dart';
 import 'presentation/providers/settings_provider.dart';
@@ -115,6 +116,10 @@ class _BookAppState extends ConsumerState<BookApp> with WidgetsBindingObserver {
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
       routerConfig: router,
+      builder: (context, child) {
+        ToastUtil.init(context);
+        return child ?? const SizedBox.shrink();
+      },
     );
   }
 }
