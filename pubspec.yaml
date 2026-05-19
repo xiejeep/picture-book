@@ -58,7 +58,7 @@ dependencies:
   package_info_plus: ^8.0.0
   nfc_manager: ^4.2.1
   ndef_record: ^1.4.2
-  flutter_onnxruntime: ^1.6.0
+  flutter_onnxruntime: ^1.6.1
 
 dev_dependencies:
   flutter_test:
