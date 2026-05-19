@@ -23,13 +23,16 @@ class AiSettingsModelAdapter extends TypeAdapter<AiSettingsModel> {
       speechRate: fields[3] as double,
       useSlowSpeed: fields[4] as bool,
       selectedTextModel: fields[5] as String?,
+      ttsEngine: fields[6] as String?,
+      supertonicVoice: fields[7] as String?,
+      supertonicSteps: fields[8] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, AiSettingsModel obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.selectedModel)
       ..writeByte(1)
@@ -41,7 +44,13 @@ class AiSettingsModelAdapter extends TypeAdapter<AiSettingsModel> {
       ..writeByte(4)
       ..write(obj.useSlowSpeed)
       ..writeByte(5)
-      ..write(obj.selectedTextModel);
+      ..write(obj.selectedTextModel)
+      ..writeByte(6)
+      ..write(obj.ttsEngine)
+      ..writeByte(7)
+      ..write(obj.supertonicVoice)
+      ..writeByte(8)
+      ..write(obj.supertonicSteps);
   }
 
   @override

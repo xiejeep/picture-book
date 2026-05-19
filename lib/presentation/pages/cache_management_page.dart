@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/services/tts_cache_service.dart';
 import '../../data/services/translation_service.dart';
+import '../../data/services/supertonic_model_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/toast_util.dart';
 import '../../core/utils/file_utils.dart';
@@ -21,6 +22,10 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
   bool _isTranslationModelDownloaded = false;
   bool _isDeletingModel = false;
   bool _isCheckingModel = true;
+  bool _hasSupertonicModels = false;
+  int _supertonicModelsSize = 0;
+  bool _isDeletingSupertonic = false;
+  bool _isCheckingSupertonic = true;
 
   @override
   void initState() {
@@ -36,13 +41,22 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
       PlatformUtils.supportsMlKit
           ? TranslationService.instance.isModelDownloaded()
           : Future.value(false),
+      PlatformUtils.supportsSupertonic
+          ? SupertonicModelService.instance.hasAllModels()
+          : Future.value(false),
+      PlatformUtils.supportsSupertonic
+          ? SupertonicModelService.instance.getModelsSize()
+          : Future.value(0),
     ]);
     setState(() {
       _cacheSize = results[0] as int;
       _fileCount = results[1] as int;
       _isTranslationModelDownloaded = results[2] as bool;
+      _hasSupertonicModels = results[3] as bool;
+      _supertonicModelsSize = results[4] as int;
       _isLoading = false;
       _isCheckingModel = false;
+      _isCheckingSupertonic = false;
     });
   }
 
@@ -113,6 +127,38 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
     }
   }
 
+  Future<void> _deleteSupertonicModels() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('删除 Supertonic 模型'),
+        content: const Text('删除后需要重新下载模型（约377MB）才能使用 Supertonic 语音。确定删除？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() => _isDeletingSupertonic = true);
+      await SupertonicModelService.instance.deleteModels();
+      setState(() {
+        _isDeletingSupertonic = false;
+        _hasSupertonicModels = false;
+        _supertonicModelsSize = 0;
+      });
+      ToastUtil.success('Supertonic 模型已删除');
+    }
+  }
+
   String _formatSize(int bytes) => FileUtils.formatFileSize(bytes);
 
   @override
@@ -145,6 +191,10 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                       if (PlatformUtils.supportsMlKit)
                         _buildTranslationModelCard(),
                       if (PlatformUtils.supportsMlKit)
+                        const SizedBox(height: 24),
+                      if (PlatformUtils.supportsSupertonic)
+                        _buildSupertonicModelCard(),
+                      if (PlatformUtils.supportsSupertonic)
                         const SizedBox(height: 24),
                       _buildClearButton(),
                       const SizedBox(height: 24),
@@ -358,6 +408,116 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                   Expanded(
                     child: Text(
                       '删除后下次翻译时会自动重新下载',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.onSurfaceOf(context)
+                              .withValues(alpha: 0.6)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSupertonicModelCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.cardOf(context),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryOf(context).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.record_voice_over,
+                      color: AppTheme.primaryOf(context), size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Supertonic TTS 模型',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: AppTheme.onSurfaceOf(context),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _isCheckingSupertonic
+                            ? '检查中...'
+                            : _hasSupertonicModels
+                                ? '已下载，${SupertonicModelService.instance.formatSize(_supertonicModelsSize)}'
+                                : '未下载',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppTheme.onSurfaceOf(context)
+                              .withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (_hasSupertonicModels && !_isDeletingSupertonic)
+                  TextButton(
+                    onPressed: _deleteSupertonicModels,
+                    style: TextButton.styleFrom(
+                        foregroundColor: AppTheme.errorOf(context)),
+                    child: const Text('删除', style: TextStyle(fontSize: 13)),
+                  ),
+                if (_isDeletingSupertonic)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: AppTheme.primaryOf(context)),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.accentOf(context).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline,
+                      size: 16, color: AppTheme.accentOf(context)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '删除后需要在语音设置页面重新下载',
                       style: TextStyle(
                           fontSize: 12,
                           color: AppTheme.onSurfaceOf(context)

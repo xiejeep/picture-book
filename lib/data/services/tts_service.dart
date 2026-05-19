@@ -5,6 +5,8 @@ import 'package:audioplayers/audioplayers.dart';
 import 'ai_service.dart';
 import 'tts_cache_service.dart';
 import 'storage_service.dart';
+import 'supertonic_service.dart';
+import 'supertonic_model_service.dart';
 import '../../core/constants/constants.dart';
 import '../../core/utils/platform_utils.dart';
 
@@ -39,6 +41,7 @@ class TtsService {
 
   VoidCallback? onLoadingStarted;
   VoidCallback? onPlayingStarted;
+  VoidCallback? onPlayingComplete;
 
   Future<void> initialize() async {
     if (_isInitialized) {
@@ -80,6 +83,7 @@ class TtsService {
         _currentText = null;
         _speakCompleter?.complete();
         _speakCompleter = null;
+        onPlayingComplete?.call();
       });
 
       _flutterTts.setCancelHandler(() {
@@ -102,12 +106,13 @@ class TtsService {
     }
 
     _audioPlayer.onPlayerComplete.listen((event) {
-      debugPrint('GLM-TTS播放完成');
+      debugPrint('音频播放完成');
       _isSpeaking = false;
       _currentText = null;
       _speakCompleter?.complete();
       _speakCompleter = null;
       _cleanupAudioFile();
+      onPlayingComplete?.call();
     });
 
     _audioPlayer.onLog.listen((message) {
@@ -135,20 +140,46 @@ class TtsService {
     _speakCompleter = Completer<void>();
 
     final settings = StorageService.instance.getAiSettings();
-    final isGlmTts = settings?.useGlmTts ?? false;
-    final forceGlmTts = PlatformUtils.isMacOS;
-    final speechRate = isGlmTts || forceGlmTts
-        ? (settings?.speechRate ?? AppConstants.glmTtsDefaultSpeed)
-        : (settings?.speechRate ?? AppConstants.systemTtsDefaultSpeed);
+    final ttsEngine = settings?.ttsEngine ?? 'glm';
+    final speechRate = settings?.speechRate ?? AppConstants.glmTtsDefaultSpeed;
 
-    if (PlatformUtils.supportsSystemTts) {
-      await _flutterTts.setSpeechRate(speechRate.clamp(
-          AppConstants.systemTtsMinSpeed, AppConstants.systemTtsMaxSpeed));
-      debugPrint(
-          '动态更新系统TTS语速: ${(speechRate * 100).toInt()}% ($speechRate)');
-    }
+    debugPrint('TTS引擎: $ttsEngine, 语速: $speechRate');
 
-    if (isGlmTts || forceGlmTts) {
+    if (ttsEngine == 'supertonic') {
+      if (!PlatformUtils.supportsSupertonic) {
+        debugPrint('Supertonic不支持当前平台，回退到系统TTS');
+        await _speakWithFlutterTts(text);
+        await _speakCompleter?.future;
+        return;
+      }
+
+      final hasModels = await SupertonicModelService.instance.hasAllModels();
+      if (!hasModels) {
+        debugPrint('Supertonic模型未下载，回退到系统TTS');
+        await _speakWithFlutterTts(text);
+        await _speakCompleter?.future;
+        return;
+      }
+
+      try {
+        final voice = settings?.supertonicVoice ?? AppConstants.supertonicDefaultVoice;
+        final steps = settings?.supertonicSteps ?? AppConstants.supertonicDefaultSteps;
+        final lang = AppConstants.supertonicDefaultLang;
+        await _speakWithSupertonic(text, lang, voice, steps, speechRate);
+        await _speakCompleter?.future;
+      } catch (e) {
+        debugPrint('Supertonic播放错误: $e，回退到系统TTS');
+        _speakCompleter = Completer<void>();
+        await _speakWithFlutterTts(text);
+        await _speakCompleter?.future;
+      }
+    } else if (ttsEngine == 'glm' || PlatformUtils.isMacOS) {
+      if (PlatformUtils.supportsSystemTts) {
+        await _flutterTts.setSpeechRate(speechRate.clamp(
+            AppConstants.systemTtsMinSpeed, AppConstants.systemTtsMaxSpeed));
+        debugPrint('动态更新系统TTS语速: ${(speechRate * 100).toInt()}% ($speechRate)');
+      }
+
       try {
         await _speakWithGlmTts(text, speechRate);
         await _speakCompleter?.future;
@@ -173,6 +204,11 @@ class TtsService {
         }
       }
     } else {
+      if (PlatformUtils.supportsSystemTts) {
+        await _flutterTts.setSpeechRate(speechRate.clamp(
+            AppConstants.systemTtsMinSpeed, AppConstants.systemTtsMaxSpeed));
+        debugPrint('动态更新系统TTS语速: ${(speechRate * 100).toInt()}% ($speechRate)');
+      }
       await _speakWithFlutterTts(text);
       await _speakCompleter?.future;
     }
@@ -226,6 +262,63 @@ class TtsService {
       debugPrint('GLM-TTS播放错误: statusCode=$statusCode, error=$errorMsg');
 
       throw GlmTtsException(statusCode, errorMsg);
+    }
+  }
+
+  Future<void> _speakWithSupertonic(
+    String text,
+    String lang,
+    String voice,
+    int steps,
+    double speed,
+  ) async {
+    debugPrint('使用Supertonic播放: voice=$voice, steps=$steps, speed=$speed');
+
+    _isLoading = true;
+    onLoadingStarted?.call();
+
+    try {
+      final cachedPath = await TtsCacheService.instance
+          .getCachedSupertonicAudio(text, voice, steps, speed);
+
+      String? audioPath;
+
+      if (cachedPath != null) {
+        audioPath = cachedPath;
+        _isLoading = false;
+        debugPrint('使用缓存，跳过合成');
+      } else {
+        audioPath = await SupertonicService.instance.synthesize(
+          text,
+          lang,
+          voice,
+          steps,
+          speed,
+        );
+
+        _isLoading = false;
+
+        if (audioPath != null) {
+          final cachePath = await TtsCacheService.instance
+              .saveSupertonicToCache(audioPath, text, voice, steps, speed);
+          audioPath = cachePath;
+          debugPrint('音频已保存到缓存');
+        }
+      }
+
+      if (audioPath != null) {
+        _isSpeaking = true;
+        onPlayingStarted?.call();
+        await _audioPlayer.play(DeviceFileSource(audioPath));
+        debugPrint('Supertonic开始播放');
+      } else {
+        debugPrint('Supertonic合成失败，回退到Flutter TTS');
+        await _speakWithFlutterTts(text);
+      }
+    } catch (e) {
+      _isLoading = false;
+      debugPrint('Supertonic播放错误: $e');
+      throw Exception('Supertonic合成失败: $e');
     }
   }
 
@@ -317,6 +410,7 @@ class TtsService {
     _speakCompleter = null;
     onLoadingStarted = null;
     onPlayingStarted = null;
+    onPlayingComplete = null;
     _flutterTts = FlutterTts();
     _audioPlayer = AudioPlayer();
   }

@@ -11,4 +11,6 @@ abstract class PlatformUtils {
   static bool get supportsMlKit => isMobile;
 
   static bool get supportsSystemTts => isMobile;
+
+  static bool get supportsSupertonic => isMobile;
 }

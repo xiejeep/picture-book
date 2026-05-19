@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../data/services/storage_service.dart';
+import '../../data/services/supertonic_model_service.dart';
 import '../../data/models/ai_settings_model.dart';
 import '../../core/constants/constants.dart';
 import '../../core/theme/app_theme.dart';
@@ -14,10 +16,13 @@ class VoiceSettingsPage extends StatefulWidget {
 }
 
 class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
+  String _ttsEngine = 'glm';
   String _selectedTtsVoice = AppConstants.defaultTtsVoice;
-  double _speechRate = AppConstants.systemTtsDefaultSpeed;
-  bool _useGlmTts = false;
+  String _supertonicVoice = AppConstants.supertonicDefaultVoice;
+  int _supertonicSteps = AppConstants.supertonicDefaultSteps;
+  double _speechRate = AppConstants.glmTtsDefaultSpeed;
   bool _isSaving = false;
+  bool _hasSupertonicModels = false;
 
   @override
   void initState() {
@@ -29,25 +34,84 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
     final settings = StorageService.instance.getAiSettings();
 
     setState(() {
-      _useGlmTts = PlatformUtils.isMacOS ? true : (settings?.useGlmTts ?? false);
+      _ttsEngine =
+          settings?.ttsEngine ?? (PlatformUtils.isMacOS ? 'glm' : 'system');
+
+      if (PlatformUtils.isMacOS && _ttsEngine == 'system') {
+        _ttsEngine = 'glm';
+      }
+
       _selectedTtsVoice = settings?.ttsVoice ?? AppConstants.defaultTtsVoice;
       final voiceExists =
           AppConstants.ttsVoices.any((v) => v['name'] == _selectedTtsVoice);
       _selectedTtsVoice =
           voiceExists ? _selectedTtsVoice : AppConstants.defaultTtsVoice;
 
+      _supertonicVoice =
+          settings?.supertonicVoice ?? AppConstants.supertonicDefaultVoice;
+      final supertonicVoiceExists = AppConstants.supertonicVoices
+          .any((v) => v['name'] == _supertonicVoice);
+      _supertonicVoice = supertonicVoiceExists
+          ? _supertonicVoice
+          : AppConstants.supertonicDefaultVoice;
+
+      _supertonicSteps =
+          settings?.supertonicSteps ?? AppConstants.supertonicDefaultSteps;
+      _supertonicSteps = _supertonicSteps.clamp(
+          AppConstants.supertonicMinSteps, AppConstants.supertonicMaxSteps);
+
       if (settings?.speechRate != null && settings!.speechRate > 0) {
         _speechRate = settings.speechRate;
-      } else if (settings?.useSlowSpeed == true) {
-        _speechRate = _useGlmTts
-            ? AppConstants.glmTtsDefaultSpeed * 0.75
-            : AppConstants.systemTtsDefaultSpeed * 0.6;
       } else {
-        _speechRate = _useGlmTts
-            ? AppConstants.glmTtsDefaultSpeed
-            : AppConstants.systemTtsDefaultSpeed;
+        _speechRate = _getDefaultSpeechRate(_ttsEngine);
       }
     });
+
+    if (PlatformUtils.supportsSupertonic && _ttsEngine == 'supertonic') {
+      await _checkSupertonicModels();
+    }
+  }
+
+  Future<void> _checkSupertonicModels() async {
+    try {
+      final hasModels = await SupertonicModelService.instance.hasAllModels();
+      setState(() => _hasSupertonicModels = hasModels);
+
+      if (!hasModels && _ttsEngine == 'supertonic') {
+        final fallbackEngine = PlatformUtils.isMacOS ? 'glm' : 'system';
+        setState(() {
+          _ttsEngine = fallbackEngine;
+          _speechRate = _getDefaultSpeechRate(fallbackEngine);
+        });
+
+        final currentSettings = StorageService.instance.getAiSettings();
+        final settings = (currentSettings ??
+                AiSettingsModel(selectedModel: AppConstants.defaultModel))
+            .copyWith(
+          ttsEngine: fallbackEngine,
+          speechRate: _speechRate,
+        );
+        await StorageService.instance.saveAiSettings(settings);
+        ToastUtil.info(
+            'Supertonic 模型已删除，已切换到${fallbackEngine == 'system' ? '系统' : 'GLM'}语音');
+      }
+    } catch (e) {
+      debugPrint('检查 Supertonic 模型错误: $e');
+      setState(() => _hasSupertonicModels = false);
+    }
+  }
+
+  double _getDefaultSpeechRate(String engine) {
+    switch (engine) {
+      case 'system':
+        return AppConstants.systemTtsDefaultSpeed;
+      case 'glm':
+        return AppConstants.glmTtsDefaultSpeed;
+      case 'supertonic':
+        return AppConstants.supertonicDefaultSpeed;
+      default:
+        return AppConstants.glmTtsDefaultSpeed;
+    }
   }
 
   Future<void> _saveSettings() async {
@@ -56,13 +120,13 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
     try {
       final currentSettings = StorageService.instance.getAiSettings();
       final settings = (currentSettings ??
-              AiSettingsModel(
-                selectedModel: AppConstants.defaultModel,
-              ))
+              AiSettingsModel(selectedModel: AppConstants.defaultModel))
           .copyWith(
-        useGlmTts: _useGlmTts,
+        ttsEngine: _ttsEngine,
         ttsVoice: _selectedTtsVoice,
         speechRate: _speechRate,
+        supertonicVoice: _supertonicVoice,
+        supertonicSteps: _supertonicSteps,
       );
       await StorageService.instance.saveAiSettings(settings);
 
@@ -72,6 +136,16 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
     } finally {
       setState(() => _isSaving = false);
     }
+  }
+
+  void _onTtsEngineChanged(String engine) {
+    if (PlatformUtils.isMacOS && engine == 'system') return;
+    if (!PlatformUtils.supportsSupertonic && engine == 'supertonic') return;
+
+    setState(() {
+      _ttsEngine = engine;
+      _speechRate = _getDefaultSpeechRate(engine);
+    });
   }
 
   @override
@@ -95,8 +169,18 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
               children: [
                 _buildTtsTypeSection(),
                 const SizedBox(height: 24),
-                if (_useGlmTts) _buildVoiceSection(),
-                if (_useGlmTts) const SizedBox(height: 24),
+                if (_ttsEngine == 'glm') _buildGlmVoiceSection(),
+                if (_ttsEngine == 'supertonic') ...[
+                  _buildSupertonicVoiceSection(),
+                  const SizedBox(height: 24),
+                  _buildSupertonicStepsSection(),
+                  if (!_hasSupertonicModels) ...[
+                    const SizedBox(height: 24),
+                    _buildSupertonicModelWarning(),
+                  ],
+                ],
+                if (_ttsEngine == 'glm' || _ttsEngine == 'supertonic')
+                  const SizedBox(height: 24),
                 _buildSpeechRateSection(),
                 const SizedBox(height: 32),
                 _buildSaveButton(),
@@ -112,42 +196,47 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           '语音类型',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.onSurfaceOf(context),
+          ),
         ),
         const SizedBox(height: 12),
         Container(
           decoration: BoxDecoration(
             color: AppTheme.cardOf(context),
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
           ),
           child: Column(
             children: [
-              if (!PlatformUtils.isMacOS)
+              if (PlatformUtils.supportsSystemTts)
                 _buildTtsOption(
                   title: '系统TTS',
                   subtitle: '使用设备自带语音引擎',
-                  value: false,
+                  value: 'system',
                   icon: Icons.record_voice_over,
                 ),
-              if (!PlatformUtils.isMacOS)
-                Divider(
-                    height: 1, color: AppTheme.dividerColorOf(context)),
+              if (PlatformUtils.supportsSystemTts)
+                Divider(height: 1, color: AppTheme.dividerColorOf(context)),
               _buildTtsOption(
                 title: 'GLM-TTS高质量语音',
                 subtitle: 'AI合成语音，效果更自然',
-                value: true,
+                value: 'glm',
                 icon: Icons.auto_awesome,
                 recommended: true,
               ),
+              if (PlatformUtils.supportsSupertonic)
+                Divider(height: 1, color: AppTheme.dividerColorOf(context)),
+              if (PlatformUtils.supportsSupertonic)
+                _buildTtsOption(
+                  title: 'Supertonic本地语音',
+                  subtitle: '端侧离线合成，无需网络',
+                  value: 'supertonic',
+                  icon: Icons.mic,
+                ),
             ],
           ),
         ),
@@ -158,27 +247,18 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
   Widget _buildTtsOption({
     required String title,
     required String subtitle,
-    required bool value,
+    required String value,
     required IconData icon,
     bool recommended = false,
   }) {
-    final isSelected = _useGlmTts == value;
-    final semanticsLabel = value ? 'GLM-TTS高质量语音' : '系统TTS';
-    final semanticsHint = value ? '使用AI合成语音，效果更自然' : '使用设备自带语音引擎';
+    final isSelected = _ttsEngine == value;
+
     return Semantics(
-      label: semanticsLabel,
-      hint: semanticsHint,
+      label: title,
+      hint: subtitle,
       button: true,
       child: InkWell(
-        onTap: () {
-          if (PlatformUtils.isMacOS && value == false) return;
-          setState(() {
-            _useGlmTts = value;
-            _speechRate = value
-                ? AppConstants.glmTtsDefaultSpeed
-                : AppConstants.systemTtsDefaultSpeed;
-          });
-        },
+        onTap: () => _onTtsEngineChanged(value),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -242,25 +322,15 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
                     Text(
                       subtitle,
                       style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.mutedOf(context),
-                      ),
+                          fontSize: 12, color: AppTheme.mutedOf(context)),
                     ),
                   ],
                 ),
               ),
-              Radio<bool>(
+              Radio<String>(
                 value: value,
-                groupValue: _useGlmTts,
-                onChanged: (v) {
-                  if (PlatformUtils.isMacOS && v == false) return;
-                  setState(() {
-                    _useGlmTts = v!;
-                    _speechRate = v
-                        ? AppConstants.glmTtsDefaultSpeed
-                        : AppConstants.systemTtsDefaultSpeed;
-                  });
-                },
+                groupValue: _ttsEngine,
+                onChanged: (v) => _onTtsEngineChanged(v!),
                 activeColor: AppTheme.primaryOf(context),
               ),
             ],
@@ -270,28 +340,30 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
     );
   }
 
-  Widget _buildVoiceSection() {
+  Widget _buildGlmVoiceSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'GLM-TTS音色',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.onSurfaceOf(context)),
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
           value: _selectedTtsVoice,
           decoration: InputDecoration(
             border: const OutlineInputBorder(),
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             filled: true,
             fillColor: AppTheme.cardOf(context),
           ),
           items: AppConstants.ttsVoices.map((voice) {
             return DropdownMenuItem(
-              value: voice['name'],
-              child: Text(voice['label']!),
-            );
+                value: voice['name'], child: Text(voice['label']!));
           }).toList(),
           onChanged: (value) {
             if (value != null) {
@@ -303,13 +375,51 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
     );
   }
 
-  Widget _buildSpeechRateSection() {
+  Widget _buildSupertonicVoiceSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          '语速设置',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        Text(
+          'Supertonic音色',
+          style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.onSurfaceOf(context)),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _supertonicVoice,
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            filled: true,
+            fillColor: AppTheme.cardOf(context),
+          ),
+          items: AppConstants.supertonicVoices.map((voice) {
+            return DropdownMenuItem(
+                value: voice['name'], child: Text(voice['label']!));
+          }).toList(),
+          onChanged: (value) {
+            if (value != null) {
+              setState(() => _supertonicVoice = value);
+            }
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSupertonicStepsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '生成质量',
+          style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.onSurfaceOf(context)),
         ),
         const SizedBox(height: 12),
         Container(
@@ -317,13 +427,139 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
           decoration: BoxDecoration(
             color: AppTheme.cardOf(context),
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '扩散步数',
+                    style: TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.onSurfaceOf(context)
+                            .withValues(alpha: 0.6)),
+                  ),
+                  Text(
+                    _supertonicSteps.toString(),
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryOf(context)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Slider(
+                value: _supertonicSteps.toDouble(),
+                min: AppConstants.supertonicMinSteps.toDouble(),
+                max: AppConstants.supertonicMaxSteps.toDouble(),
+                divisions: AppConstants.supertonicMaxSteps -
+                    AppConstants.supertonicMinSteps,
+                label: _supertonicSteps.toString(),
+                onChanged: (value) {
+                  setState(() => _supertonicSteps = value.toInt());
+                },
+                activeColor: AppTheme.primaryOf(context),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '快速 (低质)',
+                    style: TextStyle(
+                        color: AppTheme.onSurfaceOf(context)
+                            .withValues(alpha: 0.6),
+                        fontSize: 12),
+                  ),
+                  Text(
+                    '慢速 (高质)',
+                    style: TextStyle(
+                        color: AppTheme.onSurfaceOf(context)
+                            .withValues(alpha: 0.6),
+                        fontSize: 12),
+                  ),
+                ],
               ),
             ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '步数越高，音质越好，但生成速度越慢',
+          style: TextStyle(
+              color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
+              fontSize: 12),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSupertonicModelWarning() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.errorOf(context).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border:
+            Border.all(color: AppTheme.errorOf(context).withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.warning_amber, color: AppTheme.errorOf(context)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '模型未下载',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      color: AppTheme.errorOf(context)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: () async {
+              await context.push('/settings/supertonic');
+              _checkSupertonicModels();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryOf(context),
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            child: const Text('下载'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpeechRateSection() {
+    final minSpeed = _getMinSpeed();
+    final maxSpeed = _getMaxSpeed();
+    final divisions = _getSpeedDivisions();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '语速设置',
+          style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.onSurfaceOf(context)),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppTheme.cardOf(context),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
             children: [
@@ -338,27 +574,22 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
                             .withValues(alpha: 0.6)),
                   ),
                   Text(
-                    '${(_speechRate * 100).toInt()}%',
+                    _ttsEngine == 'supertonic'
+                        ? '${(_speechRate * 100).toInt()}%'
+                        : '${(_speechRate * 100).toInt()}%',
                     style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryOf(context),
-                    ),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryOf(context)),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
               Slider(
                 value: _speechRate,
-                min: _useGlmTts
-                    ? AppConstants.glmTtsMinSpeed
-                    : AppConstants.systemTtsMinSpeed,
-                max: _useGlmTts
-                    ? AppConstants.glmTtsMaxSpeed
-                    : AppConstants.systemTtsMaxSpeed,
-                divisions: _useGlmTts
-                    ? AppConstants.glmTtsSpeedDivisions
-                    : AppConstants.systemTtsSpeedDivisions,
+                min: minSpeed,
+                max: maxSpeed,
+                divisions: divisions,
                 label: '${(_speechRate * 100).toInt()}%',
                 onChanged: (value) {
                   setState(() => _speechRate = value);
@@ -369,14 +600,14 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    _useGlmTts ? '慢速' : '最慢',
+                    '慢速',
                     style: TextStyle(
                         color: AppTheme.onSurfaceOf(context)
                             .withValues(alpha: 0.6),
                         fontSize: 12),
                   ),
                   Text(
-                    _useGlmTts ? '快速' : '最快',
+                    '快速',
                     style: TextStyle(
                         color: AppTheme.onSurfaceOf(context)
                             .withValues(alpha: 0.6),
@@ -389,14 +620,7 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
         ),
         const SizedBox(height: 8),
         Text(
-          _useGlmTts ? 'GLM-TTS语速范围: 50%-150%' : '系统TTS语速范围: 30%-100%',
-          style: TextStyle(
-              color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
-              fontSize: 12),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          '不同语速会分别缓存音频',
+          _getSpeedRangeHint(),
           style: TextStyle(
               color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
               fontSize: 12),
@@ -405,26 +629,80 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
     );
   }
 
+  double _getMinSpeed() {
+    switch (_ttsEngine) {
+      case 'system':
+        return AppConstants.systemTtsMinSpeed;
+      case 'glm':
+        return AppConstants.glmTtsMinSpeed;
+      case 'supertonic':
+        return AppConstants.supertonicMinSpeed;
+      default:
+        return AppConstants.glmTtsMinSpeed;
+    }
+  }
+
+  double _getMaxSpeed() {
+    switch (_ttsEngine) {
+      case 'system':
+        return AppConstants.systemTtsMaxSpeed;
+      case 'glm':
+        return AppConstants.glmTtsMaxSpeed;
+      case 'supertonic':
+        return AppConstants.supertonicMaxSpeed;
+      default:
+        return AppConstants.glmTtsMaxSpeed;
+    }
+  }
+
+  int _getSpeedDivisions() {
+    switch (_ttsEngine) {
+      case 'system':
+        return AppConstants.systemTtsSpeedDivisions;
+      case 'glm':
+        return AppConstants.glmTtsSpeedDivisions;
+      case 'supertonic':
+        return AppConstants.supertonicSpeedDivisions;
+      default:
+        return AppConstants.glmTtsSpeedDivisions;
+    }
+  }
+
+  String _getSpeedRangeHint() {
+    switch (_ttsEngine) {
+      case 'system':
+        return '系统TTS语速范围: 10%-100%';
+      case 'glm':
+        return 'GLM-TTS语速范围: 50%-150%';
+      case 'supertonic':
+        return 'Supertonic语速范围: 50%-200%';
+      default:
+        return '';
+    }
+  }
+
   Widget _buildSaveButton() {
+    final supertonicModelsMissing =
+        _ttsEngine == 'supertonic' && !_hasSupertonicModels;
+
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
-        onPressed: _isSaving ? null : _saveSettings,
+        onPressed:
+            (_isSaving || supertonicModelsMissing) ? null : _saveSettings,
         icon: _isSaving
             ? const SizedBox(
                 width: 16,
                 height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
+                child: CircularProgressIndicator(strokeWidth: 2))
             : const Icon(Icons.save),
         label: Text(_isSaving ? '保存中...' : '保存设置'),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppTheme.primaryOf(context).withValues(alpha: 0.85),
           foregroundColor: Theme.of(context).colorScheme.onPrimary,
           padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
     );

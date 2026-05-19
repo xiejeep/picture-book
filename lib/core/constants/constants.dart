@@ -82,4 +82,74 @@ class AppConstants {
     1.4,
     1.5
   ];
+
+  static const List<Map<String, String>> supertonicVoices = [
+    {'name': 'M1', 'label': 'M1 (男声)'},
+    {'name': 'M2', 'label': 'M2 (男声)'},
+    {'name': 'M3', 'label': 'M3 (男声)'},
+    {'name': 'M4', 'label': 'M4 (男声)'},
+    {'name': 'M5', 'label': 'M5 (男声)'},
+    {'name': 'F1', 'label': 'F1 (女声)'},
+    {'name': 'F2', 'label': 'F2 (女声)'},
+    {'name': 'F3', 'label': 'F3 (女声)'},
+    {'name': 'F4', 'label': 'F4 (女声)'},
+    {'name': 'F5', 'label': 'F5 (女声)'},
+  ];
+
+  static const String supertonicDefaultVoice = 'M1';
+  static const String supertonicDefaultLang = 'en';
+
+  static const int supertonicMinSteps = 1;
+  static const int supertonicMaxSteps = 20;
+  static const int supertonicDefaultSteps = 8;
+
+  static const double supertonicMinSpeed = 0.5;
+  static const double supertonicMaxSpeed = 2.0;
+  static const double supertonicDefaultSpeed = 1.05;
+  static const int supertonicSpeedDivisions = 30;
+
+  static const String supertonicModelsDirName = 'supertonic_models';
+  static const String supertonicOnnxDirName = 'onnx';
+
+  static const List<String> supertonicBundledFiles = [
+    'duration_predictor.onnx',
+    'tts.json',
+    'unicode_indexer.json',
+  ];
+
+  static const List<String> supertonicDownloadableFiles = [
+    'text_encoder.onnx',
+    'vector_estimator.onnx',
+    'vocoder.onnx',
+  ];
+
+  static const List<String> supertonicRequiredModelFiles = [
+    ...supertonicBundledFiles,
+    ...supertonicDownloadableFiles,
+  ];
+
+  static const Map<String, String> supertonicModelUrlsHuggingface = {
+    'text_encoder.onnx':
+        'https://huggingface.co/Supertone/supertonic-3/resolve/main/onnx/text_encoder.onnx',
+    'vector_estimator.onnx':
+        'https://huggingface.co/Supertone/supertonic-3/resolve/main/onnx/vector_estimator.onnx',
+    'vocoder.onnx':
+        'https://huggingface.co/Supertone/supertonic-3/resolve/main/onnx/vocoder.onnx',
+  };
+
+  static const Map<String, String> supertonicModelUrlsModelscope = {
+    'text_encoder.onnx':
+        'https://modelscope.cn/models/Supertone/supertonic-3/resolve/master/onnx/text_encoder.onnx',
+    'vector_estimator.onnx':
+        'https://modelscope.cn/models/Supertone/supertonic-3/resolve/master/onnx/vector_estimator.onnx',
+    'vocoder.onnx':
+        'https://modelscope.cn/models/Supertone/supertonic-3/resolve/master/onnx/vocoder.onnx',
+  };
+
+  static const List<Map<String, String>> supertonicDownloadSources = [
+    {'name': 'huggingface', 'label': 'HuggingFace (国际源)', 'region': '国际'},
+    {'name': 'modelscope', 'label': 'ModelScope (国内源)', 'region': '国内'},
+  ];
+
+  static const String supertonicDefaultDownloadSource = 'modelscope';
 }

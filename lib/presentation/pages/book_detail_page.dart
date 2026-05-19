@@ -49,7 +49,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
   int? _loadingBlockIndex;
   Timer? _loadingIndicatorTimer;
   double _currentSpeechRate = AppConstants.systemTtsDefaultSpeed;
-  bool _currentUseGlmTts = false;
+  String _currentTtsEngine = 'system';
   StreamSubscription<NfcAction>? _nfcSubscription;
   int? _translatedBlockIndex;
   String? _translatedText;
@@ -165,13 +165,13 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
   void _loadVoiceSettings() {
     final settings = ref.read(storageServiceProvider).getAiSettings();
     setState(() {
-      _currentUseGlmTts = settings?.useGlmTts ?? false;
+      _currentTtsEngine = settings?.ttsEngine ?? 'system';
       if (settings?.speechRate != null && settings!.speechRate > 0) {
         _currentSpeechRate = settings.speechRate;
       } else {
-        _currentSpeechRate = _currentUseGlmTts
-            ? AppConstants.glmTtsDefaultSpeed
-            : AppConstants.systemTtsDefaultSpeed;
+        _currentSpeechRate = _currentTtsEngine == 'system'
+            ? AppConstants.systemTtsDefaultSpeed
+            : AppConstants.glmTtsDefaultSpeed;
       }
     });
   }
@@ -385,6 +385,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
     final ttsService = TtsService.instance;
     ttsService.onLoadingStarted = null;
     ttsService.onPlayingStarted = null;
+    ttsService.onPlayingComplete = null;
     _nfcSubscription?.cancel();
     _loadingIndicatorTimer?.cancel();
     _focusAnimationController.dispose();
@@ -469,15 +470,15 @@ color: AppTheme.focusHighlightOf(context),
                   const SizedBox(height: 16),
                   Slider(
                     value: _currentSpeechRate,
-                    min: _currentUseGlmTts
-                        ? AppConstants.glmTtsMinSpeed
-                        : AppConstants.systemTtsMinSpeed,
-                    max: _currentUseGlmTts
-                        ? AppConstants.glmTtsMaxSpeed
-                        : AppConstants.systemTtsMaxSpeed,
-                    divisions: _currentUseGlmTts
-                        ? AppConstants.glmTtsSpeedDivisions
-                        : AppConstants.systemTtsSpeedDivisions,
+                    min: _currentTtsEngine == 'system'
+                        ? AppConstants.systemTtsMinSpeed
+                        : AppConstants.glmTtsMinSpeed,
+                    max: _currentTtsEngine == 'system'
+                        ? AppConstants.systemTtsMaxSpeed
+                        : AppConstants.glmTtsMaxSpeed,
+                    divisions: _currentTtsEngine == 'system'
+                        ? AppConstants.systemTtsSpeedDivisions
+                        : AppConstants.glmTtsSpeedDivisions,
                     activeColor: AppTheme.primaryOf(context),
                     onChanged: (value) {
                       setDialogState(() {
@@ -490,14 +491,14 @@ color: AppTheme.focusHighlightOf(context),
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        _currentUseGlmTts ? '慢速' : '最慢',
+                        _currentTtsEngine == 'system' ? '最慢' : '慢速',
                         style: TextStyle(
                             color: AppTheme.onSurfaceOf(context)
                                 .withValues(alpha: 0.6),
                             fontSize: 12),
                       ),
                       Text(
-                        _currentUseGlmTts ? '快速' : '最快',
+                        _currentTtsEngine == 'system' ? '最快' : '快速',
                         style: TextStyle(
                             color: AppTheme.onSurfaceOf(context)
                                 .withValues(alpha: 0.6),
@@ -542,7 +543,7 @@ color: AppTheme.focusHighlightOf(context),
                                       selectedModel: AppConstants.defaultModel,
                                     ))
                                 .copyWith(
-                              useGlmTts: _currentUseGlmTts,
+                              ttsEngine: _currentTtsEngine,
                               speechRate: _currentSpeechRate,
                             );
                             await ref
@@ -645,11 +646,12 @@ color: AppTheme.focusHighlightOf(context),
     });
 
     _loadingIndicatorTimer?.cancel();
-    if (_currentUseGlmTts) {
+    if (_currentTtsEngine == 'glm' || _currentTtsEngine == 'supertonic') {
       _loadingIndicatorTimer = Timer(const Duration(milliseconds: 300), () {
         if (mounted &&
             _playingBlockIndex == blockIndex &&
-            _loadingBlockIndex == null) {
+            _loadingBlockIndex == null &&
+            ttsService.isLoading) {
           setState(() => _loadingBlockIndex = blockIndex);
         }
       });

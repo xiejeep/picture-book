@@ -9,6 +9,7 @@ import '../../presentation/pages/settings_page.dart';
 import '../../presentation/pages/ai_settings_page.dart';
 import '../../presentation/pages/voice_settings_page.dart';
 import '../../presentation/pages/cache_management_page.dart';
+import '../../presentation/pages/supertonic_model_page.dart';
 import '../../presentation/pages/tutorial_page.dart';
 import '../../data/models/book_model.dart';
 import '../../data/services/storage_service.dart';
@@ -150,6 +151,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             path: 'cache',
             name: 'cache_management',
             builder: (context, state) => const CacheManagementPage(),
+          ),
+          GoRoute(
+            path: 'supertonic',
+            name: 'supertonic_model',
+            builder: (context, state) => const SupertonicModelPage(),
           ),
         ],
       ),

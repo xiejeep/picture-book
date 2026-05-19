@@ -32,6 +32,50 @@ class TtsCacheService {
     return hash.toString();
   }
 
+  String _generateSupertonicCacheKey(
+      String text, String voice, int steps, double speed) {
+    final keyString = '${text}_${voice}_${steps}_${speed.toStringAsFixed(2)}';
+    final bytes = utf8.encode(keyString);
+    final hash = md5.convert(bytes);
+    return hash.toString();
+  }
+
+  Future<String?> getCachedSupertonicAudio(
+      String text, String voice, int steps, double speed) async {
+    if (_cacheDir == null) {
+      await initialize();
+    }
+
+    final cacheKey = _generateSupertonicCacheKey(text, voice, steps, speed);
+    final cacheFile = File('${_cacheDir!.path}/$cacheKey.wav');
+
+    if (await cacheFile.exists()) {
+      debugPrint('使用Supertonic缓存音频: $cacheKey');
+      return cacheFile.path;
+    }
+
+    return null;
+  }
+
+  Future<String> saveSupertonicToCache(
+      String tempAudioPath, String text, String voice, int steps, double speed) async {
+    if (_cacheDir == null) {
+      await initialize();
+    }
+
+    final cacheKey = _generateSupertonicCacheKey(text, voice, steps, speed);
+    final cacheFile = File('${_cacheDir!.path}/$cacheKey.wav');
+
+    final tempFile = File(tempAudioPath);
+    if (await tempFile.exists()) {
+      await tempFile.copy(cacheFile.path);
+      await tempFile.delete();
+      debugPrint('Supertonic音频已缓存: $cacheKey');
+    }
+
+    return cacheFile.path;
+  }
+
   Future<String?> getCachedAudio(
       String text, String voice, double speechRate) async {
     if (_cacheDir == null) {
