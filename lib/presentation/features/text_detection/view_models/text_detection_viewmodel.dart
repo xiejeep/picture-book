@@ -12,6 +12,7 @@ import '../models/text_detection_state.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/text_utils.dart';
+import '../../../../core/utils/platform_utils.dart';
 import '../../../../data/services/ai_service.dart';
 import '../../../providers/repository_providers.dart';
 import '../../../providers/settings_provider.dart';
@@ -76,6 +77,11 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
     if (pickedFile == null) return;
 
     final File imageFile = File(pickedFile.path);
+
+    if (PlatformUtils.isMacOS) {
+      await loadImageFile(imageFile);
+      return;
+    }
 
     final croppedFile = await ImageCropper().cropImage(
       sourcePath: imageFile.path,
