@@ -18,6 +18,7 @@ import '../widgets/reading_text_block_painter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/utils/toast_util.dart';
+import '../../core/utils/platform_utils.dart';
 import '../providers/settings_provider.dart';
 
 class BookDetailPage extends ConsumerStatefulWidget {
@@ -42,7 +43,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
   int _currentPageIndex = 0;
   bool _showBorders = true;
   bool _showAppBar = true;
-  bool _showTranslation = true;
+  bool _showTranslation = !Platform.isMacOS;
   String? _playingText;
   int? _playingBlockIndex;
   int? _loadingBlockIndex;
@@ -628,7 +629,9 @@ color: AppTheme.focusHighlightOf(context),
 
     _updateFocusAnimation(block);
 
-    _translateBlock(block, blockIndex);
+    if (PlatformUtils.supportsMlKit) {
+      _translateBlock(block, blockIndex);
+    }
 
     if (_playingText != null) {
       if (!mounted) return;
@@ -1013,31 +1016,32 @@ color: AppTheme.focusHighlightOf(context),
                     tooltip: '隐藏导航栏',
                   ),
                 ),
-                Semantics(
-                  label: _showTranslation ? '隐藏翻译' : '显示翻译',
-                  hint: '切换翻译显示状态',
-                  button: true,
-                  child: IconButton(
-                    icon: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
+                if (PlatformUtils.supportsMlKit)
+                  Semantics(
+                    label: _showTranslation ? '隐藏翻译' : '显示翻译',
+                    hint: '切换翻译显示状态',
+                    button: true,
+                    child: IconButton(
+                      icon: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          _showTranslation
+                              ? Icons.translate_rounded
+                              : Icons.translate_outlined,
+                          size: 18,
+                          color: _showTranslation
+                              ? Colors.white
+                              : Colors.white.withValues(alpha: 0.6),
+                        ),
                       ),
-                      child: Icon(
-                        _showTranslation
-                            ? Icons.translate_rounded
-                            : Icons.translate_outlined,
-                        size: 18,
-                        color: _showTranslation
-                            ? Colors.white
-                            : Colors.white.withValues(alpha: 0.6),
-                      ),
+                      onPressed: _toggleTranslation,
+                      tooltip: _showTranslation ? '隐藏翻译' : '显示翻译',
                     ),
-                    onPressed: _toggleTranslation,
-                    tooltip: _showTranslation ? '隐藏翻译' : '显示翻译',
                   ),
-                ),
                 Semantics(
                   label: _showBorders ? '隐藏边框' : '显示边框',
                   hint: '切换文字块边框显示',

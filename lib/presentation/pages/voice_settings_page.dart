@@ -4,6 +4,7 @@ import '../../data/models/ai_settings_model.dart';
 import '../../core/constants/constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/toast_util.dart';
+import '../../core/utils/platform_utils.dart';
 
 class VoiceSettingsPage extends StatefulWidget {
   const VoiceSettingsPage({super.key});
@@ -28,7 +29,7 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
     final settings = StorageService.instance.getAiSettings();
 
     setState(() {
-      _useGlmTts = settings?.useGlmTts ?? false;
+      _useGlmTts = PlatformUtils.isMacOS ? true : (settings?.useGlmTts ?? false);
       _selectedTtsVoice = settings?.ttsVoice ?? AppConstants.defaultTtsVoice;
       final voiceExists =
           AppConstants.ttsVoices.any((v) => v['name'] == _selectedTtsVoice);
@@ -130,13 +131,16 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
           ),
           child: Column(
             children: [
-              _buildTtsOption(
-                title: '系统TTS',
-                subtitle: '使用设备自带语音引擎',
-                value: false,
-                icon: Icons.record_voice_over,
-              ),
-              Divider(height: 1, color: AppTheme.dividerColorOf(context)),
+              if (!PlatformUtils.isMacOS)
+                _buildTtsOption(
+                  title: '系统TTS',
+                  subtitle: '使用设备自带语音引擎',
+                  value: false,
+                  icon: Icons.record_voice_over,
+                ),
+              if (!PlatformUtils.isMacOS)
+                Divider(
+                    height: 1, color: AppTheme.dividerColorOf(context)),
               _buildTtsOption(
                 title: 'GLM-TTS高质量语音',
                 subtitle: 'AI合成语音，效果更自然',
@@ -167,6 +171,7 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
       button: true,
       child: InkWell(
         onTap: () {
+          if (PlatformUtils.isMacOS && value == false) return;
           setState(() {
             _useGlmTts = value;
             _speechRate = value
@@ -248,6 +253,7 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
                 value: value,
                 groupValue: _useGlmTts,
                 onChanged: (v) {
+                  if (PlatformUtils.isMacOS && v == false) return;
                   setState(() {
                     _useGlmTts = v!;
                     _speechRate = v

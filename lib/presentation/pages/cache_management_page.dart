@@ -4,6 +4,7 @@ import '../../data/services/translation_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/toast_util.dart';
 import '../../core/utils/file_utils.dart';
+import '../../core/utils/platform_utils.dart';
 
 class CacheManagementPage extends StatefulWidget {
   const CacheManagementPage({super.key});
@@ -32,7 +33,9 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
     final results = await Future.wait([
       TtsCacheService.instance.getCacheSize(),
       TtsCacheService.instance.getCacheFileCount(),
-      TranslationService.instance.isModelDownloaded(),
+      PlatformUtils.supportsMlKit
+          ? TranslationService.instance.isModelDownloaded()
+          : Future.value(false),
     ]);
     setState(() {
       _cacheSize = results[0] as int;
@@ -139,8 +142,10 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
                       const SizedBox(height: 24),
                       _buildCacheDetailCard(),
                       const SizedBox(height: 24),
-                      _buildTranslationModelCard(),
-                      const SizedBox(height: 24),
+                      if (PlatformUtils.supportsMlKit)
+                        _buildTranslationModelCard(),
+                      if (PlatformUtils.supportsMlKit)
+                        const SizedBox(height: 24),
                       _buildClearButton(),
                       const SizedBox(height: 24),
                       _buildInfoCard(),
@@ -474,8 +479,10 @@ class _CacheManagementPageState extends State<CacheManagementPage> {
           const SizedBox(height: 12),
           _buildInfoItem('TTS缓存：相同文本+音色+语速组合会缓存音频'),
           const SizedBox(height: 8),
-          _buildInfoItem('翻译模型：离线英译中模型，首次翻译时自动下载'),
-          const SizedBox(height: 8),
+          if (PlatformUtils.supportsMlKit) ...[
+            _buildInfoItem('翻译模型：离线英译中模型，首次翻译时自动下载'),
+            const SizedBox(height: 8),
+          ],
           _buildInfoItem('清空缓存后再次点读会重新生成音频'),
           const SizedBox(height: 8),
           _buildInfoItem('OCR识别模型由系统管理，无法手动清理'),

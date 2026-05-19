@@ -6,6 +6,7 @@ import '../../../core/utils/toast_util.dart';
 import '../../../core/constants/constants.dart';
 import '../../../data/services/ai_service.dart';
 import '../../../data/services/translation_service.dart';
+import '../../../core/utils/platform_utils.dart';
 import '../../providers/tts_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/repository_providers.dart';
@@ -561,21 +562,25 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
     });
 
     try {
-      for (int i = 0; i < visibleBlocks.length; i++) {
-        if (!mounted) break;
-        final block = visibleBlocks[i];
-        if (block.text.trim().isEmpty) continue;
+      if (PlatformUtils.supportsMlKit) {
+        for (int i = 0; i < visibleBlocks.length; i++) {
+          if (!mounted) break;
+          final block = visibleBlocks[i];
+          if (block.text.trim().isEmpty) continue;
 
-        setState(() =>
-            _progressText = '正在翻译第 ${i + 1}/${visibleBlocks.length} 个文本块...');
-        final result = await ref
-            .read(translationServiceProvider)
-            .translateWithStatus(block.text);
-        if (result.status == TranslationStatus.done &&
-            result.translatedText != null) {
-          visibleBlocks[i] =
-              visibleBlocks[i].copyWith(translatedText: result.translatedText);
+          setState(() =>
+              _progressText = '正在翻译第 ${i + 1}/${visibleBlocks.length} 个文本块...');
+          final result = await ref
+              .read(translationServiceProvider)
+              .translateWithStatus(block.text);
+          if (result.status == TranslationStatus.done &&
+              result.translatedText != null) {
+            visibleBlocks[i] =
+                visibleBlocks[i].copyWith(translatedText: result.translatedText);
+          }
         }
+      } else {
+        setState(() => _progressText = '正在准备AI翻译...');
       }
 
       final vision = await _ensureVisionDescription();

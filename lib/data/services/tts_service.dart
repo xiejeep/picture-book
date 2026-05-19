@@ -6,6 +6,7 @@ import 'ai_service.dart';
 import 'tts_cache_service.dart';
 import 'storage_service.dart';
 import '../../core/constants/constants.dart';
+import '../../core/utils/platform_utils.dart';
 
 class GlmTtsException implements Exception {
   final int statusCode;
@@ -49,52 +50,56 @@ class TtsService {
 
     await TtsCacheService.instance.initialize();
 
-    await _flutterTts.setSharedInstance(true);
-    debugPrint('设置SharedInstance完成');
+    if (PlatformUtils.supportsSystemTts) {
+      await _flutterTts.setSharedInstance(true);
+      debugPrint('设置SharedInstance完成');
 
-    await _flutterTts.setLanguage('en-US');
-    debugPrint('设置语言完成');
+      await _flutterTts.setLanguage('en-US');
+      debugPrint('设置语言完成');
 
-    final settings = StorageService.instance.getAiSettings();
-    final speechRate =
-        settings?.speechRate ?? AppConstants.systemTtsDefaultSpeed;
-    await _flutterTts.setSpeechRate(speechRate);
-    debugPrint('设置系统TTS语速: ${(speechRate * 100).toInt()}% ($speechRate)');
+      final settings = StorageService.instance.getAiSettings();
+      final speechRate =
+          settings?.speechRate ?? AppConstants.systemTtsDefaultSpeed;
+      await _flutterTts.setSpeechRate(speechRate);
+      debugPrint('设置系统TTS语速: ${(speechRate * 100).toInt()}% ($speechRate)');
 
-    await _flutterTts.setVolume(1.0);
+      await _flutterTts.setVolume(1.0);
 
-    await _flutterTts.setPitch(1.0);
+      await _flutterTts.setPitch(1.0);
 
-    debugPrint('设置语音参数完成');
+      debugPrint('设置语音参数完成');
 
-    _flutterTts.setStartHandler(() {
-      debugPrint('开始播放');
-      _isSpeaking = true;
-    });
+      _flutterTts.setStartHandler(() {
+        debugPrint('开始播放');
+        _isSpeaking = true;
+      });
 
-    _flutterTts.setCompletionHandler(() {
-      debugPrint('播放完成');
-      _isSpeaking = false;
-      _currentText = null;
-      _speakCompleter?.complete();
-      _speakCompleter = null;
-    });
+      _flutterTts.setCompletionHandler(() {
+        debugPrint('播放完成');
+        _isSpeaking = false;
+        _currentText = null;
+        _speakCompleter?.complete();
+        _speakCompleter = null;
+      });
 
-    _flutterTts.setCancelHandler(() {
-      debugPrint('播放取消');
-      _isSpeaking = false;
-      _currentText = null;
-      _speakCompleter?.complete();
-      _speakCompleter = null;
-    });
+      _flutterTts.setCancelHandler(() {
+        debugPrint('播放取消');
+        _isSpeaking = false;
+        _currentText = null;
+        _speakCompleter?.complete();
+        _speakCompleter = null;
+      });
 
-    _flutterTts.setErrorHandler((message) {
-      debugPrint('播放错误: $message');
-      _isSpeaking = false;
-      _currentText = null;
-      _speakCompleter?.completeError(Exception(message));
-      _speakCompleter = null;
-    });
+      _flutterTts.setErrorHandler((message) {
+        debugPrint('播放错误: $message');
+        _isSpeaking = false;
+        _currentText = null;
+        _speakCompleter?.completeError(Exception(message));
+        _speakCompleter = null;
+      });
+    } else {
+      debugPrint('桌面平台，跳过FlutterTTS初始化');
+    }
 
     _audioPlayer.onPlayerComplete.listen((event) {
       debugPrint('GLM-TTS播放完成');
@@ -130,27 +135,42 @@ class TtsService {
     _speakCompleter = Completer<void>();
 
     final settings = StorageService.instance.getAiSettings();
-    final speechRate =
-        settings?.speechRate ?? AppConstants.systemTtsDefaultSpeed;
-    await _flutterTts.setSpeechRate(speechRate);
-    debugPrint('动态更新系统TTS语速: ${(speechRate * 100).toInt()}% ($speechRate)');
+    final isGlmTts = settings?.useGlmTts ?? false;
+    final forceGlmTts = PlatformUtils.isMacOS;
+    final speechRate = isGlmTts || forceGlmTts
+        ? (settings?.speechRate ?? AppConstants.glmTtsDefaultSpeed)
+        : (settings?.speechRate ?? AppConstants.systemTtsDefaultSpeed);
 
-    if (settings?.useGlmTts ?? false) {
+    if (PlatformUtils.supportsSystemTts) {
+      await _flutterTts.setSpeechRate(speechRate.clamp(
+          AppConstants.systemTtsMinSpeed, AppConstants.systemTtsMaxSpeed));
+      debugPrint(
+          '动态更新系统TTS语速: ${(speechRate * 100).toInt()}% ($speechRate)');
+    }
+
+    if (isGlmTts || forceGlmTts) {
       try {
         await _speakWithGlmTts(text, speechRate);
         await _speakCompleter?.future;
       } catch (e) {
-        if (e is GlmTtsException) {
+        if (!PlatformUtils.isMacOS && e is GlmTtsException) {
           debugPrint('GLM-TTS失败，自动回退到Flutter TTS');
           _speakCompleter = Completer<void>();
           await _speakWithFlutterTts(text);
           await _speakCompleter?.future;
           rethrow;
         }
-        debugPrint('GLM-TTS播放错误: $e，回退到Flutter TTS');
-        _speakCompleter = Completer<void>();
-        await _speakWithFlutterTts(text);
-        await _speakCompleter?.future;
+        if (!PlatformUtils.isMacOS) {
+          debugPrint('GLM-TTS播放错误: $e，回退到Flutter TTS');
+          _speakCompleter = Completer<void>();
+          await _speakWithFlutterTts(text);
+          await _speakCompleter?.future;
+        } else {
+          debugPrint('GLM-TTS播放错误: $e');
+          _isSpeaking = false;
+          _currentText = null;
+          rethrow;
+        }
       }
     } else {
       await _speakWithFlutterTts(text);
@@ -159,6 +179,10 @@ class TtsService {
   }
 
   Future<void> _speakWithFlutterTts(String text) async {
+    if (!PlatformUtils.supportsSystemTts) {
+      debugPrint('桌面平台不支持系统TTS');
+      return;
+    }
     debugPrint('使用Flutter TTS播放');
     try {
       await _flutterTts.speak(text);
@@ -229,7 +253,9 @@ class TtsService {
 
   Future<void> stop() async {
     if (_isSpeaking || _isLoading) {
-      await _flutterTts.stop();
+      if (PlatformUtils.supportsSystemTts) {
+        await _flutterTts.stop();
+      }
       await _audioPlayer.stop();
       _isSpeaking = false;
       _isLoading = false;
@@ -247,29 +273,40 @@ class TtsService {
   String? get currentText => _currentText;
 
   Future<void> setSpeechRate(double rate) async {
-    await _flutterTts.setSpeechRate(rate.clamp(0.0, 1.0));
+    if (PlatformUtils.supportsSystemTts) {
+      await _flutterTts.setSpeechRate(rate.clamp(0.0, 1.0));
+    }
   }
 
   Future<void> setVolume(double volume) async {
-    await _flutterTts.setVolume(volume.clamp(0.0, 1.0));
+    if (PlatformUtils.supportsSystemTts) {
+      await _flutterTts.setVolume(volume.clamp(0.0, 1.0));
+    }
     await _audioPlayer.setVolume(volume.clamp(0.0, 1.0));
   }
 
   Future<void> setPitch(double pitch) async {
-    await _flutterTts.setPitch(pitch.clamp(0.5, 2.0));
+    if (PlatformUtils.supportsSystemTts) {
+      await _flutterTts.setPitch(pitch.clamp(0.5, 2.0));
+    }
   }
 
   Future<List<String>> getAvailableLanguages() async {
+    if (!PlatformUtils.supportsSystemTts) return [];
     final languages = await _flutterTts.getLanguages;
     return languages.cast<String>();
   }
 
   Future<void> setLanguage(String language) async {
-    await _flutterTts.setLanguage(language);
+    if (PlatformUtils.supportsSystemTts) {
+      await _flutterTts.setLanguage(language);
+    }
   }
 
   void dispose() {
-    _flutterTts.stop();
+    if (PlatformUtils.supportsSystemTts) {
+      _flutterTts.stop();
+    }
     _audioPlayer.dispose();
     _cleanupAudioFile();
     _isInitialized = false;

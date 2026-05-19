@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_translation/google_mlkit_translation.dart';
+import '../../core/utils/platform_utils.dart';
 
 enum TranslationStatus {
   idle,
@@ -24,7 +25,10 @@ class TranslationService {
 
   bool get isDownloadingModel => _isDownloading;
 
+  static bool get isSupported => PlatformUtils.supportsMlKit;
+
   Future<void> ensureReady() async {
+    if (!isSupported) return;
     if (_isReady && _translator != null) return;
 
     _translator = OnDeviceTranslator(
@@ -54,6 +58,13 @@ class TranslationService {
   }
 
   Future<TranslationResult> translateWithStatus(String text) async {
+    if (!isSupported) {
+      return TranslationResult(
+        status: TranslationStatus.failed,
+        message: '当前平台不支持翻译功能',
+      );
+    }
+
     if (text.trim().isEmpty) {
       return TranslationResult(status: TranslationStatus.idle);
     }
