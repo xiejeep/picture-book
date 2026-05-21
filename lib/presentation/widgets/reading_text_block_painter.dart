@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../data/models/text_block_model.dart';
-import '../../../core/theme/app_theme.dart';
 
 class ReadingTextBlockPainter extends CustomPainter {
   final List<TextBlockModel> textBlocks;
@@ -9,6 +8,7 @@ class ReadingTextBlockPainter extends CustomPainter {
   final double displayWidth;
   final double displayHeight;
   final int? playingBlockIndex;
+  final Color textBlockMaskColor;
 
   ReadingTextBlockPainter({
     required this.textBlocks,
@@ -17,6 +17,7 @@ class ReadingTextBlockPainter extends CustomPainter {
     required this.displayWidth,
     required this.displayHeight,
     this.playingBlockIndex,
+    required this.textBlockMaskColor,
   });
 
   double get scaleX => displayWidth / imageWidth;
@@ -42,13 +43,11 @@ class ReadingTextBlockPainter extends CustomPainter {
 
       final displayRect = _convertRect(block.boundingBox);
 
-      final strokeWidth = (displayRect.height * 0.03).clamp(2.0, 6.0);
       final borderRadius = (displayRect.height * 0.08).clamp(4.0, 12.0);
 
       final borderPaint = Paint()
-        ..color = AppTheme.gentleGreen.withValues(alpha: 0.6)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth;
+        ..color = textBlockMaskColor
+        ..style = PaintingStyle.fill;
 
       canvas.drawRRect(
         RRect.fromRectAndRadius(displayRect, Radius.circular(borderRadius)),
@@ -64,6 +63,7 @@ class ReadingTextBlockPainter extends CustomPainter {
         oldDelegate.imageHeight != imageHeight ||
         oldDelegate.displayWidth != displayWidth ||
         oldDelegate.displayHeight != displayHeight ||
-        oldDelegate.playingBlockIndex != playingBlockIndex;
+        oldDelegate.playingBlockIndex != playingBlockIndex ||
+        oldDelegate.textBlockMaskColor != textBlockMaskColor;
   }
 }

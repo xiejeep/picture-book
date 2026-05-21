@@ -1282,6 +1282,7 @@ color: AppTheme.focusHighlightOf(context),
                                   displayWidth: displaySize.width,
                                   displayHeight: displaySize.height,
                                   playingBlockIndex: _playingBlockIndex,
+                                  textBlockMaskColor: AppTheme.primaryOf(context).withValues(alpha: 0.25),
                                 ),
                               ),
                             if (page.textBlocks.isNotEmpty)

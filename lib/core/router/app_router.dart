@@ -12,6 +12,7 @@ import '../../presentation/pages/cache_management_page.dart';
 import '../../presentation/pages/supertonic_model_page.dart';
 import '../../presentation/pages/tutorial_page.dart';
 import '../../presentation/pages/about_page.dart';
+import '../../presentation/pages/appearance_settings_page.dart';
 import '../../data/models/book_model.dart';
 import '../../data/services/storage_service.dart';
 import '../../data/services/nfc_service.dart';
@@ -165,6 +166,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             path: 'about',
             name: 'about',
             builder: (context, state) => const AboutPage(),
+          ),
+          GoRoute(
+            path: 'appearance',
+            name: 'appearance_settings',
+            builder: (context, state) => const AppearanceSettingsPage(),
           ),
         ],
       ),

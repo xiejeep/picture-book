@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/constants/constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../core/utils/toast_util.dart';
 
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
@@ -29,6 +31,8 @@ class AboutPage extends StatelessWidget {
                 const SizedBox(height: 24),
                 _buildInfoSection(context),
                 const SizedBox(height: 24),
+                _buildContactSection(context),
+                const SizedBox(height: 24),
                 _buildFooterSection(context),
               ],
             ),
@@ -48,11 +52,6 @@ class AboutPage extends StatelessWidget {
             width: 100,
             height: 100,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [AppTheme.softOrange, Color(0xFFFF8C42)],
-              ),
               borderRadius: BorderRadius.circular(28),
               boxShadow: [
                 BoxShadow(
@@ -62,10 +61,12 @@ class AboutPage extends StatelessWidget {
                 ),
               ],
             ),
-            child: const Icon(
-              Icons.auto_stories_rounded,
-              size: 52,
-              color: Colors.white,
+            clipBehavior: Clip.antiAlias,
+            child: Image.asset(
+              'assets/images/logo.png',
+              width: 100,
+              height: 100,
+              fit: BoxFit.cover,
             ),
           ),
           const SizedBox(height: 20),
@@ -215,6 +216,125 @@ class AboutPage extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildContactSection(BuildContext context) {
+    return Container(
+      decoration: AppTheme.playfulCardDecorationOf(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.mail_outline_rounded,
+                  size: 18,
+                  color: AppTheme.primaryOf(context),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '联系我们',
+                  style: TextStyle(
+                    fontSize: AppFontSize.base,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _buildContactItem(
+            context,
+            icon: Icons.email_rounded,
+            label: '邮箱',
+            value: 'classhorse@foxmail.com',
+            onTap: () {
+              Clipboard.setData(const ClipboardData(text: 'classhorse@foxmail.com'));
+              ToastUtil.success('邮箱已复制到剪贴板');
+            },
+          ),
+          _buildContactItem(
+            context,
+            icon: Icons.chat_rounded,
+            label: '微信',
+            value: 'classhorse2025',
+            onTap: () {
+              Clipboard.setData(const ClipboardData(text: 'classhorse2025'));
+              ToastUtil.success('微信号已复制到剪贴板');
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContactItem(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String value,
+    required VoidCallback onTap,
+  }) {
+    return Semantics(
+      label: '$label: $value',
+      hint: '点击复制',
+      button: true,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryOf(context).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  size: 22,
+                  color: AppTheme.primaryOf(context),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: AppFontSize.sm,
+                        color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: AppFontSize.md,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.onSurfaceOf(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.copy_rounded,
+                size: 18,
+                color: AppTheme.primaryOf(context).withValues(alpha: 0.5),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -30,9 +30,9 @@ class SettingsPage extends ConsumerWidget {
             children: [
               _buildTutorialSection(context),
               const SizedBox(height: 16),
-              _buildAppearanceSection(context, ref),
-              const SizedBox(height: 16),
               _buildAiSettingsSection(context, ref),
+              const SizedBox(height: 16),
+              _buildAppearanceTile(context, ref),
               const SizedBox(height: 16),
               if (nfcAvailableAsync.hasValue && nfcAvailableAsync.value == true)
                 _buildDeviceSection(context, ref),
@@ -204,8 +204,13 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildAppearanceSection(BuildContext context, WidgetRef ref) {
+  Widget _buildAppearanceTile(BuildContext context, WidgetRef ref) {
     final currentMode = ref.watch(themeModeProvider);
+    final modeLabel = {
+      ThemeMode.light: '亮色',
+      ThemeMode.dark: '暗色',
+      ThemeMode.system: '跟随系统',
+    }[currentMode];
 
     return Container(
       decoration: AppTheme.playfulCardDecorationOf(context),
@@ -235,127 +240,17 @@ class SettingsPage extends ConsumerWidget {
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            child: Row(
-              children: [
-                _buildThemeOption(
-                  context: context,
-                  ref: ref,
-                  mode: ThemeMode.light,
-                  icon: Icons.light_mode_rounded,
-                  label: '亮色',
-                  gradientColors: [AppTheme.honeyYellow, AppTheme.softOrange],
-                  isSelected: currentMode == ThemeMode.light,
-                ),
-                const SizedBox(width: 12),
-                _buildThemeOption(
-                  context: context,
-                  ref: ref,
-                  mode: ThemeMode.dark,
-                  icon: Icons.dark_mode_rounded,
-                  label: '暗色',
-                  gradientColors: [AppTheme.calmBlue, AppTheme.lavender],
-                  isSelected: currentMode == ThemeMode.dark,
-                ),
-                const SizedBox(width: 12),
-                _buildThemeOption(
-                  context: context,
-                  ref: ref,
-                  mode: ThemeMode.system,
-                  icon: Icons.settings_suggest_rounded,
-                  label: '跟随系统',
-                  gradientColors: [AppTheme.gentleGreen, AppTheme.calmBlue],
-                  isSelected: currentMode == ThemeMode.system,
-                ),
-              ],
-            ),
+          _buildSettingTile(
+            context: context,
+            icon: Icons.palette_rounded,
+            iconColors: [AppTheme.honeyYellow, AppTheme.softOrange],
+            title: '外观设置',
+            subtitle: '当前：$modeLabel',
+            onTap: () {
+              context.push('/settings/appearance');
+            },
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildThemeOption({
-    required BuildContext context,
-    required WidgetRef ref,
-    required ThemeMode mode,
-    required IconData icon,
-    required String label,
-    required List<Color> gradientColors,
-    required bool isSelected,
-  }) {
-    final hints = {
-      ThemeMode.light: '切换到亮色主题',
-      ThemeMode.dark: '切换到暗色主题',
-      ThemeMode.system: '主题跟随系统设置',
-    };
-    return Expanded(
-      child: Semantics(
-        label: '$label主题',
-        hint: hints[mode],
-        button: true,
-        child: GestureDetector(
-          onTap: () {
-            ref.read(themeModeProvider.notifier).setThemeMode(mode);
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: gradientColors
-                    .map((c) => c.withValues(alpha: 0.15))
-                    .toList(),
-              ),
-              borderRadius: BorderRadius.circular(16),
-              border: isSelected
-                  ? Border.all(color: gradientColors[0], width: 2.5)
-                  : null,
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: gradientColors[0].withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: gradientColors,
-                    ),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: Colors.white, size: 24),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                    color: isSelected
-                        ? gradientColors[0]
-                        : AppTheme.onSurfaceOf(context).withValues(alpha: 0.7),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }
