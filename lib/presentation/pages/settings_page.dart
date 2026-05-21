@@ -614,25 +614,7 @@ class SettingsPage extends ConsumerWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
-            onTap: () async {
-              final packageInfo = await PackageInfo.fromPlatform();
-              if (!context.mounted) return;
-              showAboutDialog(
-                context: context,
-                applicationName: '点读鸭',
-                applicationVersion: packageInfo.version,
-                applicationLegalese: '© ${DateTime.now().year}',
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(top: 16),
-                    child: Text(
-                      '一款专为儿童读本设计的点读应用，支持ML Kit文字识别和AI强化功能。',
-                      style: TextStyle(fontSize: 14),
-                    ),
-                  ),
-                ],
-              );
-            },
+            onTap: () => context.push('/settings/about'),
           ),
         ],
       ),

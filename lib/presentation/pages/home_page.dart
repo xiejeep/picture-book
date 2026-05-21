@@ -1,8 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../data/models/book_model.dart';
 import '../../data/models/text_block_model.dart';
+import '../../data/services/import_export_service.dart';
+import '../../data/services/file_intent_service.dart';
 import '../providers/books_provider.dart';
 import '../widgets/book_card.dart';
 import '../../core/utils/toast_util.dart';
@@ -17,6 +22,24 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
+  @override
+  void initState() {
+    super.initState();
+    FileIntentService.register((path) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _importFile(File(path));
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    FileIntentService.unregister();
+    super.dispose();
+  }
+
   Future<void> _createNewBook() async {
     final title = await _showCreateBookDialog();
     if (title == null) return;
@@ -229,67 +252,120 @@ class _HomePageState extends ConsumerState<HomePage> {
       ),
       builder: (context) => Container(
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppTheme.mutedOf(context).withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 20),
-            ListTile(
-              leading: Container(
-                width: 48,
-                height: 48,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(
-                  color: AppTheme.accentOf(context).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.edit_rounded,
-                  color: AppTheme.accentOf(context),
+                  color: AppTheme.mutedOf(context).withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              title: const Text('编辑'),
-              subtitle: const Text('修改文字块、AI强化识别'),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _openBookInEditMode(book);
-              },
-            ),
-            const SizedBox(height: 8),
-            ListTile(
-              leading: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: AppTheme.errorOf(context).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentOf(context).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.edit_rounded,
+                    color: AppTheme.accentOf(context),
+                  ),
                 ),
-                child: Icon(
-                  Icons.delete_rounded,
-                  color: AppTheme.errorOf(context),
+                title: const Text('编辑'),
+                subtitle: const Text('修改文字块、AI强化识别'),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _openBookInEditMode(book);
+                },
               ),
-              title: const Text('删除读本'),
-              subtitle: Text('删除 "${book.title}"'),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryOf(context).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.file_upload_rounded,
+                    color: AppTheme.primaryOf(context),
+                  ),
+                ),
+                title: const Text('分享'),
+                subtitle: Text('分享 "${book.title}"'),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _exportBook(book);
+                },
               ),
-              onTap: () {
-                Navigator.pop(context);
-                _deleteBook(book);
-              },
-            ),
-            const SizedBox(height: 8),
-          ],
+              const SizedBox(height: 8),
+              ListTile(
+                leading: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppTheme.secondaryOf(context).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.save_alt_rounded,
+                    color: AppTheme.secondaryOf(context),
+                  ),
+                ),
+                title: const Text('保存到手机'),
+                subtitle: Text('保存 "${book.title}" 到下载目录'),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _saveBookToPhone(book);
+                },
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppTheme.errorOf(context).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.delete_rounded,
+                    color: AppTheme.errorOf(context),
+                  ),
+                ),
+                title: const Text('删除读本'),
+                subtitle: Text('删除 "${book.title}"'),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _deleteBook(book);
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
     );
@@ -303,6 +379,257 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   void _openSettings() {
     context.push('/settings');
+  }
+
+  Future<void> _importBook() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.any,
+    );
+    if (result == null || result.files.isEmpty) return;
+    final path = result.files.single.path;
+    if (path == null) return;
+    final ext = path.split('.').last.toLowerCase();
+    if (ext != 'ddb' && ext != 'zip') {
+      ToastUtil.error('仅支持 .ddb 或 .zip 格式的导入文件');
+      return;
+    }
+
+    await _importFile(File(path));
+  }
+
+  Future<void> _importFile(File file) async {
+    try {
+      final metadata = await ImportExportService.instance.parseMetadata(file);
+      if (!mounted) return;
+      if (metadata == null) {
+        ToastUtil.error('无效的导入文件');
+        return;
+      }
+
+      final title = ImportExportService.instance.getTitleFromMetadata(metadata);
+      if (title == null) {
+        ToastUtil.error('无效的导入文件：缺少书名');
+        return;
+      }
+
+      String? overrideTitle;
+
+      if (ImportExportService.instance.hasTitleConflict(title)) {
+        final choice = await _showImportConflictDialog(title);
+        if (!mounted) return;
+        if (choice == null) return;
+
+        if (choice) {
+          final books = ref.read(booksProvider).books;
+          final conflicting = books.where((b) => b.title == title).toList();
+          for (final b in conflicting) {
+            await ref.read(booksProvider.notifier).deleteBook(b.id);
+            if (!mounted) return;
+          }
+        } else {
+          overrideTitle = '$title (导入)';
+        }
+      } else {
+        final confirmed = await _showImportConfirmDialog(title);
+        if (!mounted) return;
+        if (confirmed != true) return;
+      }
+
+      final book = await ImportExportService.instance
+          .importBook(file, overrideTitle: overrideTitle);
+      if (!mounted) return;
+      ref.read(booksProvider.notifier).refresh();
+      ToastUtil.success('"${book.title}" 导入成功');
+    } catch (e) {
+      if (!mounted) return;
+      ToastUtil.error('导入失败: $e');
+    }
+  }
+
+  Future<void> _exportBook(BookModel book) async {
+    try {
+      final exportFile = await ImportExportService.instance.exportBook(book);
+      await Share.shareXFiles(
+        [XFile(exportFile.path)],
+        subject: book.title,
+      );
+    } catch (e) {
+      ToastUtil.error('导出失败: $e');
+    }
+  }
+
+  Future<void> _saveBookToPhone(BookModel book) async {
+    try {
+      final exportFile = await ImportExportService.instance.exportBook(book);
+      final bytes = await exportFile.readAsBytes();
+      final result = await FilePicker.platform.saveFile(
+        dialogTitle: '保存读本',
+        fileName: '${book.title}.ddb',
+        bytes: bytes,
+        type: FileType.custom,
+        allowedExtensions: ['ddb'],
+      );
+      if (result != null) {
+        ToastUtil.success('保存成功');
+      }
+    } catch (e) {
+      ToastUtil.error('保存失败: $e');
+    }
+  }
+
+  Future<bool?> _showImportConflictDialog(String title) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceOf(context),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.accentOf(context).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  Icons.warning_amber_rounded,
+                  size: 32,
+                  color: AppTheme.accentOf(context),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '导入冲突',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.onSurfaceOf(context),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '读本"$title"已存在，如何处理？',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.7),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: Text(
+                      '保留两者',
+                      style: TextStyle(
+                        color: AppTheme.onSurfaceOf(context)
+                            .withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.errorOf(context),
+                      foregroundColor: Theme.of(context).colorScheme.onError,
+                    ),
+                    child: const Text('覆盖已有读本'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<bool?> _showImportConfirmDialog(String title) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceOf(context),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryOf(context).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  Icons.file_open_rounded,
+                  size: 32,
+                  color: AppTheme.primaryOf(context),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '导入读本',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.onSurfaceOf(context),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '确定导入 "$title" 吗？',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.7),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: Text(
+                      '取消',
+                      style: TextStyle(
+                        color: AppTheme.onSurfaceOf(context)
+                            .withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                    ),
+                    child: const Text('导入'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -333,6 +660,30 @@ class _HomePageState extends ConsumerState<HomePage> {
           ],
         ),
         actions: [
+          Semantics(
+            label: '导入读本',
+            hint: '从文件导入读本',
+            button: true,
+            child: IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onPrimary
+                      .withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.file_open_rounded,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
+              ),
+              onPressed: _importBook,
+              tooltip: '导入读本',
+            ),
+          ),
           Semantics(
             label: '设置',
             hint: '打开应用设置页面',

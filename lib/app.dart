@@ -6,6 +6,7 @@ import 'core/theme/app_theme.dart';
 import 'core/utils/toast_util.dart';
 import 'data/services/nfc_service.dart';
 import 'data/services/tts_service.dart';
+import 'data/services/file_intent_service.dart';
 import 'presentation/providers/settings_provider.dart';
 
 class BookApp extends ConsumerStatefulWidget {
@@ -24,6 +25,7 @@ class _BookAppState extends ConsumerState<BookApp> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     TtsService.instance.initialize();
+    FileIntentService.initialize();
   }
 
   @override

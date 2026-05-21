@@ -3,11 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../data/models/book_model.dart';
 import '../../data/models/page_model.dart';
 import '../../data/models/text_block_model.dart';
 import '../../data/services/book_service.dart';
 import '../../data/services/image_service.dart';
+import '../../data/services/import_export_service.dart';
 import '../../core/utils/toast_util.dart';
 import '../../core/theme/app_theme.dart';
 import '../features/text_detection/text_detection.dart';
@@ -387,13 +390,94 @@ class _BookManagePageState extends State<BookManagePage> {
     }
   }
 
+  Future<void> _exportBook() async {
+    try {
+      final exportFile =
+          await ImportExportService.instance.exportBook(widget.book);
+      await Share.shareXFiles(
+        [XFile(exportFile.path)],
+        subject: widget.book.title,
+      );
+    } catch (e) {
+      ToastUtil.error('导出失败: $e');
+    }
+  }
+
+  Future<void> _saveBookToPhone() async {
+    try {
+      final exportFile =
+          await ImportExportService.instance.exportBook(widget.book);
+      final bytes = await exportFile.readAsBytes();
+      final result = await FilePicker.platform.saveFile(
+        dialogTitle: '保存读本',
+        fileName: '${widget.book.title}.ddb',
+        bytes: bytes,
+        type: FileType.custom,
+        allowedExtensions: ['ddb'],
+      );
+      if (result != null) {
+        ToastUtil.success('保存成功');
+      }
+    } catch (e) {
+      ToastUtil.error('保存失败: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('编辑读本'),
-        actions: const [
-          SizedBox(width: 8),
+        actions: [
+          Semantics(
+            label: '导出读本',
+            hint: '导出读本到文件',
+            button: true,
+            child: IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onPrimary
+                      .withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.file_upload_rounded,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
+              ),
+              onPressed: _exportBook,
+              tooltip: '导出读本',
+            ),
+          ),
+          Semantics(
+            label: '保存到手机',
+            hint: '保存读本到手机下载目录',
+            button: true,
+            child: IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onPrimary
+                      .withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.save_alt_rounded,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
+              ),
+              onPressed: _saveBookToPhone,
+              tooltip: '保存到手机',
+            ),
+          ),
+          const SizedBox(width: 8),
         ],
         flexibleSpace: Container(
           decoration: BoxDecoration(

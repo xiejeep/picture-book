@@ -11,6 +11,7 @@ import '../../presentation/pages/voice_settings_page.dart';
 import '../../presentation/pages/cache_management_page.dart';
 import '../../presentation/pages/supertonic_model_page.dart';
 import '../../presentation/pages/tutorial_page.dart';
+import '../../presentation/pages/about_page.dart';
 import '../../data/models/book_model.dart';
 import '../../data/services/storage_service.dart';
 import '../../data/services/nfc_service.dart';
@@ -85,6 +86,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           return '/book/$bookId?autoPlayPageId=$pageId&autoPlayBlockId=$blockId';
         }
       }
+      if (uri.scheme == 'file' || uri.scheme == 'content') {
+        return '/';
+      }
       return null;
     },
     routes: [
@@ -156,6 +160,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             path: 'supertonic',
             name: 'supertonic_model',
             builder: (context, state) => const SupertonicModelPage(),
+          ),
+          GoRoute(
+            path: 'about',
+            name: 'about',
+            builder: (context, state) => const AboutPage(),
           ),
         ],
       ),
