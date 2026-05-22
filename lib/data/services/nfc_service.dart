@@ -293,6 +293,8 @@ class NfcService {
       } catch (_) {}
     }
 
+    await _ensureNativeSessionReleased();
+
     final completer = Completer<void>();
     final uri = NfcAction(
       bookId: bookId,
