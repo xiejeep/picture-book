@@ -340,37 +340,33 @@ class AboutPage extends StatelessWidget {
   }
 
   Widget _buildFooterSection(BuildContext context) {
-    return Container(
-      decoration: AppTheme.playfulCardDecorationOf(context),
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
-      child: Column(
-        children: [
-          Text(
-            '感谢使用 ${AppConstants.appName}',
-            style: TextStyle(
-              fontSize: AppFontSize.md,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.onSurfaceOf(context),
-            ),
+    return Column(
+      children: [
+        Text(
+          '感谢使用 ${AppConstants.appName}',
+          style: TextStyle(
+            fontSize: AppFontSize.md,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.onSurfaceOf(context),
           ),
-          const SizedBox(height: 12),
-          Text(
-            '© ${DateTime.now().year} ${AppConstants.appName}',
-            style: TextStyle(
-              fontSize: AppFontSize.sm,
-              color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.5),
-            ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          '© ${DateTime.now().year} ${AppConstants.appName}',
+          style: TextStyle(
+            fontSize: AppFontSize.sm,
+            color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.5),
           ),
-          const SizedBox(height: 4),
-          Text(
-            '让每个孩子都能享受阅读的乐趣',
-            style: TextStyle(
-              fontSize: AppFontSize.sm,
-              color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.5),
-            ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '让每个孩子都能享受阅读的乐趣',
+          style: TextStyle(
+            fontSize: AppFontSize.sm,
+            color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.5),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

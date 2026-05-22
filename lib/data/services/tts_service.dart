@@ -140,7 +140,7 @@ class TtsService {
     _speakCompleter = Completer<void>();
 
     final settings = StorageService.instance.getAiSettings();
-    final ttsEngine = settings?.ttsEngine ?? 'glm';
+    final ttsEngine = settings?.ttsEngine ?? (PlatformUtils.isMacOS ? 'glm' : 'system');
     final speechRate = settings?.speechRate ?? AppConstants.glmTtsDefaultSpeed;
 
     debugPrint('TTS引擎: $ttsEngine, 语速: $speechRate');
@@ -184,15 +184,8 @@ class TtsService {
         await _speakWithGlmTts(text, speechRate);
         await _speakCompleter?.future;
       } catch (e) {
-        if (!PlatformUtils.isMacOS && e is GlmTtsException) {
-          debugPrint('GLM-TTS失败，自动回退到Flutter TTS');
-          _speakCompleter = Completer<void>();
-          await _speakWithFlutterTts(text);
-          await _speakCompleter?.future;
-          rethrow;
-        }
         if (!PlatformUtils.isMacOS) {
-          debugPrint('GLM-TTS播放错误: $e，回退到Flutter TTS');
+          debugPrint('GLM-TTS失败($e)，自动回退到系统TTS');
           _speakCompleter = Completer<void>();
           await _speakWithFlutterTts(text);
           await _speakCompleter?.future;

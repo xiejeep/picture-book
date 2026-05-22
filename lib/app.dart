@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/router/app_router.dart';
@@ -30,18 +31,22 @@ class _BookAppState extends ConsumerState<BookApp> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (Platform.isIOS) return;
     final nfcEnabled = ref.read(nfcEnabledProvider);
     if (!nfcEnabled || !_nfcInitialized) return;
 
     if (state == AppLifecycleState.paused) {
+      debugPrint('NFC [LIFECYCLE]: app paused, stopping NFC');
       NfcService.instance.stopListening();
     } else if (state == AppLifecycleState.resumed) {
+      debugPrint('NFC [LIFECYCLE]: app resumed, starting NFC');
       NfcService.instance.startForegroundListening();
     }
   }
 
   void _initNfcIfNeeded() {
     final nfcEnabled = ref.read(nfcEnabledProvider);
+    debugPrint('NFC [LIFECYCLE]: _initNfcIfNeeded nfcEnabled=$nfcEnabled _nfcInitialized=$_nfcInitialized');
     if (nfcEnabled && !_nfcInitialized) {
       _initNfcListener();
       _nfcInitialized = true;
@@ -49,6 +54,7 @@ class _BookAppState extends ConsumerState<BookApp> with WidgetsBindingObserver {
   }
 
   void _stopNfcIfNeeded() {
+    debugPrint('NFC [LIFECYCLE]: _stopNfcIfNeeded _nfcInitialized=$_nfcInitialized');
     if (_nfcInitialized) {
       NfcService.instance.stopListening();
       _nfcSubscription?.cancel();
@@ -58,7 +64,10 @@ class _BookAppState extends ConsumerState<BookApp> with WidgetsBindingObserver {
   }
 
   void _initNfcListener() {
-    NfcService.instance.startForegroundListening();
+    debugPrint('NFC [LIFECYCLE]: _initNfcListener starting');
+    if (!Platform.isIOS) {
+      NfcService.instance.startForegroundListening();
+    }
     _nfcSubscription = NfcService.instance.onTagDetected.listen((action) {
       if (!mounted) return;
       if (NfcService.instance.isLastActionConsumed) return;

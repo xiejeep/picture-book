@@ -40,4 +40,16 @@ post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
   end
+
+  # nfc_manager plugin imports CoreNFC but its podspec doesn't declare
+  # s.framework = 'CoreNFC'. With use_frameworks! :linkage => :static,
+  # the framework must be explicitly linked.
+  installer.pods_project.targets.each do |target|
+    next unless target.name == 'nfc_manager'
+    target.build_configurations.each do |config|
+      existing_flags = config.build_settings['OTHER_LDFLAGS'] || ['$(inherited)']
+      existing_flags = [existing_flags] unless existing_flags.is_a?(Array)
+      config.build_settings['OTHER_LDFLAGS'] = existing_flags + ['-framework', 'CoreNFC']
+    end
+  end
 end

@@ -146,13 +146,29 @@ class NfcService {
   }
 
   Future<bool> isAvailable() async {
+    debugPrint('NFC [AVAIL]: checking platform=${Platform.isIOS ? "iOS" : Platform.isAndroid ? "Android" : "unsupported"}');
     if (!Platform.isAndroid && !Platform.isIOS) return false;
-    final availability = await NfcManager.instance.checkAvailability();
-    return availability == NfcAvailability.enabled;
+    try {
+      final availability = await NfcManager.instance.checkAvailability();
+      debugPrint('NFC [AVAIL]: NfcManager.checkAvailability() returned $availability');
+      final available = availability == NfcAvailability.enabled;
+      debugPrint('NFC [AVAIL]: isAvailable=${available}');
+      return available;
+    } catch (e) {
+      debugPrint('NFC [AVAIL]: checkAvailability threw $e');
+      return false;
+    }
   }
 
-  void startForegroundListening() {
+  void startForegroundListening() async {
+    debugPrint('NFC [READ]: startForegroundListening() called, '
+        'platform=${Platform.isIOS ? "iOS" : "Android"}, _isListening=$_isListening');
     if (!Platform.isAndroid && !Platform.isIOS) return;
+    if (Platform.isIOS) {
+      debugPrint('NFC [READ]: iOS does not support continuous foreground'
+          ' listening; use startIosScan() instead');
+      return;
+    }
 
     if (_isListening) {
       debugPrint('NFC [READ]: restarting session (was already listening)');
@@ -161,21 +177,32 @@ class NfcService {
       } catch (_) {}
     }
 
-    _isListening = true;
     debugPrint('NFC [READ]: starting foreground listening session...');
-    NfcManager.instance.startSession(
-      pollingOptions: {
-        NfcPollingOption.iso14443,
-        NfcPollingOption.iso15693,
-        NfcPollingOption.iso18092,
-      },
-      invalidateAfterFirstReadIos: false,
-      onDiscovered: (NfcTag tag) async {
-        // ignore: invalid_use_of_protected_member
-        debugPrint('NFC [READ]: tag discovered, data=${tag.data}');
-        _handleTag(tag);
-      },
-    );
+    try {
+      await NfcManager.instance.startSession(
+        pollingOptions: {
+          NfcPollingOption.iso14443,
+          NfcPollingOption.iso15693,
+        },
+        alertMessageIos: '将 NFC 标签靠近手机背面',
+        invalidateAfterFirstReadIos: false,
+        onSessionErrorIos: (error) {
+          debugPrint(
+              'NFC [READ]: iOS session error: ${error.code.name} - ${error.message}');
+        },
+        onDiscovered: (NfcTag tag) async {
+          // ignore: invalid_use_of_protected_member
+          debugPrint('NFC [READ]: tag discovered, data=${tag.data}');
+          _handleTag(tag);
+        },
+      );
+    } catch (e, stack) {
+      debugPrint('NFC [READ]: startSession threw exception: $e');
+      debugPrint('NFC [READ]: stackTrace: $stack');
+      _isListening = false;
+      return;
+    }
+    _isListening = true;
     debugPrint('NFC [READ]: foreground listening started');
   }
 
@@ -188,7 +215,67 @@ class NfcService {
     debugPrint('NFC: foreground listening stopped');
   }
 
+  /// iOS native session invalidation is asynchronous — the session may
+  /// not be fully released when `onSessionErrorIos` fires. Always
+  /// attempt cleanup before starting a new session to avoid
+  /// `session_already_exists`.
+  Future<void> _ensureNativeSessionReleased() async {
+    if (!Platform.isIOS) return;
+    try {
+      await NfcManager.instance.stopSession();
+    } catch (_) {}
+  }
+
+  Future<void> startIosScan() async {
+    if (!Platform.isIOS) return;
+    debugPrint('NFC [IOS_SCAN]: starting scan session...');
+
+    if (_isListening) {
+      debugPrint('NFC [IOS_SCAN]: session already active, stopping...');
+      _isListening = false;
+      try {
+        NfcManager.instance.stopSession();
+      } catch (_) {}
+      return;
+    }
+
+    await _ensureNativeSessionReleased();
+
+    final completer = Completer<void>();
+    try {
+      await NfcManager.instance.startSession(
+        pollingOptions: {
+          NfcPollingOption.iso14443,
+          NfcPollingOption.iso15693,
+        },
+        alertMessageIos: '将 NFC 标签靠近手机背面',
+        invalidateAfterFirstReadIos: false,
+        onSessionErrorIos: (error) {
+          debugPrint(
+              'NFC [IOS_SCAN]: iOS session error: ${error.code.name} - ${error.message}');
+          _isListening = false;
+          if (!completer.isCompleted) completer.complete();
+        },
+        onDiscovered: (NfcTag tag) async {
+          debugPrint('NFC [IOS_SCAN]: tag discovered');
+          _handleTag(tag);
+        },
+      );
+    } catch (e, stack) {
+      debugPrint('NFC [IOS_SCAN]: startSession threw exception: $e');
+      debugPrint('NFC [IOS_SCAN]: stackTrace: $stack');
+      if (!completer.isCompleted) completer.complete();
+      return completer.future;
+    }
+    _isListening = true;
+    debugPrint('NFC [IOS_SCAN]: scan session started');
+
+    return completer.future;
+  }
+
   Future<void> writeTag(String bookId, String pageId, String blockId) async {
+    debugPrint('NFC [WRITE]: writeTag() called, '
+        'platform=${Platform.isIOS ? "iOS" : "Android"}, bookId=$bookId');
     if (!Platform.isAndroid && !Platform.isIOS) {
       throw NfcException('NFC not supported on this platform');
     }
@@ -196,6 +283,14 @@ class NfcService {
     final available = await isAvailable();
     if (!available) {
       throw NfcException('NFC is not available on this device');
+    }
+
+    if (_isListening) {
+      debugPrint('NFC [WRITE]: stopping foreground listening before write...');
+      _isListening = false;
+      try {
+        NfcManager.instance.stopSession();
+      } catch (_) {}
     }
 
     final completer = Completer<void>();
@@ -206,66 +301,83 @@ class NfcService {
     ).toUri();
 
     debugPrint('NFC [WRITE]: starting write session for URI: $uri');
-
-    NfcManager.instance.startSession(
-      pollingOptions: {
-        NfcPollingOption.iso14443,
-        NfcPollingOption.iso15693,
-      },
-      onDiscovered: (NfcTag tag) async {
-        // ignore: invalid_use_of_protected_member
-        debugPrint('NFC [WRITE]: tag discovered, data=${tag.data}');
-        final ndef = _getNdefFromTag(tag);
-        if (ndef == null) {
-          debugPrint('NFC [WRITE]: tag does not support NDEF');
-          await NfcManager.instance.stopSession(
-            errorMessageIos: '此标签不支持 NDEF',
-          );
-          if (!completer.isCompleted) {
-            completer.completeError(NfcException('此标签不支持 NDEF 格式'));
-          }
-          return;
-        }
-
-        try {
-          debugPrint('NFC [WRITE]: constructing NDEF message for URI: $uri');
-          final message = NdefMessage(
-            records: [
-              NdefRecord(
-                typeNameFormat: TypeNameFormat.wellKnown,
-                type: Uint8List.fromList([0x55]),
-                identifier: Uint8List(0),
-                payload: Uint8List.fromList(uri.codeUnits),
-              ),
-            ],
-          );
+    try {
+      await NfcManager.instance.startSession(
+        pollingOptions: {
+          NfcPollingOption.iso14443,
+          NfcPollingOption.iso15693,
+        },
+        alertMessageIos: '请将 NFC 标签靠近手机背面进行绑定',
+        onSessionErrorIos: (error) {
           debugPrint(
-              'NFC [WRITE]: writing NDEF message (${message.records.length} record(s), '
-              '${message.byteLength} bytes)...');
-          await _writeNdef(ndef, message);
-          debugPrint('NFC [WRITE]: write successful, stopping session');
-          await NfcManager.instance.stopSession(
-            alertMessageIos: 'NFC 标签绑定成功！',
-          );
-          _isListening = false;
-          startForegroundListening();
+              'NFC [WRITE]: iOS session error: ${error.code.name} - ${error.message}');
           if (!completer.isCompleted) {
-            completer.complete();
+            completer.completeError(
+                NfcException(_iosErrorMessage(error.code, error.message)));
           }
-        } catch (e, stackTrace) {
-          debugPrint('NFC [WRITE]: write failed: $e');
-          debugPrint('NFC [WRITE]: stackTrace: $stackTrace');
-          await NfcManager.instance.stopSession(
-            errorMessageIos: '写入失败',
-          );
-          _isListening = false;
-          startForegroundListening();
-          if (!completer.isCompleted) {
-            completer.completeError(NfcException('写入失败'));
+        },
+        onDiscovered: (NfcTag tag) async {
+          // ignore: invalid_use_of_protected_member
+          debugPrint('NFC [WRITE]: tag discovered, data=${tag.data}');
+          final ndef = _getNdefFromTag(tag);
+          if (ndef == null) {
+            debugPrint('NFC [WRITE]: tag does not support NDEF');
+            await NfcManager.instance.stopSession(
+              errorMessageIos: '此标签不支持 NDEF',
+            );
+            if (!completer.isCompleted) {
+              completer.completeError(NfcException('此标签不支持 NDEF 格式'));
+            }
+            return;
           }
-        }
-      },
-    );
+
+          try {
+            debugPrint('NFC [WRITE]: constructing NDEF message for URI: $uri');
+            final message = NdefMessage(
+              records: [
+                NdefRecord(
+                  typeNameFormat: TypeNameFormat.wellKnown,
+                  type: Uint8List.fromList([0x55]),
+                  identifier: Uint8List(0),
+                  payload: Uint8List.fromList(uri.codeUnits),
+                ),
+              ],
+            );
+            debugPrint(
+                'NFC [WRITE]: writing NDEF message (${message.records.length} record(s), '
+                '${message.byteLength} bytes)...');
+            await _writeNdef(ndef, message);
+            debugPrint('NFC [WRITE]: write successful, stopping session');
+            await NfcManager.instance.stopSession(
+              alertMessageIos: 'NFC 标签绑定成功！',
+            );
+            _isListening = false;
+            startForegroundListening();
+            if (!completer.isCompleted) {
+              completer.complete();
+            }
+          } catch (e, stackTrace) {
+            debugPrint('NFC [WRITE]: write failed: $e');
+            debugPrint('NFC [WRITE]: stackTrace: $stackTrace');
+            await NfcManager.instance.stopSession(
+              errorMessageIos: '写入失败',
+            );
+            _isListening = false;
+            startForegroundListening();
+            if (!completer.isCompleted) {
+              completer.completeError(NfcException('写入失败'));
+            }
+          }
+        },
+      );
+    } catch (e, stack) {
+      debugPrint('NFC [WRITE]: startSession threw exception: $e');
+      debugPrint('NFC [WRITE]: stackTrace: $stack');
+      if (!completer.isCompleted) {
+        completer.completeError(NfcException('NFC 会话启动失败'));
+      }
+    }
+    debugPrint('NFC [WRITE]: write session started, waiting for tag...');
 
     return completer.future;
   }
@@ -311,7 +423,8 @@ class NfcService {
 
     final cachedMessage = _getCachedMessage(ndef);
     if (cachedMessage == null) {
-      debugPrint('NFC [READ]: no cached NDEF message on tag');
+      debugPrint('NFC [READ]: tag has no cached NDEF message '
+          '(tag may be empty or not NDEF-formatted)');
       return;
     }
 
@@ -350,6 +463,24 @@ class NfcService {
         debugPrint('NFC [READ]: record[$i] error parsing: $e');
       }
     }
+  }
+
+  static String _iosErrorMessage(NfcReaderErrorCodeIos code, String message) {
+    return switch (code) {
+      NfcReaderErrorCodeIos.readerSessionInvalidationErrorSessionTimeout =>
+        'NFC 读取超时，请重试',
+      NfcReaderErrorCodeIos.readerSessionInvalidationErrorUserCanceled =>
+        '已取消 NFC 操作',
+      NfcReaderErrorCodeIos.ndefReaderSessionErrorTagNotWritable =>
+        '此标签不可写入',
+      NfcReaderErrorCodeIos.ndefReaderSessionErrorTagSizeTooSmall =>
+        '标签存储空间不足',
+      NfcReaderErrorCodeIos.ndefReaderSessionErrorZeroLengthMessage =>
+        '标签为空，请使用可写入的 NFC 标签',
+      NfcReaderErrorCodeIos.readerSessionInvalidationErrorSystemIsBusy =>
+        '系统繁忙，请稍后重试',
+      _ => 'NFC 操作失败：$message',
+    };
   }
 
   /// Internal cleanup. Not called during normal app lifecycle

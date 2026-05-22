@@ -447,11 +447,16 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> _exportBook(BookModel book) async {
+    final box = context.findRenderObject() as RenderBox?;
+    final origin = box != null
+        ? box.localToGlobal(Offset.zero) & box.size
+        : const Rect.fromLTWH(0, 0, 1, 1);
     try {
       final exportFile = await ImportExportService.instance.exportBook(book);
       await Share.shareXFiles(
         [XFile(exportFile.path)],
         subject: book.title,
+        sharePositionOrigin: origin,
       );
     } catch (e) {
       ToastUtil.error('导出失败: $e');

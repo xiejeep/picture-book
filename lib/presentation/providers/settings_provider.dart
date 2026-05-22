@@ -96,6 +96,8 @@ final themeModeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(() {
   return ThemeModeNotifier();
 });
 
+// On iOS, NFC availability is binary (supported/unsupported) — there is no
+// user-toggleable NFC switch. On Android, disabled state is reported separately.
 final nfcAvailableProvider = FutureProvider<bool>((ref) async {
   return await NfcService.instance.isAvailable();
 });

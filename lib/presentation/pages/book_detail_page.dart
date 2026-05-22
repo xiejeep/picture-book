@@ -117,16 +117,25 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
 
   void _initNfc() {
     final nfcEnabled = ref.read(nfcEnabledProvider);
+    debugPrint('NFC [BOOK_DETAIL]: _initNfc nfcEnabled=$nfcEnabled');
     if (!nfcEnabled) return;
 
     final nfcService = ref.read(nfcServiceProvider);
-    nfcService.startForegroundListening();
     _nfcSubscription = nfcService.onTagDetected.listen((action) {
       if (action.bookId == _book.id) {
         nfcService.markActionConsumed();
         _playFromNfcAction(action);
       }
     });
+
+    if (Platform.isIOS) {
+      debugPrint('NFC [BOOK_DETAIL]: iOS — listening enabled,'
+          ' trigger scan via button');
+      return;
+    }
+
+    debugPrint('NFC [BOOK_DETAIL]: calling startForegroundListening...');
+    nfcService.startForegroundListening();
   }
 
   void _playFromNfcAction(NfcAction action) {
@@ -214,7 +223,9 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
 
   void _showNfcBindDialog(TextBlockModel block, int blockIndex) async {
     final nfcService = ref.read(nfcServiceProvider);
+    debugPrint('NFC [BOOK_DETAIL]: _showNfcBindDialog checking availability...');
     final available = await nfcService.isAvailable();
+    debugPrint('NFC [BOOK_DETAIL]: isAvailable=$available');
     if (!available) {
       if (mounted) {
         ToastUtil.warning('此设备不支持 NFC 功能');
@@ -345,6 +356,8 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
               onPressed: isWriting
                   ? null
                   : () async {
+                      debugPrint('NFC [BOOK_DETAIL]: write button pressed, '
+                          'calling writeTag(bookId=${_book.id}, pageId=${page.id}, blockId=${block.id})');
                       setDialogState(() {
                         isWriting = true;
                         errorMessage = null;
@@ -356,10 +369,13 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
                           ToastUtil.success('NFC 标签绑定成功');
                         }
                       } catch (e) {
+                        debugPrint('NFC [BOOK_DETAIL]: writeTag error: $e');
                         if (context.mounted) {
                           setDialogState(() {
                             isWriting = false;
-                            errorMessage = '绑定失败，请重试';
+                            errorMessage = e is NfcException
+                                ? e.message
+                                : '绑定失败，请重试';
                           });
                         }
                       }
@@ -1067,6 +1083,31 @@ color: AppTheme.focusHighlightOf(context),
                     tooltip: _showBorders ? '隐藏边框' : '显示边框',
                   ),
                 ),
+                if (Platform.isIOS && ref.watch(nfcEnabledProvider))
+                  Semantics(
+                    label: '扫描NFC标签',
+                    hint: '靠近NFC标签自动识别并播放',
+                    button: true,
+                    child: IconButton(
+                      icon: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.nfc,
+                          size: 18,
+                          color: Colors.white,
+                        ),
+                      ),
+                      onPressed: () {
+                        final nfcService = ref.read(nfcServiceProvider);
+                        nfcService.startIosScan();
+                      },
+                      tooltip: '扫描NFC标签',
+                    ),
+                  ),
                 const SizedBox(width: 8),
               ],
               flexibleSpace: Container(
