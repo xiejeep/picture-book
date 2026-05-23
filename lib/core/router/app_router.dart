@@ -10,7 +10,8 @@ import '../../presentation/pages/ai_settings_page.dart';
 import '../../presentation/pages/voice_settings_page.dart';
 import '../../presentation/pages/cache_management_page.dart';
 import '../../presentation/pages/supertonic_model_page.dart';
-import '../../presentation/pages/tutorial_page.dart';
+import '../../presentation/pages/help/help_center_page.dart';
+import '../../presentation/pages/help/help_topic_page.dart';
 import '../../presentation/pages/about_page.dart';
 import '../../presentation/pages/appearance_settings_page.dart';
 import '../../data/models/book_model.dart';
@@ -172,12 +173,22 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             name: 'appearance_settings',
             builder: (context, state) => const AppearanceSettingsPage(),
           ),
+          GoRoute(
+            path: 'help',
+            name: 'help_center',
+            builder: (context, state) => const HelpCenterPage(),
+            routes: [
+              GoRoute(
+                path: ':topicId',
+                name: 'help_topic',
+                builder: (context, state) {
+                  final topicId = state.pathParameters['topicId']!;
+                  return HelpTopicPage(topicId: topicId);
+                },
+              ),
+            ],
+          ),
         ],
-      ),
-      GoRoute(
-        path: '/tutorial',
-        name: 'tutorial',
-        builder: (context, state) => const TutorialPage(),
       ),
     ],
     errorBuilder: _buildErrorPage,

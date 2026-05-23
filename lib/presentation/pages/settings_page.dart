@@ -28,7 +28,7 @@ class SettingsPage extends ConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              _buildTutorialSection(context),
+              _buildHelpCenterSection(context),
               const SizedBox(height: 16),
               _buildAiSettingsSection(context, ref),
               const SizedBox(height: 16),
@@ -46,7 +46,7 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildTutorialSection(BuildContext context) {
+  Widget _buildHelpCenterSection(BuildContext context) {
     return Container(
       decoration: AppTheme.playfulCardDecorationOf(context),
       child: Column(
@@ -90,14 +90,14 @@ class SettingsPage extends ConsumerWidget {
                 ),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Icon(Icons.school_rounded, color: Colors.white),
+              child: const Icon(Icons.help_outline_rounded, color: Colors.white),
             ),
-            title: const Text('使用教程'),
-            subtitle: const Text('快速了解点读鸭的使用方法'),
+            title: const Text('帮助中心'),
+            subtitle: const Text('快速入门、功能详解、常见问题'),
             trailing: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
+                gradient: const LinearGradient(
                   colors: [
                     AppTheme.sweetPink,
                     AppTheme.honeyYellow,
@@ -117,7 +117,7 @@ class SettingsPage extends ConsumerWidget {
               borderRadius: BorderRadius.circular(16),
             ),
             onTap: () {
-              context.push('/tutorial');
+              context.push('/settings/help');
             },
           ),
         ],
