@@ -13,7 +13,7 @@ import '../../data/services/image_service.dart';
 import '../../data/services/import_export_service.dart';
 import '../../core/utils/toast_util.dart';
 import '../../core/theme/app_theme.dart';
-import '../features/text_detection/text_detection.dart';
+import 'book_editor/book_editor_page.dart';
 
 class BookManagePage extends StatefulWidget {
   final BookModel book;
@@ -169,53 +169,24 @@ class _BookManagePageState extends State<BookManagePage> {
       return;
     }
 
-    final initialBlocks = page.textBlocks.map((b) {
-      return {
-        'boundingBox': b.boundingBox,
-        'text': b.text,
-        'isDeleted': b.isDeleted,
-        'originalText': b.originalText,
-        'aiEnhancedText': b.aiEnhancedText,
-        'translatedText': b.translatedText,
-        'aiTranslatedText': b.aiTranslatedText,
-      };
-    }).toList();
-
-    final result = await Navigator.push<Map<String, dynamic>>(
+    final result = await Navigator.push<List<TextBlockModel>>(
       context,
       MaterialPageRoute(
-        builder: (_) => TextDetectionPage(
-          initialImageFile: imageFile,
-          initialTextBlocks: initialBlocks,
-          onSave: (textBlocks, newImageFile) async {
-            Navigator.pop(context, {
-              'textBlocks': textBlocks,
-            });
-          },
+        builder: (_) => BookEditorPage(
+          bookId: widget.book.id,
+          pageIndex: index,
+          imageFile: imageFile,
+          initialBlocks: page.textBlocks,
         ),
       ),
     );
 
     if (result != null) {
-      final receivedBlocks = result['textBlocks'] as List;
-
-      final blocks = receivedBlocks.map((block) {
-        return TextBlockModel.fromData(
-          boundingBox: block.boundingBox,
-          text: block.text,
-          isDeleted: block.isDeleted ?? false,
-          translatedText: block.translatedText,
-          aiTranslatedText: block.aiTranslatedText,
-          originalText: block.originalText,
-          aiEnhancedText: block.aiEnhancedText,
-        );
-      }).toList();
-
       await BookService.instance
-          .updatePageTextBlocks(widget.book.id, index, blocks);
+          .updatePageTextBlocks(widget.book.id, index, result);
 
       setState(() {
-        _pages[index] = _pages[index].copyWith(textBlocks: blocks);
+        _pages[index] = _pages[index].copyWith(textBlocks: result);
       });
 
       ToastUtil.success('页面已更新');
@@ -223,36 +194,29 @@ class _BookManagePageState extends State<BookManagePage> {
   }
 
   Future<void> _addNewPage() async {
-    final result = await Navigator.push<Map<String, dynamic>>(
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
+    if (pickedFile == null) return;
+    if (!mounted) return;
+
+    final imageFile = File(pickedFile.path);
+    final result = await Navigator.push<List<TextBlockModel>>(
       context,
       MaterialPageRoute(
-        builder: (_) => TextDetectionPage(
-          onSave: (textBlocks, imageFile) async {
-            Navigator.pop(context, {
-              'textBlocks': textBlocks,
-              'imageFile': imageFile,
-            });
-          },
+        builder: (_) => BookEditorPage(
+          bookId: widget.book.id,
+          pageIndex: _pages.length,
+          imageFile: imageFile,
+          initialBlocks: const [],
         ),
       ),
     );
 
     if (result != null) {
-      final imageFile = result['imageFile'] as File;
-      final blocks = (result['textBlocks'] as List).map((block) {
-        return TextBlockModel.fromData(
-          boundingBox: block.boundingBox,
-          text: block.text,
-          isDeleted: block.isDeleted ?? false,
-          translatedText: block.translatedText,
-          aiTranslatedText: block.aiTranslatedText,
-          originalText: block.originalText,
-          aiEnhancedText: block.aiEnhancedText,
-        );
-      }).toList();
-
       await BookService.instance
-          .addPageToBook(widget.book.id, imageFile, blocks);
+          .addPageToBook(widget.book.id, imageFile, result);
 
       final updatedBook = BookService.instance.getBook(widget.book.id);
       if (updatedBook != null) {

@@ -12,7 +12,8 @@ import '../providers/books_provider.dart';
 import '../widgets/book_card.dart';
 import '../../core/utils/toast_util.dart';
 import '../../core/theme/app_theme.dart';
-import '../features/text_detection/text_detection.dart';
+import 'package:image_picker/image_picker.dart';
+import 'book_editor/book_editor_page.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -22,6 +23,8 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
+  final ImagePicker _picker = ImagePicker();
+
   @override
   void initState() {
     super.initState();
@@ -44,34 +47,37 @@ class _HomePageState extends ConsumerState<HomePage> {
     final title = await _showCreateBookDialog();
     if (title == null) return;
 
-    Navigator.push(
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
+    if (pickedFile == null) return;
+    if (!mounted) return;
+
+    final imageFile = File(pickedFile.path);
+    final result = await Navigator.push<List<TextBlockModel>>(
       context,
       MaterialPageRoute(
-        builder: (_) => TextDetectionPage(
-          onSave: (textBlocks, imageFile) async {
-            final book =
-                await ref.read(booksProvider.notifier).createBook(title);
-            final blocks = textBlocks
-                .map((b) => TextBlockModel.fromData(
-                      boundingBox: b.boundingBox,
-                      text: b.text,
-                      isDeleted: b.isDeleted,
-                      originalText: b.originalText,
-                      aiEnhancedText: b.aiEnhancedText,
-                      translatedText: b.translatedText,
-                      aiTranslatedText: b.aiTranslatedText,
-                    ))
-                .toList();
-            await ref.read(booksProvider.notifier).addPageToBook(
-                  book.id,
-                  imageFile,
-                  blocks,
-                );
-            Navigator.pop(context);
-          },
+        builder: (_) => BookEditorPage(
+          bookId: '',
+          pageIndex: 0,
+          imageFile: imageFile,
+          initialBlocks: const [],
         ),
       ),
     );
+
+    if (result != null && mounted) {
+      final book =
+          await ref.read(booksProvider.notifier).createBook(title);
+      if (!mounted) return;
+      await ref.read(booksProvider.notifier).addPageToBook(
+            book.id,
+            imageFile,
+            result,
+          );
+      if (mounted) Navigator.pop(context);
+    }
   }
 
   Future<String?> _showCreateBookDialog() async {
