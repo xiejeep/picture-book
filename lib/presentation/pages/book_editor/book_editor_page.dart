@@ -504,52 +504,98 @@ class _BookEditorPageState extends State<BookEditorPage> {
     final controller = TextEditingController(text: block.text);
     showDialog(
       context: context,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('编辑文字',
-                  style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.onSurfaceOf(context))),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                decoration: InputDecoration(
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12))),
-                maxLines: 3,
-                autofocus: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          bool isRecognizing = false;
+
+          Future<void> reRecognize() async {
+            setDialogState(() => isRecognizing = true);
+            try {
+              final text = await OcrService.instance
+                  .recognizeTextInRegion(widget.imageFile, block.boundingBox);
+              if (text != null && text.isNotEmpty) {
+                controller.text = text;
+                controller.selection = TextSelection.fromPosition(
+                    TextPosition(offset: text.length));
+              }
+            } catch (_) {
+              if (ctx.mounted) {
+                ToastUtil.error('识别失败');
+              }
+            }
+            if (ctx.mounted) setDialogState(() => isRecognizing = false);
+          }
+
+          return Dialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('编辑文字',
+                      style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.onSurface)),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: controller,
+                    decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12))),
+                    maxLines: 3,
+                    autofocus: true,
+                  ),
+                  const SizedBox(height: 12),
+                  if (isRecognizing)
+                    const Row(
+                      children: [
+                        SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2)),
+                        SizedBox(width: 8),
+                        Text('正在识别...',
+                            style: TextStyle(fontSize: 13)),
+                      ],
+                    )
+                  else
+                    TextButton.icon(
+                      onPressed: reRecognize,
+                      icon: const Icon(Icons.refresh, size: 16),
+                      label: const Text('重新识别此区域'),
+                      style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 4)),
+                    ),
+                  const SizedBox(height: 8),
+                  Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                    TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('取消')),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                        onPressed: () {
+                          _state = _state.copyWith(
+                            textBlocks: _state.textBlocks
+                                .map((b) => b.id == block.id
+                                    ? b.copyWith(text: controller.text)
+                                    : b)
+                                .toList(),
+                            hasChanges: true,
+                          );
+                          setState(() {});
+                          Navigator.pop(ctx);
+                        },
+                        child: const Text('确定')),
+                  ]),
+                ],
               ),
-              const SizedBox(height: 16),
-              Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: const Text('取消')),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                    onPressed: () {
-                      _state = _state.copyWith(
-                        textBlocks: _state.textBlocks
-                            .map((b) => b.id == block.id
-                                ? b.copyWith(text: controller.text)
-                                : b)
-                            .toList(),
-                        hasChanges: true,
-                      );
-                      setState(() {});
-                      Navigator.pop(ctx);
-                    },
-                    child: const Text('确定')),
-              ]),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
