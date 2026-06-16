@@ -11,6 +11,7 @@ import '../models/handle_position.dart';
 import '../models/text_detection_state.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/ai_block_helper.dart';
 import '../../../../core/utils/text_utils.dart';
 import '../../../../data/services/ai_service.dart';
 import '../../../providers/repository_providers.dart';
@@ -604,10 +605,10 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
         blocksData.add({i: visibleBlocks[i].text});
       }
 
-      final correctedBlocks = await AiService.instance.enhanceTextBlocks(
-        state.imageFile!,
-        blocksData,
-        state.currentAiModel,
+      final correctedBlocks = await AiBlockHelper.enhance(
+        imageFile: state.imageFile!,
+        blocks: blocksData,
+        model: state.currentAiModel,
         onProgress: (msg) {
           state = state.copyWith(aiBannerText: msg);
         },
@@ -656,10 +657,10 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
         {0: blockWithOriginal.text}
       ];
 
-      final correctedBlocks = await AiService.instance.enhanceTextBlocks(
-        state.imageFile!,
-        blocksData,
-        state.currentAiModel,
+      final correctedBlocks = await AiBlockHelper.enhance(
+        imageFile: state.imageFile!,
+        blocks: blocksData,
+        model: state.currentAiModel,
         onProgress: (msg) {
           state = state.copyWith(aiBannerText: msg);
         },

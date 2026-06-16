@@ -5,11 +5,11 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/toast_util.dart';
 import '../../../core/constants/constants.dart';
 import '../../../data/services/ai_service.dart';
+import '../../../core/utils/ai_block_helper.dart';
 import '../../../data/services/translation_service.dart';
 import '../../../core/utils/platform_utils.dart';
 import '../../providers/tts_provider.dart';
 import '../../providers/settings_provider.dart';
-import '../../providers/repository_providers.dart';
 import '../../providers/service_providers.dart';
 import '../../features/text_detection/text_detection.dart';
 import '../../widgets/semantics_icon_button.dart';
@@ -37,7 +37,6 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
   bool _isAiTranslating = false;
   String _progressText = 'AI正在优化识别结果...';
   String _currentAiModel = AppConstants.defaultModel;
-  String? _cachedVisionDescription;
   bool _hasChanges = false;
 
   @override
@@ -63,15 +62,12 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
   bool get _isBusy => _isAiEnhancing || _isAiTranslating;
 
   Future<String> _ensureVisionDescription() async {
-    if (_cachedVisionDescription != null) return _cachedVisionDescription!;
     if (widget.imageFile == null) throw Exception('没有图片文件');
-
     setState(() => _progressText = 'AI正在理解图片内容...');
-    _cachedVisionDescription = await AiService.instance.extractVisionText(
+    return AiBlockHelper.getVisionDescription(
       widget.imageFile!,
       _currentAiModel,
     );
-    return _cachedVisionDescription!;
   }
 
   void _editBlock(int visibleIndex) {
@@ -266,7 +262,7 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
       ToastUtil.error('没有图片文件');
       return;
     }
-    if (!await _checkApiKey()) return;
+    if (!await AiBlockHelper.checkApiKey(context)) return;
 
     final realIndex = _findRealIndex(visibleIndex);
     final block = _blocks[realIndex];
@@ -278,10 +274,10 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
 
     try {
       final vision = await _ensureVisionDescription();
-      final result = await AiService.instance.enhanceTranslation(
-        widget.imageFile!,
-        [{0: block.text}],
-        _currentAiModel,
+      final result = await AiBlockHelper.translate(
+        imageFile: widget.imageFile!,
+        blocks: [{0: block.text}],
+        model: _currentAiModel,
         visionDescription: vision,
       );
       if (result[0] != null && result[0]!.isNotEmpty) {
@@ -361,7 +357,7 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
   }
 
   Future<void> _showAiEnhanceAllDialog() async {
-    if (!await _checkApiKey()) return;
+    if (!await AiBlockHelper.checkApiKey(context)) return;
     final visibleBlocks = _blocks.where((b) => !b.isDeleted).toList();
     if (visibleBlocks.isEmpty) {
       ToastUtil.warning('没有可优化的文字块');
@@ -373,7 +369,7 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
   }
 
   Future<void> _showAiTranslateDialog() async {
-    if (!await _checkApiKey()) return;
+    if (!await AiBlockHelper.checkApiKey(context)) return;
     final visibleBlocks = _blocks.where((b) => !b.isDeleted).toList();
     if (visibleBlocks.isEmpty) {
       ToastUtil.warning('没有可翻译的文字块');
@@ -382,12 +378,6 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
     final confirm =
         await _showConfirmDialog('AI强化翻译', '将对${visibleBlocks.length}个文字块进行翻译');
     if (confirm == true) await _aiTranslateAllBlocks();
-  }
-
-  Future<bool> _checkApiKey() async {
-    final hasKey = await ref.read(aiRepositoryProvider).hasApiKey();
-    if (!hasKey) ToastUtil.warning('请先在设置中配置API Key');
-    return hasKey;
   }
 
   Future<bool> _onWillPop() async {
@@ -491,10 +481,10 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
         blocksData.add({i: visibleBlocks[i].text});
       }
 
-      final correctedBlocks = await AiService.instance.enhanceTextBlocks(
-        widget.imageFile!,
-        blocksData,
-        _currentAiModel,
+      final correctedBlocks = await AiBlockHelper.enhance(
+        imageFile: widget.imageFile!,
+        blocks: blocksData,
+        model: _currentAiModel,
         onProgress: (msg) => setState(() => _progressText = msg),
         visionDescription: vision,
       );
@@ -568,10 +558,10 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
         blocksWithDraft.add({i: '${visibleBlocks[i].text}|||$draft'});
       }
 
-      final aiTranslations = await AiService.instance.enhanceTranslation(
-        widget.imageFile!,
-        blocksWithDraft,
-        _currentAiModel,
+      final aiTranslations = await AiBlockHelper.translate(
+        imageFile: widget.imageFile!,
+        blocks: blocksWithDraft,
+        model: _currentAiModel,
         onProgress: (msg) => setState(() => _progressText = msg),
         visionDescription: vision,
       );

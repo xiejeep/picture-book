@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import '../../../data/models/text_block_model.dart';
 import '../../../data/services/ai_service.dart';
+import '../../../core/utils/ai_block_helper.dart';
 import '../../../data/services/ocr_service.dart';
 import '../../../data/services/tts_service.dart';
 import '../../../core/theme/app_theme.dart';
@@ -695,6 +696,10 @@ class _BookEditorPageState extends ConsumerState<BookEditorPage> {
   }
 
   Future<void> _aiEnhanceAll() async {
+    if (!mounted) return;
+    final hasKey = await AiBlockHelper.checkApiKey(context);
+    if (!hasKey) return;
+
     final visible = _state.textBlocks.where((b) => !b.isDeleted).toList();
     if (visible.isEmpty) return;
 
@@ -702,10 +707,10 @@ class _BookEditorPageState extends ConsumerState<BookEditorPage> {
 
     try {
       final blocksData = visible.map((b) => {0: b.text}).toList();
-      final corrected = await AiService.instance.enhanceTextBlocks(
-        widget.imageFile,
-        blocksData,
-        'glm-4v-flash',
+      final corrected = await AiBlockHelper.enhance(
+        imageFile: widget.imageFile,
+        blocks: blocksData,
+        model: _currentAiModel,
       );
 
       int count = 0;
@@ -895,15 +900,19 @@ class _BookEditorPageState extends ConsumerState<BookEditorPage> {
   }
 
   Future<void> _aiEnhanceSelectedBlock() async {
+    if (!mounted) return;
+    final hasKey = await AiBlockHelper.checkApiKey(context);
+    if (!hasKey) return;
+
     final block = _state.selectedBlock;
     if (block == null) return;
     setState(() => _state = _state.copyWith(isProcessing: true));
     try {
       final blocksData = [{0: block.text}];
-      final corrected = await AiService.instance.enhanceTextBlocks(
-        widget.imageFile,
-        blocksData,
-        _currentAiModel,
+      final corrected = await AiBlockHelper.enhance(
+        imageFile: widget.imageFile,
+        blocks: blocksData,
+        model: _currentAiModel,
       );
       if (corrected[0] != null) {
         final blocks = _state.textBlocks

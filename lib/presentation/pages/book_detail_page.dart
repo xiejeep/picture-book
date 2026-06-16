@@ -18,8 +18,11 @@ import '../widgets/reading_text_block_painter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/utils/toast_util.dart';
-import '../../core/utils/platform_utils.dart';
 import '../providers/settings_provider.dart';
+import '../../core/utils/platform_utils.dart';
+import '../../data/services/ai_service.dart';
+import '../../core/utils/ai_block_helper.dart';
+import '../widgets/semantics_icon_button.dart';
 
 class BookDetailPage extends ConsumerStatefulWidget {
   final BookModel book;
@@ -216,6 +219,428 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
       _pendingAutoPlay = (block: block, index: targetBlockIndex);
     } else {
       _playTextBlock(block, targetBlockIndex);
+    }
+  }
+
+  void _showBlockActionsBottomSheet(TextBlockModel block, int index) {
+    _clearTranslation();
+    final nfcEnabled = ref.read(nfcEnabledProvider);
+    final onSurfaceColor = AppTheme.onSurfaceOf(context);
+    final primaryColor = AppTheme.primaryOf(context);
+    final mutedColor = AppTheme.mutedOf(context);
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Container(
+          color: AppTheme.surfaceOf(context),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 32,
+                height: 4,
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: mutedColor.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              _buildActionTile(
+                ctx,
+                icon: Icons.edit,
+                title: '编辑文字',
+                subtitle: '修改此文字块的识别文本',
+                color: primaryColor,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _editBlockText(block, index);
+                },
+              ),
+              _buildActionTile(
+                ctx,
+                icon: Icons.translate,
+                title: '编辑翻译',
+                subtitle: '修改此文字块的翻译文本',
+                color: AppTheme.accentOf(context),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _editBlockTranslation(block, index);
+                },
+              ),
+              if (nfcEnabled)
+                _buildActionTile(
+                  ctx,
+                  icon: Icons.nfc,
+                  title: '绑定 NFC 标签',
+                  subtitle: '将此文字块绑定到 NFC 标签',
+                  color: Colors.teal,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showNfcBindDialog(block, index);
+                  },
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionTile(
+    BuildContext ctx, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: color, size: 22),
+      ),
+      title: Text(title,
+          style: TextStyle(
+              fontWeight: FontWeight.w500,
+              color: AppTheme.onSurfaceOf(context))),
+      subtitle: Text(subtitle,
+          style: TextStyle(
+              fontSize: 12,
+              color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6))),
+      onTap: onTap,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    );
+  }
+
+  Future<void> _editBlockText(TextBlockModel block, int index) async {
+    final controller = TextEditingController(text: block.text);
+    final onSurfaceColor = AppTheme.onSurfaceOf(context);
+    bool isAiLoading = false;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Container(
+          color: AppTheme.surfaceOf(context),
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 20,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('编辑文字',
+                        style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: onSurfaceColor)),
+                    SemanticsIconButton(
+                        icon: Icons.close,
+                        label: '关闭',
+                        hint: '关闭编辑窗口',
+                        color: onSurfaceColor,
+                        onPressed: () => Navigator.pop(ctx)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: controller,
+                  maxLines: 4,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                      labelText: '最终文本', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: isAiLoading
+                          ? null
+                          : () => _aiEnhanceAndFill(
+                              ctx, setDialogState, controller, index,
+                              setLoading: () => isAiLoading = true,
+                              clearLoading: () => isAiLoading = false),
+                      icon: isAiLoading
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2))
+                          : const Icon(Icons.auto_fix_high, size: 18),
+                      label: const Text('AI 优化'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            AppTheme.primaryOf(context).withValues(alpha: 0.85),
+                        foregroundColor:
+                            Theme.of(context).colorScheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const Spacer(),
+                    TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: Text('取消',
+                            style: TextStyle(
+                                color: onSurfaceColor.withValues(alpha: 0.6)))),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () {
+                        if (controller.text != block.text) {
+                          final updatedBlock = block.copyWith(
+                            text: controller.text,
+                            clearTranslatedText: true,
+                            clearAiTranslatedText: true,
+                          );
+                          _updateBlockInPage(index, updatedBlock);
+                        }
+                        Navigator.pop(ctx);
+                      },
+                      child: const Text('保存'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _editBlockTranslation(TextBlockModel block, int index) async {
+    final currentTranslation =
+        block.aiTranslatedText ?? block.translatedText ?? '';
+    final controller = TextEditingController(text: currentTranslation);
+    final onSurfaceColor = AppTheme.onSurfaceOf(context);
+    bool isAiLoading = false;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Container(
+          color: AppTheme.surfaceOf(context),
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 20,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('编辑翻译',
+                        style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: onSurfaceColor)),
+                    SemanticsIconButton(
+                        icon: Icons.close,
+                        label: '关闭',
+                        hint: '关闭编辑窗口',
+                        color: onSurfaceColor,
+                        onPressed: () => Navigator.pop(ctx)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: controller,
+                  maxLines: 4,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                      labelText: '翻译文本', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: isAiLoading
+                          ? null
+                          : () => _aiTranslateAndFill(
+                              ctx, setDialogState, controller, index,
+                              setLoading: () => isAiLoading = true,
+                              clearLoading: () => isAiLoading = false),
+                      icon: isAiLoading
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2))
+                          : const Icon(Icons.g_translate, size: 18),
+                      label: const Text('AI 翻译'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepPurple.withValues(alpha: 0.85),
+                        foregroundColor:
+                            Theme.of(context).colorScheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const Spacer(),
+                    TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: Text('取消',
+                            style: TextStyle(
+                                color: onSurfaceColor.withValues(alpha: 0.6)))),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () {
+                        if (controller.text != currentTranslation) {
+                          final updatedBlock = block.copyWith(
+                              aiTranslatedText: controller.text);
+                          _updateBlockInPage(index, updatedBlock);
+                          _translatedText = controller.text;
+                          _translatedBlockIndex = index;
+                        }
+                        Navigator.pop(ctx);
+                      },
+                      child: const Text('保存'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _updateBlockInPage(int index, TextBlockModel updatedBlock) {
+    final page = _book.pages[_currentPageIndex];
+    final textBlocks = List<TextBlockModel>.from(page.textBlocks);
+    textBlocks[index] = updatedBlock;
+    _book.pages[_currentPageIndex] = page.copyWith(textBlocks: textBlocks);
+    _book.updatedAt = DateTime.now();
+    _book.save();
+    setState(() {});
+  }
+
+  Future<void> _aiEnhanceAndFill(
+    BuildContext ctx,
+    StateSetter setDialogState,
+    TextEditingController controller,
+    int index, {
+    required VoidCallback setLoading,
+    required VoidCallback clearLoading,
+  }) async {
+    if (!ctx.mounted) return;
+    final hasKey = await AiBlockHelper.checkApiKey(ctx);
+    if (!hasKey) return;
+
+    final page = _book.pages[_currentPageIndex];
+    final imageFile =
+        ref.read(imageServiceProvider).getImageFile(page.imagePath);
+    if (imageFile == null || !imageFile.existsSync()) {
+      if (ctx.mounted) ToastUtil.error('图片文件不存在');
+      return;
+    }
+
+    final model = AiService.instance.getSelectedModel();
+    final block = page.textBlocks[index];
+
+    setDialogState(setLoading);
+
+    try {
+      final corrected = await AiBlockHelper.enhance(
+        imageFile: imageFile,
+        blocks: [{0: block.text}],
+        model: model,
+      );
+
+      if (!ctx.mounted) return;
+
+      if (corrected[0] != null && corrected[0] != block.text) {
+        controller.text = corrected[0]!;
+        ToastUtil.success('AI 优化完成');
+      } else {
+        ToastUtil.info('AI 优化完成，无需修改');
+      }
+    } catch (e) {
+      if (ctx.mounted) ToastUtil.error('AI 优化失败: $e');
+    } finally {
+      if (ctx.mounted) setDialogState(clearLoading);
+    }
+  }
+
+  Future<void> _aiTranslateAndFill(
+    BuildContext ctx,
+    StateSetter setDialogState,
+    TextEditingController controller,
+    int index, {
+    required VoidCallback setLoading,
+    required VoidCallback clearLoading,
+  }) async {
+    if (!ctx.mounted) return;
+    final hasKey = await AiBlockHelper.checkApiKey(ctx);
+    if (!hasKey) return;
+
+    final page = _book.pages[_currentPageIndex];
+    final imageFile =
+        ref.read(imageServiceProvider).getImageFile(page.imagePath);
+    if (imageFile == null || !imageFile.existsSync()) {
+      if (ctx.mounted) ToastUtil.error('图片文件不存在');
+      return;
+    }
+
+    final model = AiService.instance.getSelectedModel();
+    final block = page.textBlocks[index];
+
+    setDialogState(setLoading);
+
+    try {
+      final result = await AiBlockHelper.translate(
+        imageFile: imageFile,
+        blocks: [{0: block.text}],
+        model: model,
+      );
+
+      if (!ctx.mounted) return;
+
+      if (result[0] != null && result[0]!.isNotEmpty) {
+        controller.text = result[0]!;
+        ToastUtil.success('AI 翻译完成');
+      } else {
+        ToastUtil.info('AI 翻译无结果');
+      }
+    } catch (e) {
+      if (ctx.mounted) ToastUtil.error('AI 翻译失败: $e');
+    } finally {
+      if (ctx.mounted) setDialogState(clearLoading);
     }
   }
 
@@ -1352,12 +1777,7 @@ color: AppTheme.focusHighlightOf(context),
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () => _playTextBlock(block, i),
-              onLongPress: () {
-                final nfcEnabled = ref.read(nfcEnabledProvider);
-                if (nfcEnabled) {
-                  _showNfcBindDialog(block, i);
-                }
-              },
+              onLongPress: () => _showBlockActionsBottomSheet(block, i),
               child: Padding(
                 padding: EdgeInsets.all(padding),
               ),
