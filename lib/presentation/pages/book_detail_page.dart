@@ -68,7 +68,12 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
   bool _hasPlayedBefore = false;
   Size? _displaySize;
   Size? _imageSize;
+  Size? _viewportSize;
   ({TextBlockModel block, int index})? _pendingAutoPlay;
+  final TransformationController _transformationController = TransformationController();
+  double? _swipeStartX;
+  double? _swipeStartY;
+  int _activePointers = 0;
 
   @override
   void initState() {
@@ -829,6 +834,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
     _loadingIndicatorTimer?.cancel();
     _focusAnimationController.dispose();
     _bounceAnimationController.dispose();
+    _transformationController.dispose();
     super.dispose();
   }
 
@@ -1020,6 +1026,7 @@ color: AppTheme.focusHighlightOf(context),
 
   void _goToPreviousPage() {
     if (_currentPageIndex > 0) {
+      _transformationController.value = Matrix4.identity();
       setState(() {
         _currentPageIndex--;
         _clearTranslation();
@@ -1029,6 +1036,7 @@ color: AppTheme.focusHighlightOf(context),
 
   void _goToNextPage() {
     if (_currentPageIndex < _book.pages.length - 1) {
+      _transformationController.value = Matrix4.identity();
       setState(() {
         _currentPageIndex++;
         _clearTranslation();
@@ -1605,13 +1613,18 @@ color: AppTheme.focusHighlightOf(context),
       );
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return InteractiveViewer(
-          key: ValueKey(_currentPageIndex),
-          minScale: 0.5,
-          maxScale: 4.0,
-          child: Container(
+    return Listener(
+      onPointerDown: _onSwipePointerDown,
+      onPointerUp: _onSwipePointerUp,
+      onPointerCancel: _onSwipePointerCancel,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return InteractiveViewer(
+            transformationController: _transformationController,
+            key: ValueKey(_currentPageIndex),
+            minScale: 0.5,
+            maxScale: 4.0,
+            child: Container(
             width: constraints.maxWidth,
             height: constraints.maxHeight,
             child: FutureBuilder<Size>(
@@ -1631,6 +1644,7 @@ color: AppTheme.focusHighlightOf(context),
 
                 _displaySize = displaySize;
                 _imageSize = imageSize;
+                _viewportSize = Size(constraints.maxWidth, constraints.maxHeight);
 
                 if (_pendingAutoPlay != null) {
                   final pending = _pendingAutoPlay!;
@@ -1692,7 +1706,51 @@ color: AppTheme.focusHighlightOf(context),
           ),
         );
       },
-    );
+    ),
+  );
+  }
+
+  void _onSwipePointerDown(PointerDownEvent event) {
+    _activePointers++;
+    if (_activePointers == 1) {
+      _swipeStartX = event.localPosition.dx;
+      _swipeStartY = event.localPosition.dy;
+    }
+  }
+
+  void _onSwipePointerUp(PointerUpEvent event) {
+    _activePointers--;
+    if (_activePointers == 0 &&
+        _swipeStartX != null &&
+        _swipeStartY != null) {
+      final dx = event.localPosition.dx - _swipeStartX!;
+      final dy = event.localPosition.dy - _swipeStartY!;
+
+      if (dx.abs() > 50 && dy.abs() < dx.abs() * 0.5) {
+        final scale = _transformationController.value.getMaxScaleOnAxis();
+        final tx = _transformationController.value.getTranslation().x;
+        final viewportWidth = _viewportSize?.width ?? 0;
+        final rightmostTx = viewportWidth * (1.0 - scale);
+
+        if (dx > 0 && (scale <= 1.05 || tx >= -1.0)) {
+          _goToPreviousPage();
+        } else if (dx < 0 && (scale <= 1.05 || tx <= rightmostTx + 1.0)) {
+          _goToNextPage();
+        }
+      }
+
+      _swipeStartX = null;
+      _swipeStartY = null;
+    }
+  }
+
+  void _onSwipePointerCancel(PointerCancelEvent event) {
+    _activePointers--;
+    if (_activePointers <= 0) {
+      _swipeStartX = null;
+      _swipeStartY = null;
+      _activePointers = 0;
+    }
   }
 
   Widget _buildFocusBorder() {
