@@ -13,6 +13,7 @@ class BookEditorToolbar extends StatelessWidget {
   final VoidCallback onZoomIn;
   final VoidCallback onZoomOut;
   final VoidCallback onResetZoom;
+  final VoidCallback onReOcr;
 
   const BookEditorToolbar({
     super.key,
@@ -27,6 +28,7 @@ class BookEditorToolbar extends StatelessWidget {
     required this.onZoomIn,
     required this.onZoomOut,
     required this.onResetZoom,
+    required this.onReOcr,
   });
 
   @override
@@ -105,6 +107,13 @@ class BookEditorToolbar extends StatelessWidget {
           isDrawing ? '取消绘制' : '新建块',
           onNewBlock,
           isDrawing ? Colors.white70 : Colors.blueAccent,
+        ),
+        const SizedBox(width: 4),
+        _buildIconLabel(
+          Icons.document_scanner,
+          '重新OCR',
+          onReOcr,
+          Colors.cyanAccent,
         ),
         const Spacer(),
         if (hasBlocks)

@@ -118,12 +118,6 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
                 ],
               ),
               const SizedBox(height: 12),
-              if (block.originalText != null)
-                _buildEditInfoBox(
-                    Icons.text_fields, 'OCR原始识别', block.originalText!),
-              if (block.aiEnhancedText != null)
-                _buildEditInfoBox(
-                    Icons.auto_fix_high, 'AI优化结果', block.aiEnhancedText!),
               TextField(
                 controller: controller,
                 maxLines: 4,
@@ -219,8 +213,25 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
               ),
               const SizedBox(height: 16),
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _aiTranslateSingleBlock(visibleIndex);
+                    },
+                    icon: const Icon(Icons.translate, size: 18),
+                    label: const Text('AI翻译'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryOf(context),
+                      foregroundColor:
+                          Theme.of(context).colorScheme.onPrimary,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const Spacer(),
                   TextButton(
                       onPressed: () => Navigator.pop(ctx),
                       child: const Text('取消')),
@@ -248,6 +259,46 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
         ),
       ),
     );
+  }
+
+  Future<void> _aiTranslateSingleBlock(int visibleIndex) async {
+    if (widget.imageFile == null) {
+      ToastUtil.error('没有图片文件');
+      return;
+    }
+    if (!await _checkApiKey()) return;
+
+    final realIndex = _findRealIndex(visibleIndex);
+    final block = _blocks[realIndex];
+
+    setState(() {
+      _isAiTranslating = true;
+      _progressText = 'AI正在翻译...';
+    });
+
+    try {
+      final vision = await _ensureVisionDescription();
+      final result = await AiService.instance.enhanceTranslation(
+        widget.imageFile!,
+        [{0: block.text}],
+        _currentAiModel,
+        visionDescription: vision,
+      );
+      if (result[0] != null && result[0]!.isNotEmpty) {
+        setState(() {
+          _blocks[realIndex] =
+              _blocks[realIndex].copyWith(aiTranslatedText: result[0]!);
+          _hasChanges = true;
+        });
+        ToastUtil.success('AI翻译完成');
+      } else {
+        ToastUtil.info('AI翻译无结果');
+      }
+    } catch (e) {
+      ToastUtil.error('AI翻译失败: $e');
+    } finally {
+      setState(() => _isAiTranslating = false);
+    }
   }
 
   Widget _buildEditInfoBox(IconData icon, String label, String text) {
@@ -282,28 +333,6 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
     );
   }
 
-  void _useAiText(int visibleIndex) {
-    final realIndex = _findRealIndex(visibleIndex);
-    if (_blocks[realIndex].aiEnhancedText != null) {
-      setState(() {
-        _blocks[realIndex] = _blocks[realIndex]
-            .copyWith(text: _blocks[realIndex].aiEnhancedText!);
-        _hasChanges = true;
-      });
-    }
-  }
-
-  void _useOriginalText(int visibleIndex) {
-    final realIndex = _findRealIndex(visibleIndex);
-    if (_blocks[realIndex].originalText != null) {
-      setState(() {
-        _blocks[realIndex] =
-            _blocks[realIndex].copyWith(text: _blocks[realIndex].originalText!);
-        _hasChanges = true;
-      });
-    }
-  }
-
   void _deleteBlock(int visibleIndex) {
     final realIndex = _findRealIndex(visibleIndex);
     showDialog(
@@ -329,12 +358,6 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
         ],
       ),
     );
-  }
-
-  Future<void> _showAiEnhanceDialog(int visibleIndex) async {
-    if (!await _checkApiKey()) return;
-    final confirm = await _showConfirmDialog('AI强化识别', '确定要对此文字块进行AI强化识别吗？');
-    if (confirm == true) await _aiEnhanceBlock(visibleIndex);
   }
 
   Future<void> _showAiEnhanceAllDialog() async {
@@ -444,54 +467,6 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
     );
   }
 
-  Future<void> _aiEnhanceBlock(int visibleIndex) async {
-    if (widget.imageFile == null) {
-      ToastUtil.error('没有图片文件');
-      return;
-    }
-    final realIndex = _findRealIndex(visibleIndex);
-
-    setState(() {
-      _isAiEnhancing = true;
-      _progressText = 'AI正在优化识别结果...';
-    });
-
-    try {
-      final vision = await _ensureVisionDescription();
-      var block = _blocks[realIndex];
-      if (block.originalText == null) {
-        _blocks[realIndex] = block.copyWith(originalText: block.text);
-        block = _blocks[realIndex];
-      }
-
-      final correctedBlocks = await AiService.instance.enhanceTextBlocks(
-        widget.imageFile!,
-        [
-          {0: block.text}
-        ],
-        _currentAiModel,
-        onProgress: (msg) => setState(() => _progressText = msg),
-        visionDescription: vision,
-      );
-
-      if (correctedBlocks[0] != null) {
-        setState(() {
-          _blocks[realIndex] = _blocks[realIndex].copyWith(
-              aiEnhancedText: correctedBlocks[0]!, text: correctedBlocks[0]!);
-          _isAiEnhancing = false;
-          _hasChanges = true;
-        });
-        ToastUtil.success('AI强化完成');
-      } else {
-        setState(() => _isAiEnhancing = false);
-        ToastUtil.info('AI强化完成，无需修改');
-      }
-    } catch (e) {
-      setState(() => _isAiEnhancing = false);
-      ToastUtil.error('AI强化失败: $e');
-    }
-  }
-
   Future<void> _aiEnhanceAllBlocks() async {
     if (widget.imageFile == null) {
       ToastUtil.error('没有图片文件');
@@ -528,7 +503,10 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
       for (int i = 0; i < visibleBlocks.length; i++) {
         if (correctedBlocks[i] != null) {
           visibleBlocks[i] = visibleBlocks[i].copyWith(
-              aiEnhancedText: correctedBlocks[i]!, text: correctedBlocks[i]!);
+              aiEnhancedText: correctedBlocks[i]!,
+              text: correctedBlocks[i]!,
+              clearTranslatedText: true,
+              clearAiTranslatedText: true);
           updatedCount++;
         }
       }
@@ -673,16 +651,12 @@ class _OcrResultsTablePageState extends ConsumerState<OcrResultsTablePage> {
                         itemBuilder: (context, index) => BlockCard(
                           block: visibleBlocks[index],
                           index: index,
-                          isBusy: _isBusy,
-                          hasImageFile: widget.imageFile != null,
                           onEdit: () => _editBlock(index),
                           onDelete: () => _deleteBlock(index),
-                          onAiEnhance: () => _showAiEnhanceDialog(index),
+
                           onPlay: () => ref
                               .read(ttsProvider.notifier)
                               .speak(visibleBlocks[index].text),
-                          onUseOriginal: () => _useOriginalText(index),
-                          onUseAiText: () => _useAiText(index),
                           onEditTranslation: () => _editTranslation(index),
                         ),
                       ),

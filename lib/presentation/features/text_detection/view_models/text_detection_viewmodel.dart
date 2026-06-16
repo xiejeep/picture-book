@@ -627,6 +627,8 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
           visibleBlocks[i] = visibleBlocks[i].copyWith(
             aiEnhancedText: correctedText,
             text: correctedText,
+            clearTranslatedText: true,
+            clearAiTranslatedText: true,
           );
           updatedCount++;
         }
@@ -679,6 +681,8 @@ class TextDetectionNotifier extends AutoDisposeNotifier<TextDetectionState> {
           return bWithOriginal.copyWith(
             aiEnhancedText: correctedText,
             text: correctedText,
+            clearTranslatedText: true,
+            clearAiTranslatedText: true,
           );
         }
         return bWithOriginal;

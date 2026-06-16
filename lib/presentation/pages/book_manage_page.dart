@@ -1,16 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:file_picker/file_picker.dart';
 import '../../data/models/book_model.dart';
 import '../../data/models/page_model.dart';
 import '../../data/models/text_block_model.dart';
 import '../../data/services/book_service.dart';
 import '../../data/services/image_service.dart';
-import '../../data/services/import_export_service.dart';
 import '../../core/utils/toast_util.dart';
 import '../../core/theme/app_theme.dart';
 import 'book_editor/book_editor_page.dart';
@@ -354,100 +350,12 @@ class _BookManagePageState extends State<BookManagePage> {
     }
   }
 
-  Future<void> _exportBook() async {
-    final box = context.findRenderObject() as RenderBox?;
-    final origin = box != null
-        ? box.localToGlobal(Offset.zero) & box.size
-        : const Rect.fromLTWH(0, 0, 1, 1);
-    try {
-      final exportFile =
-          await ImportExportService.instance.exportBook(widget.book);
-      await Share.shareXFiles(
-        [XFile(exportFile.path)],
-        subject: widget.book.title,
-        sharePositionOrigin: origin,
-      );
-    } catch (e) {
-      ToastUtil.error('导出失败: $e');
-    }
-  }
-
-  Future<void> _saveBookToPhone() async {
-    try {
-      final exportFile =
-          await ImportExportService.instance.exportBook(widget.book);
-      final bytes = await exportFile.readAsBytes();
-      final result = await FilePicker.platform.saveFile(
-        dialogTitle: '保存读本',
-        fileName: '${widget.book.title}.ddb',
-        bytes: bytes,
-        type: FileType.custom,
-        allowedExtensions: ['ddb'],
-      );
-      if (result != null) {
-        ToastUtil.success('保存成功');
-      }
-    } catch (e) {
-      ToastUtil.error('保存失败: $e');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('编辑读本'),
-        actions: [
-          Semantics(
-            label: '导出读本',
-            hint: '导出读本到文件',
-            button: true,
-            child: IconButton(
-              icon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onPrimary
-                      .withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.file_upload_rounded,
-                  size: 20,
-                  color: Theme.of(context).colorScheme.onPrimary,
-                ),
-              ),
-              onPressed: _exportBook,
-              tooltip: '导出读本',
-            ),
-          ),
-          Semantics(
-            label: '保存到手机',
-            hint: '保存读本到手机下载目录',
-            button: true,
-            child: IconButton(
-              icon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onPrimary
-                      .withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.save_alt_rounded,
-                  size: 20,
-                  color: Theme.of(context).colorScheme.onPrimary,
-                ),
-              ),
-              onPressed: _saveBookToPhone,
-              tooltip: '保存到手机',
-            ),
-          ),
-          const SizedBox(width: 8),
-        ],
+        actions: const [SizedBox(width: 8)],
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: AppTheme.appBarGradientOf(context),
@@ -662,85 +570,78 @@ class _BookManagePageState extends State<BookManagePage> {
                         onReorder: _reorderPages,
                         itemBuilder: (context, index) {
                           final page = _pages[index];
-                          return Slidable(
+                          return Container(
                             key: ValueKey(page.id),
-                            endActionPane: ActionPane(
-                              motion: const DrawerMotion(),
-                              children: [
-                                SlidableAction(
-                                  onPressed: (_) => _deletePage(index),
-                                  backgroundColor: AppTheme.errorOf(context),
-                                  foregroundColor: Colors.white,
-                                  icon: Icons.delete_rounded,
-                                  label: '删除',
-                                  borderRadius: const BorderRadius.only(
-                                    topRight: Radius.circular(20),
-                                    bottomRight: Radius.circular(20),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 15),
-                              decoration:
-                                  AppTheme.playfulCardDecorationOf(context),
-                              child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8),
-                                leading: _buildThumbnail(page),
-                                title: Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.accentOf(context)
-                                            .withValues(alpha: 0.2),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        '${index + 1}',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppTheme.onSurfaceOf(context),
-                                        ),
-                                      ),
+                            margin: const EdgeInsets.only(bottom: 15),
+                            decoration:
+                                AppTheme.playfulCardDecorationOf(context),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              leading: _buildThumbnail(page),
+                              title: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.accentOf(context)
+                                          .withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      '第 ${index + 1} 页',
+                                    child: Text(
+                                      '${index + 1}',
                                       style: TextStyle(
-                                        fontWeight: FontWeight.w500,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
                                         color: AppTheme.onSurfaceOf(context),
                                       ),
                                     ),
-                                  ],
-                                ),
-                                subtitle: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.calmBlue
-                                        .withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: Text(
-                                    '${page.textBlocks.where((b) => !b.isDeleted).length} 个文字块',
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '第 ${index + 1} 页',
                                     style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppTheme.onSurfaceOf(context)
-                                          .withValues(alpha: 0.7),
+                                      fontWeight: FontWeight.w500,
+                                      color: AppTheme.onSurfaceOf(context),
                                     ),
                                   ),
-                                ),
-                                trailing: Icon(
-                                  Icons.drag_handle_rounded,
-                                  color: AppTheme.onSurfaceOf(context)
-                                      .withValues(alpha: 0.6),
-                                ),
-                                onTap: () => _editPage(index),
+                                ],
                               ),
+                              subtitle: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.calmBlue
+                                      .withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '${page.textBlocks.where((b) => !b.isDeleted).length} 个文字块',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppTheme.onSurfaceOf(context)
+                                        .withValues(alpha: 0.7),
+                                  ),
+                                ),
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.delete_rounded,
+                                        color: AppTheme.errorOf(context)),
+                                    onPressed: () => _deletePage(index),
+                                    tooltip: '删除',
+                                  ),
+                                  Icon(
+                                    Icons.drag_handle_rounded,
+                                    color: AppTheme.onSurfaceOf(context)
+                                        .withValues(alpha: 0.6),
+                                  ),
+                                ],
+                              ),
+                              onTap: () => _editPage(index),
                             ),
                           );
                         },

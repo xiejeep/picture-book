@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import '../../../data/models/text_block_model.dart';
@@ -13,12 +14,13 @@ import '../../../core/constants/constants.dart';
 import '../../../core/utils/toast_util.dart';
 import '../../features/text_detection/models/text_block_data.dart';
 import '../../features/text_detection/models/handle_position.dart';
+import '../../providers/settings_provider.dart';
 import 'book_editor_state.dart';
 import 'book_editor_painter.dart';
 import 'book_editor_toolbar.dart';
 import '../ocr/ocr_results_page.dart';
 
-class BookEditorPage extends StatefulWidget {
+class BookEditorPage extends ConsumerStatefulWidget {
   final String bookId;
   final int pageIndex;
   final File imageFile;
@@ -33,10 +35,10 @@ class BookEditorPage extends StatefulWidget {
   });
 
   @override
-  State<BookEditorPage> createState() => _BookEditorPageState();
+  ConsumerState<BookEditorPage> createState() => _BookEditorPageState();
 }
 
-class _BookEditorPageState extends State<BookEditorPage> {
+class _BookEditorPageState extends ConsumerState<BookEditorPage> {
   late BookEditorState _state;
   Matrix4 _transform = Matrix4.identity();
   bool _imageFitted = false;
@@ -57,6 +59,7 @@ class _BookEditorPageState extends State<BookEditorPage> {
     super.initState();
     TtsService.instance.initialize();
     _state = const BookEditorState();
+    _currentAiModel = ref.read(selectedModelProvider);
     _loadImage();
   }
 
@@ -101,6 +104,27 @@ class _BookEditorPageState extends State<BookEditorPage> {
     if (!hasInitialBlocks) {
       await _runOcr();
     }
+  }
+
+  Future<void> _reOcr() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('重新OCR'),
+        content: const Text('将清除所有现有文字块并重新识别，确定继续吗？'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('确定')),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    setState(() => _state = _state.copyWith(isProcessing: true));
+    await _runOcr();
   }
 
   Future<void> _runOcr() async {
@@ -695,6 +719,8 @@ class _BookEditorPageState extends State<BookEditorPage> {
                       aiEnhancedText: corrected[i],
                       text: corrected[i],
                       originalText: b.originalText ?? b.text,
+                      clearTranslatedText: true,
+                      clearAiTranslatedText: true,
                     )
                   : b)
               .toList();
@@ -788,37 +814,10 @@ class _BookEditorPageState extends State<BookEditorPage> {
     _fitTransform(_layoutSize);
   }
 
-  void _showHelpDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('操作指南'),
-        content: const SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('• 双指缩放：放大/缩小图片'),
-              Text('• 单指平移：拖动移动图片'),
-              Text('• 绘制模式：拖动绘制新的文字区域'),
-              Text('• 点击文字块选中，点击空白区域取消'),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('知道了'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _navigateToResultsTable() {
+  Future<void> _navigateToResultsTable() async {
     final visible = _state.textBlocks.where((b) => !b.isDeleted).toList();
     if (visible.isEmpty) return;
-    Navigator.push(
+    final result = await Navigator.push<List<TextBlockData>>(
       context,
       MaterialPageRoute(
         builder: (context) => OcrResultsTablePage(
@@ -827,6 +826,17 @@ class _BookEditorPageState extends State<BookEditorPage> {
         ),
       ),
     );
+    if (result != null) {
+      setState(() {
+        _state = _state.copyWith(
+          textBlocks: _state.textBlocks.map((b) {
+            final updated = result.where((r) => r.id == b.id).firstOrNull;
+            return updated ?? b;
+          }).toList(),
+          hasChanges: true,
+        );
+      });
+    }
   }
 
   void _handleMenuAction(String value) {
@@ -902,6 +912,8 @@ class _BookEditorPageState extends State<BookEditorPage> {
                     aiEnhancedText: corrected[0],
                     text: corrected[0],
                     originalText: b.originalText ?? b.text,
+                    clearTranslatedText: true,
+                    clearAiTranslatedText: true,
                   )
                 : b)
             .toList();
@@ -940,12 +952,6 @@ class _BookEditorPageState extends State<BookEditorPage> {
                 BoxDecoration(gradient: AppTheme.appBarGradientOf(context)),
           ),
           actions: [
-            IconButton(
-              icon: Icon(Icons.help_outline,
-                  color: Theme.of(context).colorScheme.onPrimary),
-              onPressed: _showHelpDialog,
-              tooltip: '操作指南',
-            ),
             if (_state.textBlocks.isNotEmpty)
               IconButton(
                 icon: Icon(Icons.table_chart,
@@ -953,6 +959,14 @@ class _BookEditorPageState extends State<BookEditorPage> {
                 onPressed: _navigateToResultsTable,
                 tooltip: '查看结果表格',
               ),
+                  IconButton(
+              icon: Icon(Icons.save,
+                  color: _state.hasChanges
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.4)),
+              onPressed: _state.hasChanges ? _saveAndReturn : null,
+              tooltip: '保存',
+            ),
             PopupMenuButton<String>(
               icon: Icon(Icons.more_vert,
                   color: Theme.of(context).colorScheme.onPrimary),
@@ -1017,12 +1031,7 @@ class _BookEditorPageState extends State<BookEditorPage> {
                 ],
               ],
             ),
-            TextButton.icon(
-              onPressed: _state.hasChanges ? _saveAndReturn : null,
-              icon: const Icon(Icons.check, size: 18),
-              label: const Text('保存'),
-              style: TextButton.styleFrom(foregroundColor: Colors.white),
-            ),
+      
           ],
         ),
         body: _state.backgroundImage == null
@@ -1127,6 +1136,7 @@ class _BookEditorPageState extends State<BookEditorPage> {
                           onZoomIn: _zoomIn,
                           onZoomOut: _zoomOut,
                           onResetZoom: _resetZoom,
+                          onReOcr: _reOcr,
                         ),
                       ),
                     ],
