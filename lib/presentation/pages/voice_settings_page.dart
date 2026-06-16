@@ -16,11 +16,10 @@ class VoiceSettingsPage extends StatefulWidget {
 }
 
 class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
-  String _ttsEngine = 'glm';
-  String _selectedTtsVoice = AppConstants.defaultTtsVoice;
+  String _ttsEngine = 'system';
   String _supertonicVoice = AppConstants.supertonicDefaultVoice;
   int _supertonicSteps = AppConstants.supertonicDefaultSteps;
-  double _speechRate = AppConstants.glmTtsDefaultSpeed;
+  double _speechRate = AppConstants.systemTtsDefaultSpeed;
   bool _isSaving = false;
   bool _hasSupertonicModels = false;
 
@@ -34,18 +33,7 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
     final settings = StorageService.instance.getAiSettings();
 
     setState(() {
-      _ttsEngine =
-          settings?.ttsEngine ?? (PlatformUtils.isMacOS ? 'glm' : 'system');
-
-      if (PlatformUtils.isMacOS && _ttsEngine == 'system') {
-        _ttsEngine = 'glm';
-      }
-
-      _selectedTtsVoice = settings?.ttsVoice ?? AppConstants.defaultTtsVoice;
-      final voiceExists =
-          AppConstants.ttsVoices.any((v) => v['name'] == _selectedTtsVoice);
-      _selectedTtsVoice =
-          voiceExists ? _selectedTtsVoice : AppConstants.defaultTtsVoice;
+      _ttsEngine = settings?.ttsEngine ?? 'system';
 
       _supertonicVoice =
           settings?.supertonicVoice ?? AppConstants.supertonicDefaultVoice;
@@ -78,22 +66,20 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
       setState(() => _hasSupertonicModels = hasModels);
 
       if (!hasModels && _ttsEngine == 'supertonic') {
-        final fallbackEngine = PlatformUtils.isMacOS ? 'glm' : 'system';
         setState(() {
-          _ttsEngine = fallbackEngine;
-          _speechRate = _getDefaultSpeechRate(fallbackEngine);
+          _ttsEngine = 'system';
+          _speechRate = _getDefaultSpeechRate('system');
         });
 
         final currentSettings = StorageService.instance.getAiSettings();
         final settings = (currentSettings ??
                 AiSettingsModel(selectedModel: AppConstants.defaultModel))
             .copyWith(
-          ttsEngine: fallbackEngine,
+          ttsEngine: 'system',
           speechRate: _speechRate,
         );
         await StorageService.instance.saveAiSettings(settings);
-        ToastUtil.info(
-            'Supertonic 模型已删除，已切换到${fallbackEngine == 'system' ? '系统' : 'GLM'}语音');
+        ToastUtil.info('Supertonic 模型已删除，已切换到系统语音');
       }
     } catch (e) {
       debugPrint('检查 Supertonic 模型错误: $e');
@@ -105,12 +91,10 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
     switch (engine) {
       case 'system':
         return AppConstants.systemTtsDefaultSpeed;
-      case 'glm':
-        return AppConstants.glmTtsDefaultSpeed;
       case 'supertonic':
         return AppConstants.supertonicDefaultSpeed;
       default:
-        return AppConstants.glmTtsDefaultSpeed;
+        return AppConstants.systemTtsDefaultSpeed;
     }
   }
 
@@ -123,7 +107,6 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
               AiSettingsModel(selectedModel: AppConstants.defaultModel))
           .copyWith(
         ttsEngine: _ttsEngine,
-        ttsVoice: _selectedTtsVoice,
         speechRate: _speechRate,
         supertonicVoice: _supertonicVoice,
         supertonicSteps: _supertonicSteps,
@@ -139,7 +122,6 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
   }
 
   void _onTtsEngineChanged(String engine) {
-    if (PlatformUtils.isMacOS && engine == 'system') return;
     if (!PlatformUtils.supportsSupertonic && engine == 'supertonic') return;
 
     setState(() {
@@ -169,7 +151,6 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
               children: [
                 _buildTtsTypeSection(),
                 const SizedBox(height: 24),
-                if (_ttsEngine == 'glm') _buildGlmVoiceSection(),
                 if (_ttsEngine == 'supertonic') ...[
                   _buildSupertonicVoiceSection(),
                   const SizedBox(height: 24),
@@ -179,7 +160,7 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
                     _buildSupertonicModelWarning(),
                   ],
                 ],
-                if (_ttsEngine == 'glm' || _ttsEngine == 'supertonic')
+                if (_ttsEngine == 'supertonic')
                   const SizedBox(height: 24),
                 _buildSpeechRateSection(),
                 const SizedBox(height: 32),
@@ -219,15 +200,6 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
                   value: 'system',
                   icon: Icons.record_voice_over,
                 ),
-              if (PlatformUtils.supportsSystemTts)
-                Divider(height: 1, color: AppTheme.dividerColorOf(context)),
-              _buildTtsOption(
-                title: 'GLM-TTS高质量语音',
-                subtitle: 'AI合成语音，效果更自然',
-                value: 'glm',
-                icon: Icons.auto_awesome,
-                recommended: true,
-              ),
               if (PlatformUtils.supportsSupertonic)
                 Divider(height: 1, color: AppTheme.dividerColorOf(context)),
               if (PlatformUtils.supportsSupertonic)
@@ -337,41 +309,6 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildGlmVoiceSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'GLM-TTS音色',
-          style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.onSurfaceOf(context)),
-        ),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          value: _selectedTtsVoice,
-          decoration: InputDecoration(
-            border: const OutlineInputBorder(),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            filled: true,
-            fillColor: AppTheme.cardOf(context),
-          ),
-          items: AppConstants.ttsVoices.map((voice) {
-            return DropdownMenuItem(
-                value: voice['name'], child: Text(voice['label']!));
-          }).toList(),
-          onChanged: (value) {
-            if (value != null) {
-              setState(() => _selectedTtsVoice = value);
-            }
-          },
-        ),
-      ],
     );
   }
 
@@ -633,12 +570,10 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
     switch (_ttsEngine) {
       case 'system':
         return AppConstants.systemTtsMinSpeed;
-      case 'glm':
-        return AppConstants.glmTtsMinSpeed;
       case 'supertonic':
         return AppConstants.supertonicMinSpeed;
       default:
-        return AppConstants.glmTtsMinSpeed;
+        return AppConstants.systemTtsMinSpeed;
     }
   }
 
@@ -646,12 +581,10 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
     switch (_ttsEngine) {
       case 'system':
         return AppConstants.systemTtsMaxSpeed;
-      case 'glm':
-        return AppConstants.glmTtsMaxSpeed;
       case 'supertonic':
         return AppConstants.supertonicMaxSpeed;
       default:
-        return AppConstants.glmTtsMaxSpeed;
+        return AppConstants.systemTtsMaxSpeed;
     }
   }
 
@@ -659,12 +592,10 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
     switch (_ttsEngine) {
       case 'system':
         return AppConstants.systemTtsSpeedDivisions;
-      case 'glm':
-        return AppConstants.glmTtsSpeedDivisions;
       case 'supertonic':
         return AppConstants.supertonicSpeedDivisions;
       default:
-        return AppConstants.glmTtsSpeedDivisions;
+        return AppConstants.systemTtsSpeedDivisions;
     }
   }
 
@@ -672,8 +603,6 @@ class _VoiceSettingsPageState extends State<VoiceSettingsPage> {
     switch (_ttsEngine) {
       case 'system':
         return '系统TTS语速范围: 10%-100%';
-      case 'glm':
-        return 'GLM-TTS语速范围: 50%-150%';
       case 'supertonic':
         return 'Supertonic语速范围: 50%-200%';
       default:

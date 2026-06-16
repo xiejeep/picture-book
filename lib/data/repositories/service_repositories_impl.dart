@@ -57,26 +57,8 @@ class AiRepositoryImpl implements AiRepository {
   }
 
   @override
-  String getTtsVoice() {
-    return _aiService.getTtsVoice();
-  }
-
-  @override
   Future<bool> testConnection(String apiKey, String model) async {
     return await _aiService.testConnection(apiKey, model);
-  }
-
-  @override
-  Future<String?> synthesizeSpeech(
-    String text,
-    String voice,
-    double speechRate,
-  ) async {
-    return await _aiService.synthesizeSpeech(
-      text,
-      voice: voice,
-      speechRate: speechRate,
-    );
   }
 
   @override

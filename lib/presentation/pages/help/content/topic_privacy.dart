@@ -22,9 +22,7 @@ final privacySections = <HelpSection>[
       HelpTable(headers: ['引擎', '费用', '说明'], rows: [
         ['系统 TTS', '免费', '设备自带引擎'],
         ['Supertonic', '免费', '设备端离线 AI 合成'],
-        ['GLM-TTS', '2 元/万字符', 'AI 高质量语音'],
       ]),
-      HelpParagraph('一本 30 页绘本使用 GLM-TTS 约 0.3 元。同文字+引擎+音色+语速组合会被缓存，不重复计费。'),
     ],
   ),
   HelpSection(
@@ -42,7 +40,7 @@ final privacySections = <HelpSection>[
     title: '网络使用说明',
     accentColor: AppTheme.sweetPink,
     items: [
-      HelpParagraph('仅在使用 AI 强化或 GLM-TTS 时需要联网，所有请求均指向智谱 AI（open.bigmodel.cn）。'),
+      HelpParagraph('仅在使用 AI 强化时需要联网，所有请求均指向智谱 AI（open.bigmodel.cn）。'),
       HelpParagraph('以下功能完全离线：ML Kit OCR、系统 TTS、Supertonic、NFC、绘本管理、图片处理。'),
     ],
   ),

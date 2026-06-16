@@ -147,7 +147,7 @@ class AboutPage extends StatelessWidget {
             context,
             icon: Icons.record_voice_over_rounded,
             title: '高质量语音',
-            subtitle: '支持 GLM-TTS 和 Supertonic 离线语音合成，发音标准自然',
+            subtitle: '支持系统 TTS 和 Supertonic 离线语音合成，发音标准自然',
           ),
           _buildFeatureItem(
             context,

@@ -2,10 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
-import 'package:path_provider/path_provider.dart';
 import '../../core/constants/constants.dart';
 import 'storage_service.dart';
-import 'tts_cache_service.dart';
 import 'vision_service.dart';
 import 'text_cleaning_service.dart';
 
@@ -37,11 +35,6 @@ class AiService {
 
   String getTextModel() => TextCleaningService.instance.getTextModel();
 
-  String getTtsVoice() {
-    final settings = StorageService.instance.getAiSettings();
-    return settings?.ttsVoice ?? AppConstants.defaultTtsVoice;
-  }
-
   Future<bool> testConnection(String apiKey, String model) async {
     try {
       final response = await http.post(
@@ -67,71 +60,6 @@ class AiService {
     } catch (e) {
       debugPrint('Test connection error: $e');
       return false;
-    }
-  }
-
-  Future<String?> synthesizeSpeech(
-    String text, {
-    String? voice,
-    double? speechRate,
-  }) async {
-    final apiKey = await getApiKey();
-    if (apiKey == null || apiKey.isEmpty) {
-      throw Exception('API Key not configured');
-    }
-
-    final settings = StorageService.instance.getAiSettings();
-    final ttsVoice =
-        voice ?? settings?.ttsVoice ?? AppConstants.defaultTtsVoice;
-    final ttsSpeed =
-        speechRate ?? settings?.speechRate ?? AppConstants.glmTtsDefaultSpeed;
-    const ttsVolume = 1.0;
-
-    final cachedAudio =
-        await TtsCacheService.instance.getCachedAudio(text, ttsVoice, ttsSpeed);
-
-    if (cachedAudio != null) {
-      debugPrint('使用缓存音频，无需调用API');
-      return cachedAudio;
-    }
-
-    try {
-      final response = await http.post(
-        Uri.parse(AppConstants.zhipuTtsEndpoint),
-        headers: {
-          'Authorization': 'Bearer $apiKey',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'model': 'glm-tts',
-          'input': text,
-          'voice': ttsVoice,
-          'response_format': 'wav',
-          'speed': ttsSpeed,
-          'volume': ttsVolume,
-          'watermark_enabled': false,
-        }),
-      );
-
-      if (response.statusCode != 200) {
-        debugPrint('TTS API Error: ${response.statusCode} - ${response.body}');
-        throw Exception(
-            'statusCode:${response.statusCode}, body:${response.body}');
-      }
-
-      final tempDir = await getTemporaryDirectory();
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final tempAudioFile = File('${tempDir.path}/tts_temp_$timestamp.wav');
-      await tempAudioFile.writeAsBytes(response.bodyBytes);
-
-      final cachedPath = await TtsCacheService.instance
-          .saveToCache(tempAudioFile.path, text, ttsVoice, ttsSpeed);
-
-      debugPrint('TTS音频已缓存: $cachedPath');
-      return cachedPath;
-    } catch (e) {
-      debugPrint('Synthesize speech error: $e');
-      throw Exception('TTS synthesis failed: $e');
     }
   }
 

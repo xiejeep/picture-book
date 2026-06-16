@@ -24,14 +24,6 @@ class TtsCacheService {
     await _cleanOldCache();
   }
 
-  String _generateCacheKey(String text, String voice, double speechRate) {
-    final speedLabel = speechRate.toStringAsFixed(2);
-    final keyString = '${text}_${voice}_${speedLabel}';
-    final bytes = utf8.encode(keyString);
-    final hash = md5.convert(bytes);
-    return hash.toString();
-  }
-
   String _generateSupertonicCacheKey(
       String text, String voice, int steps, double speed) {
     final keyString = '${text}_${voice}_${steps}_${speed.toStringAsFixed(2)}';
@@ -71,42 +63,6 @@ class TtsCacheService {
       await tempFile.copy(cacheFile.path);
       await tempFile.delete();
       debugPrint('Supertonic音频已缓存: $cacheKey');
-    }
-
-    return cacheFile.path;
-  }
-
-  Future<String?> getCachedAudio(
-      String text, String voice, double speechRate) async {
-    if (_cacheDir == null) {
-      await initialize();
-    }
-
-    final cacheKey = _generateCacheKey(text, voice, speechRate);
-    final cacheFile = File('${_cacheDir!.path}/$cacheKey.wav');
-
-    if (await cacheFile.exists()) {
-      debugPrint('使用缓存音频: $cacheKey (${(speechRate * 100).toInt()}%)');
-      return cacheFile.path;
-    }
-
-    return null;
-  }
-
-  Future<String> saveToCache(String tempAudioPath, String text, String voice,
-      double speechRate) async {
-    if (_cacheDir == null) {
-      await initialize();
-    }
-
-    final cacheKey = _generateCacheKey(text, voice, speechRate);
-    final cacheFile = File('${_cacheDir!.path}/$cacheKey.wav');
-
-    final tempFile = File(tempAudioPath);
-    if (await tempFile.exists()) {
-      await tempFile.copy(cacheFile.path);
-      debugPrint('音频已缓存: $cacheKey');
-      await tempFile.delete();
     }
 
     return cacheFile.path;

@@ -33,8 +33,7 @@ final faqSections = <HelpSection>[
     items: [
       HelpBulletList([
         '检查设备音量是否开启',
-        '使用 GLM-TTS 确认 API Key 已配置且余额充足',
-        'GLM-TTS 失败时移动端会自动回退到系统 TTS',
+        '确认已在语音设置中选择了朗读引擎',
         '在语音设置中确认语速未调到最低',
       ]),
     ],
@@ -87,7 +86,7 @@ final faqSections = <HelpSection>[
     accentColor: AppTheme.gentleGreen,
     items: [
       HelpParagraph('可以。使用本地 OCR + 系统 TTS 或 Supertonic，完全不联网。'),
-      HelpParagraph('需要联网仅：AI 强化识别、GLM-TTS 语音合成。'),
+      HelpParagraph('需要联网仅：AI 强化识别。'),
     ],
   ),
   HelpSection(
@@ -110,12 +109,12 @@ final faqSections = <HelpSection>[
     ],
   ),
   HelpSection(
-    title: 'Supertonic、系统 TTS、GLM-TTS 怎么选？',
+    title: 'Supertonic 和系统 TTS 怎么选？',
     accentColor: AppTheme.sweetPink,
     items: [
       HelpTable(headers: ['场景', '推荐引擎', '原因'], rows: [
         ['完全离线', 'Supertonic 或系统 TTS', '无需网络'],
-        ['最佳音质', 'GLM-TTS', 'AI 合成效果最佳'],
+        ['最佳音质', 'Supertonic', '免费且离线，AI 合成效果最佳'],
         ['省钱', 'Supertonic', '免费且离线，音质优于系统 TTS'],
         ['省电', '系统 TTS', '最轻量'],
       ]),

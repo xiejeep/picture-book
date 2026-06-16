@@ -7,7 +7,6 @@ import '../../../../core/constants/constants.dart';
 import '../../../../core/constants/app_prompts.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/toast_util.dart';
-import '../../../../core/utils/platform_utils.dart';
 import '../../../../data/services/ai_service.dart';
 import '../../../../data/services/tts_service.dart';
 import '../../../../data/services/ocr_service.dart';
@@ -347,14 +346,12 @@ class _TextDetectionViewState extends ConsumerState<TextDetectionView>
             icon: const Icon(Icons.photo_library),
             label: const Text('从相册选择'),
           ),
-          if (!PlatformUtils.isMacOS) ...[
-            const SizedBox(height: 10),
-            ElevatedButton.icon(
-              onPressed: () => notifier.pickImage(ImageSource.camera),
-              icon: const Icon(Icons.camera_alt),
-              label: const Text('拍照'),
-            ),
-          ],
+          const SizedBox(height: 10),
+          ElevatedButton.icon(
+            onPressed: () => notifier.pickImage(ImageSource.camera),
+            icon: const Icon(Icons.camera_alt),
+            label: const Text('拍照'),
+          ),
         ],
       ),
     );

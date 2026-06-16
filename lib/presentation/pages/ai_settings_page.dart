@@ -70,8 +70,6 @@ class _AiSettingsPageState extends ConsumerState<AiSettingsPage> {
       final currentSettings = ref.read(settingsProvider).settings;
       final settings = AiSettingsModel(
         selectedModel: _selectedModel,
-        useGlmTts: currentSettings?.useGlmTts ?? false,
-        ttsVoice: currentSettings?.ttsVoice ?? AppConstants.defaultTtsVoice,
         speechRate:
             currentSettings?.speechRate ?? AppConstants.systemTtsDefaultSpeed,
         selectedTextModel: _selectedTextModel,

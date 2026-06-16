@@ -13,9 +13,6 @@ class AppConstants {
   static const String zhipuApiEndpoint =
       'https://open.bigmodel.cn/api/paas/v4/chat/completions';
 
-  static const String zhipuTtsEndpoint =
-      'https://open.bigmodel.cn/api/paas/v4/audio/speech';
-
   static const List<Map<String, String>> availableModels = [
     {'name': 'glm-4v-flash', 'label': 'GLM-4V-Flash (免费)', 'free': 'true'},
     // {'name': 'glm-4.6v-flash', 'label': 'GLM-4.6V-Flash (免费)', 'free': 'true'},
@@ -36,27 +33,10 @@ class AppConstants {
 
   static const String secureStorageApiKeyKey = 'zhipu_api_key';
 
-  static const List<Map<String, String>> ttsVoices = [
-    {'name': 'tongtong', 'label': '彤彤 (默认)'},
-    {'name': 'chuichui', 'label': '锤锤'},
-    {'name': 'xiaochen', 'label': '小陈'},
-    {'name': 'jam', 'label': 'Jam'},
-    {'name': 'kazi', 'label': 'Kazi'},
-    {'name': 'douji', 'label': 'Douji'},
-    {'name': 'luodo', 'label': 'Luodo'},
-  ];
-
-  static const String defaultTtsVoice = 'tongtong';
-
   static const double systemTtsMinSpeed = 0.1;
   static const double systemTtsMaxSpeed = 1.0;
   static const double systemTtsDefaultSpeed = 0.5;
   static const int systemTtsSpeedDivisions = 7;
-
-  static const double glmTtsMinSpeed = 0.5;
-  static const double glmTtsMaxSpeed = 1.5;
-  static const double glmTtsDefaultSpeed = 1.0;
-  static const int glmTtsSpeedDivisions = 10;
 
   static const List<double> systemTtsSpeedPresets = [
     0.1,
@@ -69,20 +49,6 @@ class AppConstants {
     0.9,
     1.0
   ];
-  static const List<double> glmTtsSpeedPresets = [
-    0.5,
-    0.6,
-    0.7,
-    0.8,
-    0.9,
-    1.0,
-    1.1,
-    1.2,
-    1.3,
-    1.4,
-    1.5
-  ];
-
   static const List<Map<String, String>> supertonicVoices = [
     {'name': 'M1', 'label': 'M1 (男声)'},
     {'name': 'M2', 'label': 'M2 (男声)'},

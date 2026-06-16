@@ -8,12 +8,6 @@ class AiSettingsModel extends HiveObject {
   @HiveField(0)
   String selectedModel;
 
-  @HiveField(1)
-  bool useGlmTts;
-
-  @HiveField(2)
-  String ttsVoice;
-
   @HiveField(3)
   double speechRate;
 
@@ -34,8 +28,6 @@ class AiSettingsModel extends HiveObject {
 
   AiSettingsModel({
     required this.selectedModel,
-    this.useGlmTts = false,
-    this.ttsVoice = AppConstants.defaultTtsVoice,
     this.speechRate = 0.5,
     this.useSlowSpeed = false,
     String? selectedTextModel,
@@ -43,14 +35,12 @@ class AiSettingsModel extends HiveObject {
     String? supertonicVoice,
     int? supertonicSteps,
   })  : selectedTextModel = selectedTextModel ?? AppConstants.defaultTextModel,
-        ttsEngine = ttsEngine ?? 'glm',
+        ttsEngine = ttsEngine ?? 'system',
         supertonicVoice = supertonicVoice ?? AppConstants.supertonicDefaultVoice,
         supertonicSteps = supertonicSteps ?? AppConstants.supertonicDefaultSteps;
 
   AiSettingsModel copyWith({
     String? selectedModel,
-    bool? useGlmTts,
-    String? ttsVoice,
     double? speechRate,
     bool? useSlowSpeed,
     String? selectedTextModel,
@@ -60,8 +50,6 @@ class AiSettingsModel extends HiveObject {
   }) {
     return AiSettingsModel(
       selectedModel: selectedModel ?? this.selectedModel,
-      useGlmTts: useGlmTts ?? this.useGlmTts,
-      ttsVoice: ttsVoice ?? this.ttsVoice,
       speechRate: speechRate ?? this.speechRate,
       useSlowSpeed: useSlowSpeed ?? this.useSlowSpeed,
       selectedTextModel: selectedTextModel ?? this.selectedTextModel,

@@ -43,7 +43,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
   int _currentPageIndex = 0;
   bool _showBorders = true;
   bool _showAppBar = true;
-  bool _showTranslation = !Platform.isMacOS;
+  bool _showTranslation = true;
   String? _playingText;
   int? _playingBlockIndex;
   int? _loadingBlockIndex;
@@ -178,9 +178,7 @@ class _BookDetailPageState extends ConsumerState<BookDetailPage>
       if (settings?.speechRate != null && settings!.speechRate > 0) {
         _currentSpeechRate = settings.speechRate;
       } else {
-        _currentSpeechRate = _currentTtsEngine == 'system'
-            ? AppConstants.systemTtsDefaultSpeed
-            : AppConstants.glmTtsDefaultSpeed;
+        _currentSpeechRate = AppConstants.systemTtsDefaultSpeed;
       }
     });
   }
@@ -486,15 +484,15 @@ color: AppTheme.focusHighlightOf(context),
                   const SizedBox(height: 16),
                   Slider(
                     value: _currentSpeechRate,
-                    min: _currentTtsEngine == 'system'
-                        ? AppConstants.systemTtsMinSpeed
-                        : AppConstants.glmTtsMinSpeed,
-                    max: _currentTtsEngine == 'system'
-                        ? AppConstants.systemTtsMaxSpeed
-                        : AppConstants.glmTtsMaxSpeed,
-                    divisions: _currentTtsEngine == 'system'
-                        ? AppConstants.systemTtsSpeedDivisions
-                        : AppConstants.glmTtsSpeedDivisions,
+                    min: _currentTtsEngine == 'supertonic'
+                        ? AppConstants.supertonicMinSpeed
+                        : AppConstants.systemTtsMinSpeed,
+                    max: _currentTtsEngine == 'supertonic'
+                        ? AppConstants.supertonicMaxSpeed
+                        : AppConstants.systemTtsMaxSpeed,
+                    divisions: _currentTtsEngine == 'supertonic'
+                        ? AppConstants.supertonicSpeedDivisions
+                        : AppConstants.systemTtsSpeedDivisions,
                     activeColor: AppTheme.primaryOf(context),
                     onChanged: (value) {
                       setDialogState(() {
@@ -507,7 +505,7 @@ color: AppTheme.focusHighlightOf(context),
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        _currentTtsEngine == 'system' ? '最慢' : '慢速',
+                        _currentTtsEngine == 'supertonic' ? '慢速' : '最慢',
                         style: TextStyle(
                             color: AppTheme.onSurfaceOf(context)
                                 .withValues(alpha: 0.6),
@@ -678,82 +676,10 @@ color: AppTheme.focusHighlightOf(context),
       await ref.read(ttsServiceProvider).speak(block.text);
     } catch (e) {
       if (!mounted) return;
-      if (e is GlmTtsException) {
-        _loadingIndicatorTimer?.cancel();
-        setState(() {
-          _loadingBlockIndex = null;
-        });
-        showDialog(
-          context: context,
-          builder: (context) => Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: AppTheme.surfaceOf(context),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.errorOf(context).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Icon(
-                      Icons.volume_off_rounded,
-                      size: 32,
-                      color: AppTheme.errorOf(context),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    '朗读失败',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.onSurfaceOf(context),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    e.userMessage,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color:
-                          AppTheme.onSurfaceOf(context).withValues(alpha: 0.7),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('确定'),
-                      ),
-                      if (e.isBalanceInsufficient()) const SizedBox(width: 8),
-                      if (e.isBalanceInsufficient())
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            context.push('/settings');
-                          },
-                          child: const Text('去设置'),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      }
+      _loadingIndicatorTimer?.cancel();
+      setState(() {
+        _loadingBlockIndex = null;
+      });
     }
 
     if (mounted) {

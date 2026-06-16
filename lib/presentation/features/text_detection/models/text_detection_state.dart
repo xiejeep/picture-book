@@ -27,7 +27,6 @@ class TextDetectionState {
   final bool hasChanges;
   final String currentAiModel;
   final double speechRate;
-  final bool useGlmTts;
   final bool showAiBanner;
   final String aiBannerText;
 
@@ -51,7 +50,6 @@ class TextDetectionState {
     this.hasChanges = false,
     this.currentAiModel = AppConstants.defaultModel,
     this.speechRate = AppConstants.systemTtsDefaultSpeed,
-    this.useGlmTts = false,
     this.showAiBanner = false,
     this.aiBannerText = 'AI正在优化识别结果...',
   });
@@ -93,7 +91,6 @@ class TextDetectionState {
     bool? hasChanges,
     String? currentAiModel,
     double? speechRate,
-    bool? useGlmTts,
     bool? showAiBanner,
     String? aiBannerText,
     bool clearSelectedBlockId = false,
@@ -138,7 +135,6 @@ class TextDetectionState {
       hasChanges: hasChanges ?? this.hasChanges,
       currentAiModel: currentAiModel ?? this.currentAiModel,
       speechRate: speechRate ?? this.speechRate,
-      useGlmTts: useGlmTts ?? this.useGlmTts,
       showAiBanner: showAiBanner ?? this.showAiBanner,
       aiBannerText: aiBannerText ?? this.aiBannerText,
     );

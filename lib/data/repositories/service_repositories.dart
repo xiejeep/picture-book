@@ -16,15 +16,7 @@ abstract class AiRepository {
 
   String getSelectedModel();
 
-  String getTtsVoice();
-
   Future<bool> testConnection(String apiKey, String model);
-
-  Future<String?> synthesizeSpeech(
-    String text,
-    String voice,
-    double speechRate,
-  );
 
   Future<Map<int, String>> enhanceTextBlocks(
     File imageFile,

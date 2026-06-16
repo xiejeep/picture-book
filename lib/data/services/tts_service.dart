@@ -2,29 +2,12 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'ai_service.dart';
 import 'tts_cache_service.dart';
 import 'storage_service.dart';
 import 'supertonic_service.dart';
 import 'supertonic_model_service.dart';
 import '../../core/constants/constants.dart';
 import '../../core/utils/platform_utils.dart';
-
-class GlmTtsException implements Exception {
-  final int statusCode;
-  final String message;
-
-  GlmTtsException(this.statusCode, this.message);
-
-  bool isBalanceInsufficient() => statusCode == 429;
-
-  String get userMessage {
-    if (isBalanceInsufficient()) {
-      return 'GLM-TTS余额不足，已切换为系统语音';
-    }
-    return 'GLM-TTS播放失败: $message';
-  }
-}
 
 class TtsService {
   static final TtsService _instance = TtsService._internal();
@@ -140,8 +123,8 @@ class TtsService {
     _speakCompleter = Completer<void>();
 
     final settings = StorageService.instance.getAiSettings();
-    final ttsEngine = settings?.ttsEngine ?? (PlatformUtils.isMacOS ? 'glm' : 'system');
-    final speechRate = settings?.speechRate ?? AppConstants.glmTtsDefaultSpeed;
+    final ttsEngine = settings?.ttsEngine ?? 'system';
+    final speechRate = settings?.speechRate ?? AppConstants.systemTtsDefaultSpeed;
 
     debugPrint('TTS引擎: $ttsEngine, 语速: $speechRate');
 
@@ -173,29 +156,6 @@ class TtsService {
         await _speakWithFlutterTts(text);
         await _speakCompleter?.future;
       }
-    } else if (ttsEngine == 'glm' || PlatformUtils.isMacOS) {
-      if (PlatformUtils.supportsSystemTts) {
-        await _flutterTts.setSpeechRate(speechRate.clamp(
-            AppConstants.systemTtsMinSpeed, AppConstants.systemTtsMaxSpeed));
-        debugPrint('动态更新系统TTS语速: ${(speechRate * 100).toInt()}% ($speechRate)');
-      }
-
-      try {
-        await _speakWithGlmTts(text, speechRate);
-        await _speakCompleter?.future;
-      } catch (e) {
-        if (!PlatformUtils.isMacOS) {
-          debugPrint('GLM-TTS失败($e)，自动回退到系统TTS');
-          _speakCompleter = Completer<void>();
-          await _speakWithFlutterTts(text);
-          await _speakCompleter?.future;
-        } else {
-          debugPrint('GLM-TTS播放错误: $e');
-          _isSpeaking = false;
-          _currentText = null;
-          rethrow;
-        }
-      }
     } else {
       if (PlatformUtils.supportsSystemTts) {
         await _flutterTts.setSpeechRate(speechRate.clamp(
@@ -220,41 +180,6 @@ class TtsService {
       debugPrint('Flutter TTS播放错误: $e');
       _isSpeaking = false;
       _currentText = null;
-    }
-  }
-
-  Future<void> _speakWithGlmTts(String text, double speechRate) async {
-    debugPrint('使用GLM-TTS播放');
-    
-    _isLoading = true;
-    onLoadingStarted?.call();
-    
-    try {
-      final audioPath = await AiService.instance.synthesizeSpeech(
-        text,
-        speechRate: speechRate,
-      );
-      
-      _isLoading = false;
-      _isSpeaking = true;
-      onPlayingStarted?.call();
-      
-      if (audioPath != null) {
-        await _audioPlayer.play(DeviceFileSource(audioPath));
-        debugPrint('GLM-TTS开始播放');
-      } else {
-        debugPrint('GLM-TTS合成失败，回退到Flutter TTS');
-        await _speakWithFlutterTts(text);
-      }
-    } catch (e) {
-      _isLoading = false;
-      
-      final statusCode = _extractStatusCode(e);
-      final errorMsg = _extractErrorMessage(e);
-
-      debugPrint('GLM-TTS播放错误: statusCode=$statusCode, error=$errorMsg');
-
-      throw GlmTtsException(statusCode, errorMsg);
     }
   }
 
@@ -313,28 +238,6 @@ class TtsService {
       debugPrint('Supertonic播放错误: $e');
       throw Exception('Supertonic合成失败: $e');
     }
-  }
-
-  int _extractStatusCode(dynamic error) {
-    if (error is Exception) {
-      final message = error.toString();
-      final match = RegExp(r'statusCode:\s*(\d+)').firstMatch(message);
-      if (match != null) {
-        return int.parse(match.group(1)!);
-      }
-      final statusMatch = RegExp(r'failed:\s*(\d+)').firstMatch(message);
-      if (statusMatch != null) {
-        return int.parse(statusMatch.group(1)!);
-      }
-    }
-    return -1;
-  }
-
-  String _extractErrorMessage(dynamic error) {
-    if (error is Exception) {
-      return error.toString();
-    }
-    return 'Unknown error';
   }
 
   Future<void> stop() async {

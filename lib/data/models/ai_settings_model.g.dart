@@ -18,8 +18,6 @@ class AiSettingsModelAdapter extends TypeAdapter<AiSettingsModel> {
     };
     return AiSettingsModel(
       selectedModel: fields[0] as String,
-      useGlmTts: fields[1] as bool,
-      ttsVoice: fields[2] as String,
       speechRate: fields[3] as double,
       useSlowSpeed: fields[4] as bool,
       selectedTextModel: fields[5] as String?,
@@ -32,13 +30,9 @@ class AiSettingsModelAdapter extends TypeAdapter<AiSettingsModel> {
   @override
   void write(BinaryWriter writer, AiSettingsModel obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.selectedModel)
-      ..writeByte(1)
-      ..write(obj.useGlmTts)
-      ..writeByte(2)
-      ..write(obj.ttsVoice)
       ..writeByte(3)
       ..write(obj.speechRate)
       ..writeByte(4)
