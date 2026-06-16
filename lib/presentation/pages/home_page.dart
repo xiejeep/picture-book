@@ -76,7 +76,6 @@ class _HomePageState extends ConsumerState<HomePage> {
             imageFile,
             result,
           );
-      if (mounted) Navigator.pop(context);
     }
   }
 
