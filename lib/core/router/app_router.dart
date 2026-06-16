@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../presentation/pages/home_page.dart';
-import '../../presentation/pages/book_detail_page.dart';
+import '../../presentation/pages/book_reader_page.dart';
 import '../../presentation/pages/book_manage_page.dart';
 import '../../presentation/pages/settings_page.dart';
 import '../../presentation/pages/ai_settings_page.dart';
@@ -117,13 +117,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             return _buildErrorPage(context, state);
           }
 
-          final autoPlayPageId = state.uri.queryParameters['autoPlayPageId'];
-          final autoPlayBlockId = state.uri.queryParameters['autoPlayBlockId'];
-
-          return BookDetailPage(
+          return BookReaderPage(
             book: book,
-            autoPlayPageId: autoPlayPageId,
-            autoPlayBlockId: autoPlayBlockId,
+            autoPlayPageId: state.uri.queryParameters['autoPlayPageId'],
+            autoPlayBlockId: state.uri.queryParameters['autoPlayBlockId'],
           );
         },
       ),
