@@ -50,7 +50,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   int _currentIndex;
   int? _playingBlockIndex;
   int? _loadingBlockIndex;
-  Timer? _loadingIndicatorTimer;
+  late AnimationController _loadingSpinnerController;
   String? _playingText;
   double _currentSpeechRate = AppConstants.systemTtsDefaultSpeed;
   Size _viewportSize = Size.zero;
@@ -98,6 +98,14 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
 
     TtsService.instance.onPlayingComplete = _onTtsComplete;
     _initTtsCallbacks();
+
+    _loadingSpinnerController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    )..addListener(() {
+        if (mounted) setState(() {});
+      });
+
     _loadVoiceSettings();
     _initNfc();
 
@@ -111,7 +119,6 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   @override
   void dispose() {
     _longPressTimer?.cancel();
-    _loadingIndicatorTimer?.cancel();
     if (TtsService.instance.onPlayingComplete == _onTtsComplete) {
       TtsService.instance.onPlayingComplete = null;
     }
@@ -120,6 +127,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     _nfcSubscription?.cancel();
     _focusAnimationController.dispose();
     _bounceAnimationController.dispose();
+    _loadingSpinnerController.dispose();
     super.dispose();
   }
 
@@ -127,6 +135,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     if (mounted) {
       setState(() {
         _playingText = null;
+        _playingBlockIndex = null;
       });
     }
   }
@@ -138,7 +147,6 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     };
     ttsService.onPlayingStarted = () {
       if (mounted) {
-        _loadingIndicatorTimer?.cancel();
         setState(() {
           _loadingBlockIndex = null;
         });
@@ -258,18 +266,12 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     };
     ttsService.onPlayingStarted = () {
       if (mounted) {
-        _loadingIndicatorTimer?.cancel();
+        _loadingSpinnerController.stop();
         setState(() {
           _loadingBlockIndex = null;
         });
       }
     };
-
-    _updateFocusAnimation(block);
-
-    if (PlatformUtils.supportsMlKit) {
-      _translateBlock(block, blockIndex);
-    }
 
     if (_playingText != null) {
       if (!mounted) return;
@@ -280,18 +282,14 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     setState(() {
       _playingText = block.text;
       _playingBlockIndex = blockIndex;
+      _loadingBlockIndex = blockIndex;
     });
+    _loadingSpinnerController.repeat();
 
-    _loadingIndicatorTimer?.cancel();
-    if (_ttsEngine == 'supertonic') {
-      _loadingIndicatorTimer = Timer(const Duration(milliseconds: 300), () {
-        if (mounted &&
-            _playingBlockIndex == blockIndex &&
-            _loadingBlockIndex == null &&
-            ttsService.isLoading) {
-          setState(() => _loadingBlockIndex = blockIndex);
-        }
-      });
+    _updateFocusAnimation(block);
+
+    if (PlatformUtils.supportsMlKit) {
+      _translateBlock(block, blockIndex);
     }
 
     try {
@@ -299,7 +297,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
       await ref.read(ttsServiceProvider).speak(block.text);
     } catch (e) {
       if (!mounted) return;
-      _loadingIndicatorTimer?.cancel();
+      _loadingSpinnerController.stop();
       setState(() {
         _loadingBlockIndex = null;
       });
@@ -402,7 +400,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
 
   void _stopPlaying() {
     ref.read(ttsServiceProvider).stop();
-    _loadingIndicatorTimer?.cancel();
+    _loadingSpinnerController.stop();
     setState(() {
       _playingText = null;
       _playingBlockIndex = null;
@@ -532,6 +530,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     }
 
     final index = page.textBlocks.indexOf(block);
+    if (index == _playingBlockIndex || index == _loadingBlockIndex) return;
     _playTextBlock(block, index);
   }
 
@@ -1770,6 +1769,9 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                             displayWidth: page.imageWidth,
                             displayHeight: page.imageHeight,
                             playingBlockIndex: _playingBlockIndex,
+                            loadingBlockIndex: _loadingBlockIndex,
+                            loadingAnimationValue:
+                                _loadingSpinnerController.value,
                             textBlockMaskColor:
                                 Colors.orange.withValues(alpha: 0.25),
                           ),
