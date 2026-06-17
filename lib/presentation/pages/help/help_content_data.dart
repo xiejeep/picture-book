@@ -118,7 +118,7 @@ final List<HelpTopic> helpTopics = [
   HelpTopic(
     id: 'voice',
     title: '语音设置',
-    subtitle: '三引擎对比、音色选择、语速调节',
+    subtitle: '双引擎对比、音色选择、语速调节',
     icon: Icons.record_voice_over_rounded,
     color: AppTheme.sweetPink,
     sections: voiceSections,

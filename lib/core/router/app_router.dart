@@ -117,10 +117,13 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             return _buildErrorPage(context, state);
           }
 
+          final autoPlayPageId =
+              state.uri.queryParameters['autoPlayPageId'];
+          final autoPlayBlockId =
+              state.uri.queryParameters['autoPlayBlockId'];
+
           return BookReaderPage(
             book: book,
-            autoPlayPageId: state.uri.queryParameters['autoPlayPageId'],
-            autoPlayBlockId: state.uri.queryParameters['autoPlayBlockId'],
           );
         },
       ),

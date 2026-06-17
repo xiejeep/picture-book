@@ -102,7 +102,7 @@ final faqSections = <HelpSection>[
       HelpTip('长按文字方块可绑定 NFC 标签，绑定后靠近即可自动播放。'),
     ],
   ),
-  HelpSection(
+  const HelpSection(
     title: 'iOS 为什么不能像 Android 那样自动读取？',
     accentColor: AppTheme.calmBlue,
     items: [

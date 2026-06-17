@@ -197,7 +197,38 @@ class _BookManagePageState extends State<BookManagePage> {
     if (pickedFile == null) return;
     if (!mounted) return;
 
-    final imageFile = File(pickedFile.path);
+    final croppedFile = await ImageCropper().cropImage(
+      sourcePath: pickedFile.path,
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: '裁剪图片',
+          toolbarColor: AppTheme.honeyYellow,
+          toolbarWidgetColor: Colors.white,
+          aspectRatioPresets: [
+            CropAspectRatioPreset.original,
+            CropAspectRatioPreset.square,
+            CropAspectRatioPreset.ratio4x3,
+            CropAspectRatioPreset.ratio16x9,
+          ],
+          lockAspectRatio: false,
+        ),
+        IOSUiSettings(
+          title: '裁剪图片',
+          aspectRatioPresets: [
+            CropAspectRatioPreset.original,
+            CropAspectRatioPreset.square,
+            CropAspectRatioPreset.ratio4x3,
+            CropAspectRatioPreset.ratio16x9,
+          ],
+          rotateButtonsHidden: false,
+          resetButtonHidden: false,
+        ),
+      ],
+    );
+    if (croppedFile == null) return;
+    if (!mounted) return;
+
+    final imageFile = File(croppedFile.path);
     final result = await Navigator.push<List<TextBlockModel>>(
       context,
       MaterialPageRoute(

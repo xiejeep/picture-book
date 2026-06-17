@@ -94,25 +94,6 @@ class SettingsPage extends ConsumerWidget {
             ),
             title: const Text('帮助中心'),
             subtitle: const Text('快速入门、功能详解、常见问题'),
-            trailing: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [
-                    AppTheme.sweetPink,
-                    AppTheme.honeyYellow,
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Text(
-                '推荐',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500),
-              ),
-            ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
