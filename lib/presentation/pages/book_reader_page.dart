@@ -1595,6 +1595,67 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     final pages = _book.pages;
     final isDark = AppTheme.isDarkMode(context);
 
+    if (pages.isEmpty) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(32),
+                  ),
+                  child: const Icon(
+                    Icons.auto_stories_rounded,
+                    size: 64,
+                    color: Colors.white38,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  '读本还没有页面',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '「${_book.title}」中还没有任何页面，\n先去添加一些页面吧',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.white.withValues(alpha: 0.6),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton.icon(
+                  onPressed: () => context.push('/book/${_book.id}/manage'),
+                  icon: const Icon(Icons.edit_rounded, size: 18),
+                  label: const Text('去编辑读本'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.softOrange,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.black,
