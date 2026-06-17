@@ -1,0 +1,8 @@
+name: photo_view
+version: 0.15.0
+description: A vendor copy of photo_view 0.15.0 with custom onDoubleTap support.
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+dependencies:
+  flutter:
+    sdk: flutter

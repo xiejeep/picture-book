@@ -25,8 +25,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:photo_view/photo_view.dart';
-import 'package:photo_view/photo_view_gallery.dart';
+import 'package:book_app/vendor/photo_view/photo_view.dart';
+import 'package:book_app/vendor/photo_view/photo_view_gallery.dart';
 
 class BookReaderPage extends ConsumerStatefulWidget {
   final BookModel book;
@@ -53,7 +53,6 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   Timer? _loadingIndicatorTimer;
   String? _playingText;
   double _currentSpeechRate = AppConstants.systemTtsDefaultSpeed;
-  String _currentTtsEngine = 'system';
   Size _viewportSize = Size.zero;
   Timer? _longPressTimer;
   bool _showBorders = true;
@@ -147,11 +146,15 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     };
   }
 
+  String get _ttsEngine {
+    final settings = ref.read(storageServiceProvider).getAiSettings();
+    return settings?.ttsEngine ?? 'system';
+  }
+
   void _loadVoiceSettings() {
     final settings = ref.read(storageServiceProvider).getAiSettings();
     if (settings != null) {
       _currentSpeechRate = settings.speechRate;
-      _currentTtsEngine = settings.ttsEngine;
     }
   }
 
@@ -280,7 +283,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     });
 
     _loadingIndicatorTimer?.cancel();
-    if (_currentTtsEngine == 'supertonic') {
+    if (_ttsEngine == 'supertonic') {
       _loadingIndicatorTimer = Timer(const Duration(milliseconds: 300), () {
         if (mounted &&
             _playingBlockIndex == blockIndex &&
@@ -315,15 +318,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     final imageHeight = page.imageHeight;
     if (imageWidth <= 0 || imageHeight <= 0) return;
 
-    final scaleX = _viewportSize.width / imageWidth;
-    final scaleY = _viewportSize.height / imageHeight;
-
-    final blockRect = Rect.fromLTRB(
-      block.boundingBox.left * scaleX,
-      block.boundingBox.top * scaleY,
-      block.boundingBox.right * scaleX,
-      block.boundingBox.bottom * scaleY,
-    );
+    final blockRect = block.boundingBox;
 
     final targetRect = Rect.fromCenter(
       center: blockRect.center,
@@ -343,7 +338,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
 
     if (!_hasPlayedBefore) {
       beginRect = Rect.fromLTWH(
-        0, 0, _viewportSize.width, _viewportSize.height,
+        0, 0, imageWidth, imageHeight,
       );
       endRect = targetRect;
       curve = Curves.easeInOut;
@@ -497,32 +492,6 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     });
   }
 
-  void _goToPreviousPage() {
-    if (_currentIndex > 0) {
-      setState(() {
-        _currentIndex--;
-        _clearTranslation();
-      });
-      _pageController.previousPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    }
-  }
-
-  void _goToNextPage() {
-    if (_currentIndex < _book.pages.length - 1) {
-      setState(() {
-        _currentIndex++;
-        _clearTranslation();
-      });
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    }
-  }
-
   void _toggleAppBar() {
     setState(() => _showAppBar = !_showAppBar);
   }
@@ -557,7 +526,10 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     );
 
     final block = _hitTestBlock(imagePoint, page.textBlocks);
-    if (block == null) return;
+    if (block == null) {
+      _toggleAppBar();
+      return;
+    }
 
     final index = page.textBlocks.indexOf(block);
     _playTextBlock(block, index);
@@ -1196,6 +1168,16 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   }
 
   void _showVoiceSettingsDialog() {
+    final dialogEngine = _ttsEngine;
+    double dialogRate = (_currentSpeechRate).clamp(
+      dialogEngine == 'supertonic'
+          ? AppConstants.supertonicMinSpeed
+          : AppConstants.systemTtsMinSpeed,
+      dialogEngine == 'supertonic'
+          ? AppConstants.supertonicMaxSpeed
+          : AppConstants.systemTtsMaxSpeed,
+    );
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -1229,12 +1211,12 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                         ),
                       ),
                       const SizedBox(width: 12),
-                      const Text(
+                      Text(
                         '语音设置',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                          color: AppTheme.onSurfaceOf(context),
                         ),
                       ),
                     ],
@@ -1248,22 +1230,43 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: _ttsEngine == 'supertonic'
+                                ? AppTheme.accentOf(context).withValues(alpha: 0.2)
+                                : AppTheme.primaryOf(context).withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            _ttsEngine == 'supertonic' ? 'Supertonic' : '系统TTS',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                          color: dialogEngine == 'supertonic'
+                                  ? AppTheme.accentOf(context)
+                                  : AppTheme.primaryOf(context),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         Text(
-                          '当前语速',
+                          '语速',
                           style: TextStyle(
                             fontSize: 14,
                             color: AppTheme.onSurfaceOf(context)
                                 .withValues(alpha: 0.6),
                           ),
                         ),
+                        const Spacer(),
                         Text(
-                          '${(_currentSpeechRate * 100).toInt()}%',
+                          '${(dialogRate * 100).toInt()}%',
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: AppTheme.focusHighlightOf(context),
+                            color: AppTheme.primaryOf(context),
                           ),
                         ),
                       ],
@@ -1271,21 +1274,19 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                   ),
                   const SizedBox(height: 16),
                   Slider(
-                    value: _currentSpeechRate,
-                    min: _currentTtsEngine == 'supertonic'
+                    value: dialogRate,
+                    min: _ttsEngine == 'supertonic'
                         ? AppConstants.supertonicMinSpeed
                         : AppConstants.systemTtsMinSpeed,
-                    max: _currentTtsEngine == 'supertonic'
+                    max: _ttsEngine == 'supertonic'
                         ? AppConstants.supertonicMaxSpeed
                         : AppConstants.systemTtsMaxSpeed,
-                    divisions: _currentTtsEngine == 'supertonic'
+                    divisions: _ttsEngine == 'supertonic'
                         ? AppConstants.supertonicSpeedDivisions
                         : AppConstants.systemTtsSpeedDivisions,
                     activeColor: AppTheme.primaryOf(context),
                     onChanged: (value) {
-                      setDialogState(() {
-                        _currentSpeechRate = value;
-                      });
+                      setDialogState(() => dialogRate = value);
                     },
                   ),
                   const SizedBox(height: 8),
@@ -1293,14 +1294,14 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        _currentTtsEngine == 'supertonic' ? '慢速' : '最慢',
+                        '慢速',
                         style: TextStyle(
                             color: AppTheme.onSurfaceOf(context)
                                 .withValues(alpha: 0.6),
                             fontSize: 12),
                       ),
                       Text(
-                        _currentTtsEngine == 'system' ? '最快' : '快速',
+                        '快速',
                         style: TextStyle(
                             color: AppTheme.onSurfaceOf(context)
                                 .withValues(alpha: 0.6),
@@ -1346,14 +1347,15 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                                           AppConstants.defaultModel,
                                     ))
                                 .copyWith(
-                              ttsEngine: _currentTtsEngine,
-                              speechRate: _currentSpeechRate,
+                              speechRate: dialogRate,
                             );
                             await ref
                                 .read(storageServiceProvider)
                                 .saveAiSettings(settings);
 
-                            setState(() {});
+                            setState(() {
+                              _currentSpeechRate = dialogRate;
+                            });
                             if (context.mounted) Navigator.pop(context);
 
                             ToastUtil.success('语速已调整');
@@ -1575,7 +1577,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
               decoration: BoxDecoration(
                 border: Border.all(
                   color: AppTheme.focusHighlightColor,
-                  width: (scaledRect.height * 0.03).clamp(2.0, 6.0),
+                  width: (scaledRect.height * 0.04).clamp(3.0, 8.0),
                 ),
                 borderRadius: BorderRadius.circular(
                   (scaledRect.height * 0.08).clamp(4.0, 12.0),
@@ -1732,9 +1734,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
           : null,
       body: Stack(
         children: [
-          GestureDetector(
-            onDoubleTap: _toggleAppBar,
-            child: PhotoViewGallery.builder(
+          PhotoViewGallery.builder(
               scrollPhysics: const BouncingScrollPhysics(),
               builder: (context, index) {
                 final page = pages[index];
@@ -1778,11 +1778,12 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                     ],
                   ),
                   childSize: hasValidSize ? imageSize : null,
-                  initialScale: PhotoViewComputedScale.contained,
-                  minScale: PhotoViewComputedScale.contained * 0.8,
-                  maxScale: PhotoViewComputedScale.covered * 3,
-                  heroAttributes:
-                      PhotoViewHeroAttributes(tag: page.imagePath),
+                initialScale: PhotoViewComputedScale.contained,
+                minScale: PhotoViewComputedScale.contained * 0.8,
+                maxScale: PhotoViewComputedScale.covered * 3,
+                onDoubleTap: _toggleAppBar,
+                heroAttributes:
+                    PhotoViewHeroAttributes(tag: page.imagePath),
                   onTapDown: (context, details, ctrlVal) =>
                       _onTapDown(details, ctrlVal, page),
                   onTapUp: (context, details, ctrlVal) =>
@@ -1803,10 +1804,12 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                   _currentIndex = index;
                   _clearTranslation();
                 });
+                _book.currentPageIndex = index;
+                _book.updatedAt = DateTime.now();
+                _book.save();
               },
               backgroundDecoration: const BoxDecoration(color: Colors.black),
             ),
-          ),
           if (!_showAppBar)
             Positioned(
               top: 0,
@@ -1830,8 +1833,6 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                 child: PageIndicator(
                   currentPage: _currentIndex,
                   totalPages: pages.length,
-                  onPrevious: _goToPreviousPage,
-                  onNext: _goToNextPage,
                 ),
               ),
             ),

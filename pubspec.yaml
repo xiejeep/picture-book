@@ -62,6 +62,8 @@ dependencies:
   share_plus: ^10.1.0
   file_picker: ^8.1.0
   archive: ^4.0.0
+  photo_view:
+    path: lib/vendor/photo_view
 
 dev_dependencies:
   flutter_test:
