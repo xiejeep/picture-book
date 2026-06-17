@@ -1654,7 +1654,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                     ),
                     const SizedBox(height: 32),
                     ElevatedButton.icon(
-                      onPressed: () => context.push('/book/${_book.id}/manage'),
+                      onPressed: () => context.push('/book/${_book.id}/manage', extra: _book),
                       icon: const Icon(Icons.edit_rounded, size: 18),
                       label: const Text('去编辑读本'),
                     ),
