@@ -1597,6 +1597,14 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
 
     if (pages.isEmpty) {
       return Scaffold(
+        appBar: AppBar(
+          title: Text(_book.title),
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: AppTheme.appBarGradientOf(context),
+            ),
+          ),
+        ),
         body: Container(
           decoration: AppTheme.gradientBoxOf(context),
           child: SafeArea(
