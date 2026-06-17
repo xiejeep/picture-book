@@ -9,8 +9,8 @@ final faqSections = <HelpSection>[
     items: [
       HelpBulletList([
         '确保拍摄时光线充足、图片清晰',
-        '使用绘制模式手动框选识别不准确的区域',
-        '选中文字方块后点击"编辑"手动修改文字',
+        '点击"新建块"进入绘制模式，手动框选识别不准确的区域',
+        '选中文字方块后点击底部工具栏"编辑"按钮手动修改文字',
         '使用 AI 强化自动修正识别错误',
       ]),
     ],
@@ -99,6 +99,7 @@ final faqSections = <HelpSection>[
         '确认标签为 NDEF 格式的 ISO14443 或 ISO15693 标签',
         '尝试将标签靠近手机不同区域（通常在顶部背部）',
       ]),
+      HelpTip('长按文字方块可绑定 NFC 标签，绑定后靠近即可自动播放。'),
     ],
   ),
   HelpSection(
@@ -125,7 +126,7 @@ final faqSections = <HelpSection>[
     accentColor: AppTheme.gentleGreen,
     items: [
       HelpNumberedList([
-        '长按绘本卡片 → "导出" → 通过系统分享发送 .ddb 文件',
+        '长按绘本卡片 → "分享" → 通过系统分享发送 .ddb 文件',
         '在另一台设备上打开点读鸭 → 点击导入图标',
         '.ddb 格式支持 iOS ↔ Android 跨平台导入',
       ]),

@@ -9,8 +9,8 @@ final importExportSections = <HelpSection>[
     items: [
       HelpParagraph('将绘本打包为 .ddb 文件：'),
       HelpBulletList([
-        '方式一：长按绘本卡片 → 选择"导出" → 通过系统分享菜单发送',
-        '方式二：编辑页面 → 点击分享图标或保存图标',
+        '方式一：长按绘本卡片 → 选择"分享" → 通过系统分享菜单发送',
+        '方式二：长按绘本卡片 → 选择"保存到手机" → 保存到下载目录',
       ]),
     ],
   ),
