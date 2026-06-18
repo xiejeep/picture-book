@@ -19,6 +19,11 @@ import 'package:book_app/presentation/providers/service_providers.dart';
 import 'package:book_app/presentation/providers/settings_provider.dart';
 import 'package:book_app/presentation/providers/repository_providers.dart';
 import 'package:book_app/presentation/providers/nfc_action_handler.dart';
+import 'package:book_app/presentation/features/reader/widgets/reader_app_bar.dart';
+import 'package:book_app/presentation/features/reader/widgets/reader_block_actions_sheet.dart';
+import 'package:book_app/presentation/features/reader/widgets/reader_empty_state.dart';
+import 'package:book_app/presentation/features/reader/widgets/reader_focus_border.dart';
+import 'package:book_app/presentation/features/reader/widgets/reader_reading_bar.dart';
 import 'package:book_app/presentation/widgets/page_indicator.dart';
 import 'package:book_app/presentation/widgets/reading_text_block_painter.dart';
 import 'package:book_app/presentation/widgets/semantics_icon_button.dart';
@@ -78,6 +83,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
       book: _book,
       currentIndex: _book.currentPageIndex,
     );
+    _pageController = PageController(initialPage: _readingState.currentIndex);
 
     _focusAnimationController = AnimationController(
       duration: AppAnim.quick,
@@ -126,6 +132,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     _focusAnimationController.dispose();
     _bounceAnimationController.dispose();
     _loadingSpinnerController.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -402,7 +409,9 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
 
   Future<void> _translateBlock(TextBlockModel block, int blockIndex) async {
     if (_readingState.translatedBlockIndex == blockIndex &&
-        _readingState.translatedText != null) return;
+        _readingState.translatedText != null) {
+      return;
+    }
 
     if (block.aiTranslatedText != null) {
       setState(() {
@@ -526,7 +535,9 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
 
     final index = page.textBlocks.indexOf(block);
     if (index == _readingState.playingBlockIndex ||
-        index == _readingState.loadingBlockIndex) return;
+        index == _readingState.loadingBlockIndex) {
+      return;
+    }
     _playTextBlock(block, index);
   }
 
@@ -572,99 +583,27 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
 
   void _showBlockActionsBottomSheet(TextBlockModel block, int index) {
     _clearTranslation();
-    final nfcEnabled = ref.read(nfcEnabledProvider);
-    final primaryColor = AppTheme.primaryOf(context);
-    final mutedColor = AppTheme.mutedOf(context);
 
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => SafeArea(
-        child: Container(
-          color: AppTheme.surfaceOf(context),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 32,
-                height: 4,
-                margin: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: mutedColor.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              _buildActionTile(
-                ctx,
-                icon: Icons.edit,
-                title: '编辑文字',
-                subtitle: '修改此文字块的识别文本',
-                color: primaryColor,
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _editBlockText(block, index);
-                },
-              ),
-              _buildActionTile(
-                ctx,
-                icon: Icons.translate,
-                title: '编辑翻译',
-                subtitle: '修改此文字块的翻译文本',
-                color: AppTheme.accentOf(context),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _editBlockTranslation(block, index);
-                },
-              ),
-              if (nfcEnabled)
-                _buildActionTile(
-                  ctx,
-                  icon: Icons.nfc,
-                  title: '绑定 NFC 标签',
-                  subtitle: '将此文字块绑定到 NFC 标签',
-                  color: Colors.teal,
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _showNfcBindDialog(block, index);
-                  },
-                ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        ),
+      builder: (ctx) => ReaderBlockActionsSheet(
+        showNfcAction: ref.read(nfcEnabledProvider),
+        onEditText: () {
+          Navigator.pop(ctx);
+          _editBlockText(block, index);
+        },
+        onEditTranslation: () {
+          Navigator.pop(ctx);
+          _editBlockTranslation(block, index);
+        },
+        onBindNfc: () {
+          Navigator.pop(ctx);
+          _showNfcBindDialog(block, index);
+        },
       ),
-    );
-  }
-
-  Widget _buildActionTile(
-    BuildContext ctx, {
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(icon, color: color, size: 22),
-      ),
-      title: Text(title,
-          style: TextStyle(
-              fontWeight: FontWeight.w500, color: AppTheme.onSurfaceOf(ctx))),
-      subtitle: Text(subtitle,
-          style: TextStyle(
-              fontSize: 12,
-              color: AppTheme.onSurfaceOf(ctx).withValues(alpha: 0.6))),
-      onTap: onTap,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     );
   }
 
@@ -992,10 +931,9 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   void _showNfcBindDialog(TextBlockModel block, int blockIndex) async {
     final nfcService = ref.read(nfcServiceProvider);
     final available = await nfcService.isAvailable();
+    if (!mounted) return;
     if (!available) {
-      if (mounted) {
-        ToastUtil.warning('此设备不支持 NFC 功能');
-      }
+      ToastUtil.warning('此设备不支持 NFC 功能');
       return;
     }
 
@@ -1376,219 +1314,10 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     );
   }
 
-  Widget _buildReadingBar() {
-    final block = _book.pages[_readingState.currentIndex]
-        .textBlocks[_readingState.translatedBlockIndex!];
-    final isPlaying = _readingState.playingText != null;
-
-    String statusText;
-    if (_readingState.translationStatus == TranslationStatus.downloadingModel) {
-      statusText = '正在下载翻译模型...';
-    } else if (_readingState.isTranslating) {
-      statusText = '翻译中...';
-    } else if (_readingState.translationStatus == TranslationStatus.failed) {
-      statusText = '翻译失败';
-    } else {
-      statusText = '';
-    }
-
-    return Positioned(
-      bottom: 72,
-      left: 16,
-      right: 16,
-      child: Center(
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 400),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: AppTheme.isDarkMode(context)
-                ? AppTheme.darkCard
-                : const Color(0xFF2D2D3A),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      block.text,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Semantics(
-                    label: isPlaying ? '停止朗读' : '重新播放',
-                    hint: '控制朗读播放',
-                    button: true,
-                    child: GestureDetector(
-                      onTap: isPlaying ? _stopPlaying : _replayCurrentBlock,
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white12,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          isPlaying
-                              ? Icons.stop_rounded
-                              : Icons.volume_up_rounded,
-                          size: 24,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Semantics(
-                    label: '关闭',
-                    hint: '关闭阅读栏',
-                    button: true,
-                    child: GestureDetector(
-                      onTap: _clearTranslation,
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white12,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.close,
-                          size: 24,
-                          color: Colors.white70,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (_readingState.showTranslation && _readingState.isTranslating)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 1.5,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white54),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        statusText,
-                        style: const TextStyle(
-                            color: Colors.white54, fontSize: 13),
-                      ),
-                    ],
-                  ),
-                )
-              else if (_readingState.showTranslation &&
-                  _readingState.translatedText != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white10,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      _readingState.translatedText!,
-                      style: TextStyle(
-                        color: AppTheme.accentOf(context),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                )
-              else if (_readingState.showTranslation &&
-                  _readingState.translationStatus == TranslationStatus.failed)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    statusText,
-                    style: const TextStyle(color: Colors.white54, fontSize: 13),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFocusBorder() {
-    if (_focusAnimation == null || _currentFocusRect == null) {
-      return const SizedBox.shrink();
-    }
-
-    final animation = Listenable.merge([
-      _focusAnimationController,
-      _bounceAnimationController,
-    ]);
-
-    return AnimatedBuilder(
-      animation: animation,
-      builder: (context, child) {
-        final flyRect = _focusAnimation!.value ?? _currentFocusRect!;
-        final bounceScale = _bounceAnimation?.value ?? 1.0;
-
-        final center = flyRect.center;
-        final scaledWidth = flyRect.width * bounceScale;
-        final scaledHeight = flyRect.height * bounceScale;
-        final scaledRect = Rect.fromCenter(
-          center: center,
-          width: scaledWidth,
-          height: scaledHeight,
-        );
-
-        return Positioned(
-          left: scaledRect.left,
-          top: scaledRect.top,
-          width: scaledRect.width,
-          height: scaledRect.height,
-          child: IgnorePointer(
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: AppTheme.focusHighlightColor,
-                  width: (scaledRect.height * 0.04).clamp(3.0, 8.0),
-                ),
-                borderRadius: BorderRadius.circular(
-                  (scaledRect.height * 0.08).clamp(4.0, 12.0),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     _viewportSize = MediaQuery.of(context).size;
     final pages = _book.pages;
-    final isDark = AppTheme.isDarkMode(context);
 
     if (pages.isEmpty) {
       return Scaffold(
@@ -1602,64 +1331,10 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
         ),
         body: Container(
           decoration: AppTheme.gradientBoxOf(context),
-          child: SafeArea(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            AppTheme.calmBlue.withValues(alpha: 0.2),
-                            AppTheme.gentleGreen.withValues(alpha: 0.2),
-                            AppTheme.sweetPink.withValues(alpha: 0.15),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(32),
-                      ),
-                      child: Icon(
-                        Icons.auto_stories_rounded,
-                        size: 64,
-                        color:
-                            AppTheme.primaryOf(context).withValues(alpha: 0.7),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      '读本还没有页面',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.onSurfaceOf(context),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      '「${_book.title}」中还没有任何页面，\n先去添加一些页面吧',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppTheme.onSurfaceOf(context)
-                            .withValues(alpha: 0.6),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    ElevatedButton.icon(
-                      onPressed: () => context.push('/book/${_book.id}/manage',
-                          extra: _book),
-                      icon: const Icon(Icons.edit_rounded, size: 18),
-                      label: const Text('去编辑读本'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          child: ReaderEmptyState(
+            bookTitle: _book.title,
+            onEditBook: () =>
+                context.push('/book/${_book.id}/manage', extra: _book),
           ),
         ),
       );
@@ -1669,136 +1344,20 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.black,
       appBar: _readingState.showAppBar
-          ? AppBar(
-              backgroundColor: isDark
-                  ? AppTheme.darkSurface.withValues(alpha: 0.85)
-                  : AppTheme.softOrange.withValues(alpha: 0.85),
-              elevation: 0,
-              title: Text(_book.title),
-              actions: [
-                Semantics(
-                  label: '语音设置',
-                  hint: '调整朗读语速和语音',
-                  button: true,
-                  child: IconButton(
-                    icon: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.record_voice_over_rounded,
-                        size: 18,
-                        color: Colors.white,
-                      ),
-                    ),
-                    onPressed: _showVoiceSettingsDialog,
-                    tooltip: '语音设置',
-                  ),
-                ),
-                Semantics(
-                  label: '隐藏导航栏',
-                  hint: '双击页面可重新显示',
-                  button: true,
-                  child: IconButton(
-                    icon: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.visibility_off_rounded,
-                        size: 18,
-                        color: Colors.white,
-                      ),
-                    ),
-                    onPressed: _toggleAppBar,
-                    tooltip: '隐藏导航栏',
-                  ),
-                ),
-                if (PlatformUtils.supportsMlKit)
-                  Semantics(
-                    label: _readingState.showTranslation ? '隐藏翻译' : '显示翻译',
-                    hint: '切换翻译显示状态',
-                    button: true,
-                    child: IconButton(
-                      icon: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          _readingState.showTranslation
-                              ? Icons.translate_rounded
-                              : Icons.translate_outlined,
-                          size: 18,
-                          color: _readingState.showTranslation
-                              ? Colors.white
-                              : Colors.white.withValues(alpha: 0.6),
-                        ),
-                      ),
-                      onPressed: _toggleTranslation,
-                      tooltip: _readingState.showTranslation ? '隐藏翻译' : '显示翻译',
-                    ),
-                  ),
-                Semantics(
-                  label: _readingState.showBorders ? '隐藏边框' : '显示边框',
-                  hint: '切换文字块边框显示',
-                  button: true,
-                  child: IconButton(
-                    icon: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        _readingState.showBorders
-                            ? Icons.border_color_rounded
-                            : Icons.border_clear_rounded,
-                        size: 18,
-                        color: Colors.white,
-                      ),
-                    ),
-                    onPressed: _toggleBorders,
-                    tooltip: _readingState.showBorders ? '隐藏边框' : '显示边框',
-                  ),
-                ),
-                if (Platform.isIOS && ref.watch(nfcEnabledProvider))
-                  Semantics(
-                    label: '扫描NFC标签',
-                    hint: '靠近NFC标签自动识别并播放',
-                    button: true,
-                    child: IconButton(
-                      icon: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.nfc,
-                          size: 18,
-                          color: Colors.white,
-                        ),
-                      ),
-                      onPressed: () {
-                        final nfcService = ref.read(nfcServiceProvider);
-                        nfcService.startIosScan();
-                      },
-                      tooltip: '扫描NFC标签',
-                    ),
-                  ),
-                const SizedBox(width: 8),
-              ],
-              flexibleSpace: Container(
-                decoration: BoxDecoration(
-                  gradient: AppTheme.appBarGradientOf(context),
-                ),
-              ),
+          ? ReaderAppBar(
+              title: _book.title,
+              showTranslation: _readingState.showTranslation,
+              showBorders: _readingState.showBorders,
+              supportsTranslation: PlatformUtils.supportsMlKit,
+              showNfcScan: Platform.isIOS && ref.watch(nfcEnabledProvider),
+              onVoiceSettings: _showVoiceSettingsDialog,
+              onToggleAppBar: _toggleAppBar,
+              onToggleTranslation: _toggleTranslation,
+              onToggleBorders: _toggleBorders,
+              onScanNfc: () {
+                final nfcService = ref.read(nfcServiceProvider);
+                nfcService.startIosScan();
+              },
             )
           : null,
       body: Stack(
@@ -1824,8 +1383,8 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                         height: hasValidSize ? imageSize.height : null,
                       )
                     else
-                      Image(
-                        image: const AssetImage('assets/placeholder.png'),
+                      const Image(
+                        image: AssetImage('assets/placeholder.png'),
                         fit: BoxFit.contain,
                       ),
                     if (hasValidSize &&
@@ -1847,7 +1406,15 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                               Colors.orange.withValues(alpha: 0.25),
                         ),
                       ),
-                    _buildFocusBorder(),
+                    ReaderFocusBorder(
+                      focusAnimation: _focusAnimation,
+                      currentFocusRect: _currentFocusRect,
+                      bounceAnimation: _bounceAnimation,
+                      animation: Listenable.merge([
+                        _focusAnimationController,
+                        _bounceAnimationController,
+                      ]),
+                    ),
                   ],
                 ),
                 childSize: hasValidSize ? imageSize : null,
@@ -1867,9 +1434,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
             loadingBuilder: (context, event) => const Center(
               child: CircularProgressIndicator(color: Colors.white),
             ),
-            pageController: _pageController = PageController(
-              initialPage: _readingState.currentIndex,
-            ),
+            pageController: _pageController,
             onPageChanged: (index) {
               setState(() {
                 _readingState = _readingState.copyWith(currentIndex: index);
@@ -1895,7 +1460,19 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                 ),
               ),
             ),
-          if (_readingState.translatedBlockIndex != null) _buildReadingBar(),
+          if (_readingState.translatedBlockIndex != null)
+            ReaderReadingBar(
+              block: _book.pages[_readingState.currentIndex]
+                  .textBlocks[_readingState.translatedBlockIndex!],
+              isPlaying: _readingState.playingText != null,
+              showTranslation: _readingState.showTranslation,
+              isTranslating: _readingState.isTranslating,
+              translationStatus: _readingState.translationStatus,
+              translatedText: _readingState.translatedText,
+              onStopPlaying: _stopPlaying,
+              onReplay: _replayCurrentBlock,
+              onClose: _clearTranslation,
+            ),
           if (pages.length > 1)
             Positioned(
               bottom: 24,
