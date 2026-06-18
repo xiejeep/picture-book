@@ -1,7 +1,7 @@
-import '../../data/models/book_model.dart';
-import '../../data/services/translation_service.dart';
+import 'package:book_app/data/models/book_model.dart';
+import 'package:book_app/data/services/translation_service.dart';
 
-class ReadingState {
+class ReaderState {
   final BookModel book;
   final int currentIndex;
   final int? playingBlockIndex;
@@ -15,7 +15,7 @@ class ReadingState {
   final bool isTranslating;
   final TranslationStatus translationStatus;
 
-  const ReadingState({
+  const ReaderState({
     required this.book,
     this.currentIndex = 0,
     this.playingBlockIndex,
@@ -30,7 +30,7 @@ class ReadingState {
     this.translationStatus = TranslationStatus.idle,
   });
 
-  ReadingState copyWith({
+  ReaderState copyWith({
     BookModel? book,
     int? currentIndex,
     int? playingBlockIndex,
@@ -49,19 +49,22 @@ class ReadingState {
     bool clearTranslatedBlockIndex = false,
     bool clearTranslatedText = false,
   }) {
-    return ReadingState(
+    return ReaderState(
       book: book ?? this.book,
       currentIndex: currentIndex ?? this.currentIndex,
-      playingBlockIndex:
-          clearPlayingBlockIndex ? null : (playingBlockIndex ?? this.playingBlockIndex),
-      loadingBlockIndex:
-          clearLoadingBlockIndex ? null : (loadingBlockIndex ?? this.loadingBlockIndex),
+      playingBlockIndex: clearPlayingBlockIndex
+          ? null
+          : (playingBlockIndex ?? this.playingBlockIndex),
+      loadingBlockIndex: clearLoadingBlockIndex
+          ? null
+          : (loadingBlockIndex ?? this.loadingBlockIndex),
       playingText: clearPlayingText ? null : (playingText ?? this.playingText),
       showBorders: showBorders ?? this.showBorders,
       showAppBar: showAppBar ?? this.showAppBar,
       showTranslation: showTranslation ?? this.showTranslation,
-      translatedBlockIndex:
-          clearTranslatedBlockIndex ? null : (translatedBlockIndex ?? this.translatedBlockIndex),
+      translatedBlockIndex: clearTranslatedBlockIndex
+          ? null
+          : (translatedBlockIndex ?? this.translatedBlockIndex),
       translatedText:
           clearTranslatedText ? null : (translatedText ?? this.translatedText),
       isTranslating: isTranslating ?? this.isTranslating,

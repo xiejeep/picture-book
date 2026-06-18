@@ -9,10 +9,10 @@ import 'package:book_app/presentation/features/reader/widgets/reader_reading_bar
 import 'package:book_app/presentation/widgets/page_indicator.dart';
 import 'package:book_app/vendor/photo_view/photo_view.dart';
 import 'package:flutter/material.dart';
-import 'package:book_app/presentation/providers/reading_state.dart';
+import 'package:book_app/presentation/features/reader/models/reader_state.dart';
 
 class BookReaderView extends StatelessWidget {
-  final ReadingState readingState;
+  final ReaderState readingState;
   final PageController pageController;
   final double loadingAnimationValue;
   final Animation<Rect?>? focusAnimation;

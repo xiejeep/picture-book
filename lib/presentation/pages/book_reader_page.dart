@@ -24,11 +24,11 @@ import 'package:book_app/presentation/features/reader/widgets/reader_nfc_bind_di
 import 'package:book_app/presentation/features/reader/widgets/reader_text_edit_sheet.dart';
 import 'package:book_app/presentation/features/reader/widgets/reader_voice_settings_dialog.dart';
 import 'package:book_app/presentation/features/reader/views/book_reader_view.dart';
+import 'package:book_app/presentation/features/reader/view_models/reader_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:book_app/vendor/photo_view/photo_view.dart';
-import '../providers/reading_state.dart';
 
 class BookReaderPage extends ConsumerStatefulWidget {
   final BookModel book;
@@ -49,15 +49,6 @@ class BookReaderPage extends ConsumerStatefulWidget {
 class _BookReaderPageState extends ConsumerState<BookReaderPage>
     with TickerProviderStateMixin {
   late BookModel _book;
-  ReadingState _readingState = ReadingState(
-    book: BookModel(
-      id: '',
-      title: '',
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      pages: [],
-    ),
-  );
   late AnimationController _loadingSpinnerController;
   double _currentSpeechRate = AppConstants.systemTtsDefaultSpeed;
   Size _viewportSize = Size.zero;
@@ -75,11 +66,8 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   void initState() {
     super.initState();
     _book = widget.book;
-    _readingState = ReadingState(
-      book: _book,
-      currentIndex: _book.currentPageIndex,
-    );
-    _pageController = PageController(initialPage: _readingState.currentIndex);
+    ref.read(readerProvider.notifier).initialize(_book);
+    _pageController = PageController(initialPage: _book.currentPageIndex);
 
     _focusAnimationController = AnimationController(
       duration: AppAnim.quick,
@@ -141,17 +129,9 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
       switch (state.phase) {
         case TtsPlaybackPhase.playing:
           _loadingSpinnerController.stop();
-          setState(() {
-            _readingState =
-                _readingState.copyWith(clearLoadingBlockIndex: true);
-          });
+          ref.read(readerProvider.notifier).setPlaybackStarted();
         case TtsPlaybackPhase.completed:
-          setState(() {
-            _readingState = _readingState.copyWith(
-              clearPlayingText: true,
-              clearPlayingBlockIndex: true,
-            );
-          });
+          ref.read(readerProvider.notifier).clearPlayback();
         case TtsPlaybackPhase.loading:
         case TtsPlaybackPhase.idle:
         case TtsPlaybackPhase.error:
@@ -194,11 +174,10 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     if (targetBlockIndex == null) return;
     final bi = targetBlockIndex;
 
-    if (_readingState.currentIndex != ti) {
-      _readingState = _readingState.copyWith(currentIndex: ti);
+    if (ref.read(readerProvider).currentIndex != ti) {
+      ref.read(readerProvider.notifier).setCurrentIndex(ti);
       _pageController.jumpToPage(ti);
     }
-    setState(() {});
 
     final block = page.textBlocks[bi];
     _playTextBlock(block, bi);
@@ -248,19 +227,15 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   }
 
   Future<void> _playTextBlock(TextBlockModel block, int blockIndex) async {
-    if (_readingState.playingText != null) {
+    if (ref.read(readerProvider).playingText != null) {
       if (!mounted) return;
       await ref.read(ttsServiceProvider).stop();
     }
 
     if (!mounted) return;
-    setState(() {
-      _readingState = _readingState.copyWith(
-        playingText: block.text,
-        playingBlockIndex: blockIndex,
-        loadingBlockIndex: blockIndex,
-      );
-    });
+    ref
+        .read(readerProvider.notifier)
+        .setPlaybackLoading(blockIndex, block.text);
     _loadingSpinnerController.repeat();
 
     _updateFocusAnimation(block);
@@ -275,20 +250,16 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     } catch (e) {
       if (!mounted) return;
       _loadingSpinnerController.stop();
-      setState(() {
-        _readingState = _readingState.copyWith(clearLoadingBlockIndex: true);
-      });
+      ref.read(readerProvider.notifier).clearPlayback();
     }
 
     if (mounted) {
-      setState(() {
-        _readingState = _readingState.copyWith(clearPlayingText: true);
-      });
+      ref.read(readerProvider.notifier).clearPlayback();
     }
   }
 
   void _updateFocusAnimation(TextBlockModel block) {
-    final page = _book.pages[_readingState.currentIndex];
+    final page = _book.pages[ref.read(readerProvider).currentIndex];
     final imageWidth = page.imageWidth;
     final imageHeight = page.imageHeight;
     if (imageWidth <= 0 || imageHeight <= 0) return;
@@ -381,12 +352,8 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   void _stopPlaying() {
     ref.read(ttsServiceProvider).stop();
     _loadingSpinnerController.stop();
+    ref.read(readerProvider.notifier).clearPlayback();
     setState(() {
-      _readingState = _readingState.copyWith(
-        clearPlayingText: true,
-        clearPlayingBlockIndex: true,
-        clearLoadingBlockIndex: true,
-      );
       _currentFocusRect = null;
       _focusAnimation = null;
       _previousFocusRect = null;
@@ -395,52 +362,33 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   }
 
   void _replayCurrentBlock() {
-    final translatedBlockIndex = _readingState.translatedBlockIndex;
+    final translatedBlockIndex = ref.read(readerProvider).translatedBlockIndex;
     if (translatedBlockIndex == null) return;
-    final page = _book.pages[_readingState.currentIndex];
+    final page = _book.pages[ref.read(readerProvider).currentIndex];
     if (translatedBlockIndex >= page.textBlocks.length) return;
     final block = page.textBlocks[translatedBlockIndex];
     _playTextBlock(block, translatedBlockIndex);
   }
 
   Future<void> _translateBlock(TextBlockModel block, int blockIndex) async {
-    if (_readingState.translatedBlockIndex == blockIndex &&
-        _readingState.translatedText != null) {
+    final notifier = ref.read(readerProvider.notifier);
+    final current = ref.read(readerProvider);
+    if (current.translatedBlockIndex == blockIndex &&
+        current.translatedText != null) {
       return;
     }
 
     if (block.aiTranslatedText != null) {
-      setState(() {
-        _readingState = _readingState.copyWith(
-          translatedBlockIndex: blockIndex,
-          translatedText: block.aiTranslatedText,
-          isTranslating: false,
-          translationStatus: TranslationStatus.done,
-        );
-      });
+      notifier.setCachedTranslation(blockIndex, block.aiTranslatedText!);
       return;
     }
 
     if (block.translatedText != null) {
-      setState(() {
-        _readingState = _readingState.copyWith(
-          translatedBlockIndex: blockIndex,
-          translatedText: block.translatedText,
-          isTranslating: false,
-          translationStatus: TranslationStatus.done,
-        );
-      });
+      notifier.setCachedTranslation(blockIndex, block.translatedText!);
       return;
     }
 
-    setState(() {
-      _readingState = _readingState.copyWith(
-        translatedBlockIndex: blockIndex,
-        clearTranslatedText: true,
-        isTranslating: true,
-        translationStatus: TranslationStatus.translating,
-      );
-    });
+    notifier.setTranslationLoading(blockIndex);
 
     final result = await ref
         .read(translationServiceProvider)
@@ -448,13 +396,10 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
 
     if (!mounted) return;
 
-    setState(() {
-      _readingState = _readingState.copyWith(
-        isTranslating: false,
-        translationStatus: result.status,
-        translatedText: result.translatedText,
-      );
-    });
+    notifier.setTranslationResult(
+      status: result.status,
+      translatedText: result.translatedText,
+    );
 
     if (result.status == TranslationStatus.done &&
         result.translatedText != null) {
@@ -465,15 +410,8 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   }
 
   void _clearTranslation() {
+    ref.read(readerProvider.notifier).clearTranslation();
     setState(() {
-      _readingState = _readingState.copyWith(
-        clearTranslatedBlockIndex: true,
-        clearTranslatedText: true,
-        isTranslating: false,
-        translationStatus: TranslationStatus.idle,
-        clearPlayingBlockIndex: true,
-        clearPlayingText: true,
-      );
       _currentFocusRect = null;
       _focusAnimation = null;
       _previousFocusRect = null;
@@ -482,24 +420,15 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   }
 
   void _toggleAppBar() {
-    setState(() {
-      _readingState =
-          _readingState.copyWith(showAppBar: !_readingState.showAppBar);
-    });
+    ref.read(readerProvider.notifier).toggleAppBar();
   }
 
   void _toggleBorders() {
-    setState(() {
-      _readingState =
-          _readingState.copyWith(showBorders: !_readingState.showBorders);
-    });
+    ref.read(readerProvider.notifier).toggleBorders();
   }
 
   void _toggleTranslation() {
-    setState(() {
-      _readingState = _readingState.copyWith(
-          showTranslation: !_readingState.showTranslation);
-    });
+    ref.read(readerProvider.notifier).toggleTranslation();
   }
 
   void _handleTapUp(
@@ -530,8 +459,9 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     }
 
     final index = page.textBlocks.indexOf(block);
-    if (index == _readingState.playingBlockIndex ||
-        index == _readingState.loadingBlockIndex) {
+    final current = ref.read(readerProvider);
+    if (index == current.playingBlockIndex ||
+        index == current.loadingBlockIndex) {
       return;
     }
     _playTextBlock(block, index);
@@ -605,12 +535,13 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
 
   Future<void> _updateBlockInPage(
       int index, TextBlockModel updatedBlock) async {
-    final page = _book.pages[_readingState.currentIndex];
+    final currentIndex = ref.read(readerProvider).currentIndex;
+    final page = _book.pages[currentIndex];
     final textBlocks = List<TextBlockModel>.from(page.textBlocks);
     textBlocks[index] = updatedBlock;
     await ref.read(bookRepositoryProvider).updatePageTextBlocks(
           _book.id,
-          _readingState.currentIndex,
+          currentIndex,
           textBlocks,
         );
     setState(() {});
@@ -667,12 +598,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
           if (text != currentTranslation) {
             final updatedBlock = block.copyWith(aiTranslatedText: text);
             _updateBlockInPage(index, updatedBlock);
-            setState(() {
-              _readingState = _readingState.copyWith(
-                translatedText: text,
-                translatedBlockIndex: index,
-              );
-            });
+            ref.read(readerProvider.notifier).setTranslatedBlock(index, text);
           }
         },
       ),
@@ -694,7 +620,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
 
     final result = await _textBlockAiUseCase.enhanceTextBlock(
       bookId: _book.id,
-      pageIndex: _readingState.currentIndex,
+      pageIndex: ref.read(readerProvider).currentIndex,
       blockIndex: index,
     );
 
@@ -729,7 +655,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
 
     final result = await _textBlockAiUseCase.translateTextBlock(
       bookId: _book.id,
-      pageIndex: _readingState.currentIndex,
+      pageIndex: ref.read(readerProvider).currentIndex,
       blockIndex: index,
     );
 
@@ -757,7 +683,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
       return;
     }
 
-    final page = _book.pages[_readingState.currentIndex];
+    final page = _book.pages[ref.read(readerProvider).currentIndex];
     await showDialog<void>(
       context: context,
       builder: (context) => ReaderNfcBindDialog(
@@ -809,9 +735,10 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   Widget build(BuildContext context) {
     _viewportSize = MediaQuery.of(context).size;
     final nfcEnabled = ref.watch(nfcEnabledProvider);
+    final readingState = ref.watch(readerProvider);
 
     return BookReaderView(
-      readingState: _readingState,
+      readingState: readingState,
       pageController: _pageController,
       loadingAnimationValue: _loadingSpinnerController.value,
       focusAnimation: _focusAnimation,
@@ -835,10 +762,8 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
       onTapUp: _handleTapUp,
       onScaleEnd: _cancelLongPress,
       onPageChanged: (index) {
-        setState(() {
-          _readingState = _readingState.copyWith(currentIndex: index);
-          _clearTranslation();
-        });
+        ref.read(readerProvider.notifier).setCurrentIndex(index);
+        _clearTranslation();
         ref.read(bookRepositoryProvider).updateCurrentPageIndex(
               _book.id,
               index,

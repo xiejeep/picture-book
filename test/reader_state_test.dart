@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:book_app/data/models/book_model.dart';
 import 'package:book_app/data/services/translation_service.dart';
-import 'package:book_app/presentation/providers/reading_state.dart';
+import 'package:book_app/presentation/features/reader/models/reader_state.dart';
 
 void main() {
   late BookModel book;
-  late ReadingState state;
+  late ReaderState state;
 
   setUp(() {
     book = BookModel(
@@ -15,10 +15,10 @@ void main() {
       updatedAt: DateTime(2024, 1, 1),
       pages: [],
     );
-    state = ReadingState(book: book, currentIndex: 0);
+    state = ReaderState(book: book, currentIndex: 0);
   });
 
-  group('ReadingState defaults', () {
+  group('ReaderState defaults', () {
     test('has correct defaults', () {
       expect(state.currentIndex, 0);
       expect(state.showBorders, true);
@@ -34,7 +34,7 @@ void main() {
     });
   });
 
-  group('ReadingState.copyWith basic', () {
+  group('ReaderState.copyWith basic', () {
     test('updates currentIndex', () {
       final updated = state.copyWith(currentIndex: 3);
       expect(updated.currentIndex, 3);
@@ -58,9 +58,21 @@ void main() {
       expect(updated.currentIndex, 0);
       expect(updated.showBorders, true);
     });
+
+    test('updates book', () {
+      final newBook = BookModel(
+        id: 'other',
+        title: 'Other',
+        createdAt: DateTime(2024, 2, 2),
+        updatedAt: DateTime(2024, 2, 2),
+        pages: [],
+      );
+      final updated = state.copyWith(book: newBook);
+      expect(updated.book.id, 'other');
+    });
   });
 
-  group('ReadingState.copyWith nullable fields', () {
+  group('ReaderState.copyWith nullable fields', () {
     test('sets playingBlockIndex', () {
       final updated = state.copyWith(playingBlockIndex: 5);
       expect(updated.playingBlockIndex, 5);
@@ -133,7 +145,7 @@ void main() {
     });
   });
 
-  group('ReadingState.copyWith translation fields', () {
+  group('ReaderState.copyWith translation fields', () {
     test('updates translationStatus', () {
       final updated = state.copyWith(
         translationStatus: TranslationStatus.translating,
