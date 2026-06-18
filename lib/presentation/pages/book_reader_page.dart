@@ -5,6 +5,7 @@ import 'package:book_app/core/constants/constants.dart';
 import 'package:book_app/core/theme/app_theme.dart';
 import 'package:book_app/core/theme/app_tokens.dart';
 import 'package:book_app/application/reading/text_block_ai_use_case.dart';
+import 'package:book_app/application/reading/play_text_block_use_case.dart';
 import 'package:book_app/core/utils/platform_utils.dart';
 import 'package:book_app/core/utils/toast_util.dart';
 import 'package:book_app/data/models/ai_settings_model.dart';
@@ -226,9 +227,10 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   }
 
   Future<void> _playTextBlock(TextBlockModel block, int blockIndex) async {
+    final useCase = ref.read(playTextBlockUseCaseProvider);
     if (ref.read(readerProvider).playingText != null) {
       if (!mounted) return;
-      await ref.read(ttsServiceProvider).stop();
+      await useCase.stop();
     }
 
     if (!mounted) return;
@@ -243,18 +245,13 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
       _translateBlock(block, blockIndex);
     }
 
-    try {
-      if (!mounted) return;
-      await ref.read(ttsServiceProvider).speak(block.text);
-    } catch (e) {
-      if (!mounted) return;
-      _loadingSpinnerController.stop();
-      _clearPlaybackIfCurrent(blockIndex, block.text);
-    }
+    final result = await useCase.speak(block.text);
+    if (!mounted) return;
 
-    if (mounted) {
-      _clearPlaybackIfCurrent(blockIndex, block.text);
+    if (result.phase == PlayTextBlockPhase.failed) {
+      _loadingSpinnerController.stop();
     }
+    _clearPlaybackIfCurrent(blockIndex, block.text);
   }
 
   void _clearPlaybackIfCurrent(int blockIndex, String text) {
@@ -357,7 +354,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   }
 
   void _stopPlaying() {
-    ref.read(ttsServiceProvider).stop();
+    ref.read(playTextBlockUseCaseProvider).stop();
     _loadingSpinnerController.stop();
     ref.read(readerProvider.notifier).clearPlayback();
     setState(() {
