@@ -19,15 +19,11 @@ import 'package:book_app/presentation/providers/service_providers.dart';
 import 'package:book_app/presentation/providers/settings_provider.dart';
 import 'package:book_app/presentation/providers/repository_providers.dart';
 import 'package:book_app/presentation/providers/nfc_action_handler.dart';
-import 'package:book_app/presentation/features/reader/widgets/reader_app_bar.dart';
 import 'package:book_app/presentation/features/reader/widgets/reader_block_actions_sheet.dart';
-import 'package:book_app/presentation/features/reader/widgets/reader_empty_state.dart';
-import 'package:book_app/presentation/features/reader/widgets/reader_gallery.dart';
 import 'package:book_app/presentation/features/reader/widgets/reader_nfc_bind_dialog.dart';
-import 'package:book_app/presentation/features/reader/widgets/reader_reading_bar.dart';
 import 'package:book_app/presentation/features/reader/widgets/reader_text_edit_sheet.dart';
 import 'package:book_app/presentation/features/reader/widgets/reader_voice_settings_dialog.dart';
-import 'package:book_app/presentation/widgets/page_indicator.dart';
+import 'package:book_app/presentation/features/reader/views/book_reader_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -812,121 +808,45 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   @override
   Widget build(BuildContext context) {
     _viewportSize = MediaQuery.of(context).size;
-    final pages = _book.pages;
+    final nfcEnabled = ref.watch(nfcEnabledProvider);
 
-    if (pages.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(_book.title),
-          flexibleSpace: Container(
-            decoration: BoxDecoration(
-              gradient: AppTheme.appBarGradientOf(context),
-            ),
-          ),
-        ),
-        body: Container(
-          decoration: AppTheme.gradientBoxOf(context),
-          child: ReaderEmptyState(
-            bookTitle: _book.title,
-            onEditBook: () =>
-                context.push('/book/${_book.id}/manage', extra: _book),
-          ),
-        ),
-      );
-    }
-
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      backgroundColor: Colors.black,
-      appBar: _readingState.showAppBar
-          ? ReaderAppBar(
-              title: _book.title,
-              showTranslation: _readingState.showTranslation,
-              showBorders: _readingState.showBorders,
-              supportsTranslation: PlatformUtils.supportsMlKit,
-              showNfcScan: Platform.isIOS && ref.watch(nfcEnabledProvider),
-              onVoiceSettings: _showVoiceSettingsDialog,
-              onToggleAppBar: _toggleAppBar,
-              onToggleTranslation: _toggleTranslation,
-              onToggleBorders: _toggleBorders,
-              onScanNfc: () {
-                final nfcService = ref.read(nfcServiceProvider);
-                nfcService.startIosScan();
-              },
-            )
-          : null,
-      body: Stack(
-        children: [
-          ReaderGallery(
-            pages: pages,
-            pageController: _pageController,
-            showBorders: _readingState.showBorders,
-            playingBlockIndex: _readingState.playingBlockIndex,
-            loadingBlockIndex: _readingState.loadingBlockIndex,
-            loadingAnimationValue: _loadingSpinnerController.value,
-            focusAnimation: _focusAnimation,
-            currentFocusRect: _currentFocusRect,
-            bounceAnimation: _bounceAnimation,
-            focusBounceAnimation: Listenable.merge([
-              _focusAnimationController,
-              _bounceAnimationController,
-            ]),
-            imageFileResolver: _imageFile,
-            onDoubleTap: _toggleAppBar,
-            onTapDown: _onTapDown,
-            onTapUp: _handleTapUp,
-            onScaleEnd: _cancelLongPress,
-            onPageChanged: (index) {
-              setState(() {
-                _readingState = _readingState.copyWith(currentIndex: index);
-                _clearTranslation();
-              });
-              ref.read(bookRepositoryProvider).updateCurrentPageIndex(
-                    _book.id,
-                    index,
-                  );
-            },
-          ),
-          if (!_readingState.showAppBar)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: GestureDetector(
-                onTap: _toggleAppBar,
-                child: Container(
-                  height: 60,
-                  color: Colors.transparent,
-                ),
-              ),
-            ),
-          if (_readingState.translatedBlockIndex != null)
-            ReaderReadingBar(
-              block: _book.pages[_readingState.currentIndex]
-                  .textBlocks[_readingState.translatedBlockIndex!],
-              isPlaying: _readingState.playingText != null,
-              showTranslation: _readingState.showTranslation,
-              isTranslating: _readingState.isTranslating,
-              translationStatus: _readingState.translationStatus,
-              translatedText: _readingState.translatedText,
-              onStopPlaying: _stopPlaying,
-              onReplay: _replayCurrentBlock,
-              onClose: _clearTranslation,
-            ),
-          if (pages.length > 1)
-            Positioned(
-              bottom: 24,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: PageIndicator(
-                  currentPage: _readingState.currentIndex,
-                  totalPages: pages.length,
-                ),
-              ),
-            ),
-        ],
-      ),
+    return BookReaderView(
+      readingState: _readingState,
+      pageController: _pageController,
+      loadingAnimationValue: _loadingSpinnerController.value,
+      focusAnimation: _focusAnimation,
+      currentFocusRect: _currentFocusRect,
+      bounceAnimation: _bounceAnimation,
+      focusBounceAnimation: Listenable.merge([
+        _focusAnimationController,
+        _bounceAnimationController,
+      ]),
+      supportsTranslation: PlatformUtils.supportsMlKit,
+      showNfcScan: Platform.isIOS && nfcEnabled,
+      imageFileResolver: _imageFile,
+      onEditBook: () => context.push('/book/${_book.id}/manage', extra: _book),
+      onToggleAppBar: _toggleAppBar,
+      onToggleTranslation: _toggleTranslation,
+      onToggleBorders: _toggleBorders,
+      onVoiceSettings: _showVoiceSettingsDialog,
+      onScanNfc: () => ref.read(nfcServiceProvider).startIosScan(),
+      onDoubleTap: _toggleAppBar,
+      onTapDown: _onTapDown,
+      onTapUp: _handleTapUp,
+      onScaleEnd: _cancelLongPress,
+      onPageChanged: (index) {
+        setState(() {
+          _readingState = _readingState.copyWith(currentIndex: index);
+          _clearTranslation();
+        });
+        ref.read(bookRepositoryProvider).updateCurrentPageIndex(
+              _book.id,
+              index,
+            );
+      },
+      onStopPlaying: _stopPlaying,
+      onReplay: _replayCurrentBlock,
+      onClose: _clearTranslation,
     );
   }
 }
