@@ -7,6 +7,7 @@ import 'core/theme/app_theme.dart';
 import 'data/services/nfc_service.dart';
 import 'data/services/tts_service.dart';
 import 'data/services/file_intent_service.dart';
+import 'presentation/providers/nfc_action_handler.dart';
 import 'presentation/providers/settings_provider.dart';
 
 class BookApp extends ConsumerStatefulWidget {
@@ -67,34 +68,10 @@ class _BookAppState extends ConsumerState<BookApp> with WidgetsBindingObserver {
     if (!Platform.isIOS) {
       NfcService.instance.startForegroundListening();
     }
+    final handler = ref.read(nfcActionHandlerProvider);
     _nfcSubscription = NfcService.instance.onTagDetected.listen((action) {
       if (!mounted) return;
-      if (NfcService.instance.isLastActionConsumed) return;
-      final router = ref.read(goRouterProvider);
-      final matches = router.routerDelegate.currentConfiguration.matches;
-      final targetPath = '/book/${action.bookId}';
-
-      int targetIndex = -1;
-      for (int i = 0; i < matches.length; i++) {
-        if (matches[i].matchedLocation.startsWith(targetPath)) {
-          targetIndex = i;
-          break;
-        }
-      }
-
-      if (targetIndex >= 0) {
-        final isCurrentPage = targetIndex == matches.length - 1;
-        if (isCurrentPage) {
-          NfcService.instance.markActionConsumed();
-          return;
-        }
-        final popsNeeded = matches.length - 1 - targetIndex;
-        for (int i = 0; i < popsNeeded; i++) {
-          router.pop();
-        }
-      } else {
-        router.push(nfcPlayRoute(action));
-      }
+      handler.handle(action);
     });
     NfcService.instance.initIntentListener();
   }

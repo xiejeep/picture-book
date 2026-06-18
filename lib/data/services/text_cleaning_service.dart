@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import '../../core/constants/app_log.dart';
 import '../../core/constants/constants.dart';
 import '../../core/constants/app_prompts.dart';
 import 'storage_service.dart';
@@ -63,7 +64,7 @@ class TextCleaningService {
 
       debugPrint('批次$i Step2文本模型输出:');
       batchResult.forEach((key, value) {
-        debugPrint('  result[$key]: "$value"');
+        AppLog.content('  result[$key]: "$value"');
       });
 
       final result = _validateAndMerge(batchResult, batches[i]);
@@ -121,7 +122,7 @@ class TextCleaningService {
 
       debugPrint('翻译批次$i 输出:');
       batchResult.forEach((key, value) {
-        debugPrint('  result[$key]: "$value"');
+        AppLog.content('  result[$key]: "$value"');
       });
 
       mergedResult.addAll(batchResult);
@@ -175,7 +176,7 @@ class TextCleaningService {
     );
 
     if (response.statusCode != 200) {
-      debugPrint('Step2 API Error: ${response.statusCode} - ${response.body}');
+      AppLog.content('Step2 API Error: ${response.statusCode} - ${response.body}');
       debugPrint('批次$batchIndex Step2失败，回退原文');
       return {for (final b in batch) b.keys.first: b.values.first};
     }
@@ -183,7 +184,7 @@ class TextCleaningService {
     final responseBody = jsonDecode(response.body);
     final content = responseBody['choices'][0]['message']['content'] as String;
 
-    debugPrint('批次$batchIndex Step2文本模型原始返回:\n$content');
+    AppLog.content('批次$batchIndex Step2文本模型原始返回:\n$content');
 
     try {
       return _parseBlocksJson(content);
@@ -247,11 +248,11 @@ class TextCleaningService {
         } else {
           result[originalIndex] = originalText;
           debugPrint(
-              '  内容校验不通过 index=$originalIndex: "$originalText" → "$correctedText", 回退原文');
+              '  内容校验不通过 index=$originalIndex, 回退原文');
         }
       } else {
         result[originalIndex] = originalText;
-        debugPrint('  填充缺失index $originalIndex: "$originalText"');
+        debugPrint('  填充缺失index $originalIndex');
       }
     }
 
@@ -349,7 +350,7 @@ class TextCleaningService {
 
     if (response.statusCode != 200) {
       debugPrint(
-          '翻译批次$batchIndex API Error: ${response.statusCode} - ${response.body}');
+          '翻译批次$batchIndex API Error: ${response.statusCode}');
       debugPrint('翻译批次$batchIndex失败，回退草稿');
       return _fallbackToDraft(batch);
     }
@@ -357,7 +358,7 @@ class TextCleaningService {
     final responseBody = jsonDecode(response.body);
     final content = responseBody['choices'][0]['message']['content'] as String;
 
-    debugPrint('翻译批次$batchIndex 原始返回:\n$content');
+    AppLog.content('翻译批次$batchIndex 原始返回:\n$content');
 
     try {
       return _parseTranslationJson(content, batch);

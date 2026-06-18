@@ -136,6 +136,14 @@ class BookService {
     book.save();
   }
 
+  Future<void> updateCurrentPageIndex(String bookId, int pageIndex) async {
+    final book = StorageService.instance.getBook(bookId);
+    if (book == null) throw Exception('Book not found: $bookId');
+    book.currentPageIndex = pageIndex;
+    book.updatedAt = DateTime.now();
+    book.save();
+  }
+
   Future<void> updateBookCover(String bookId, String? customCoverPath) async {
     final book = StorageService.instance.getBook(bookId);
     if (book == null) {

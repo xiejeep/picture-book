@@ -14,6 +14,8 @@ abstract class BookRepository {
 
   Future<void> removePageFromBook(String bookId, int pageIndex);
 
+  Future<void> updateCurrentPageIndex(String bookId, int pageIndex);
+
   Future<void> updateBookTitle(String bookId, String newTitle);
 
   Future<void> updatePageTextBlocks(

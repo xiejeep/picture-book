@@ -4,29 +4,30 @@ import 'dart:io';
 import 'package:book_app/core/constants/constants.dart';
 import 'package:book_app/core/theme/app_theme.dart';
 import 'package:book_app/core/theme/app_tokens.dart';
-import 'package:book_app/core/utils/ai_block_helper.dart';
+import 'package:book_app/application/reading/text_block_ai_use_case.dart';
 import 'package:book_app/core/utils/platform_utils.dart';
 import 'package:book_app/core/utils/toast_util.dart';
 import 'package:book_app/data/models/ai_settings_model.dart';
 import 'package:book_app/data/models/book_model.dart';
 import 'package:book_app/data/models/page_model.dart';
 import 'package:book_app/data/models/text_block_model.dart';
-import 'package:book_app/data/services/ai_service.dart';
 import 'package:book_app/data/services/image_service.dart';
 import 'package:book_app/data/services/nfc_service.dart';
 import 'package:book_app/data/services/translation_service.dart';
 import 'package:book_app/data/services/tts_service.dart';
 import 'package:book_app/presentation/providers/service_providers.dart';
 import 'package:book_app/presentation/providers/settings_provider.dart';
+import 'package:book_app/presentation/providers/repository_providers.dart';
+import 'package:book_app/presentation/providers/nfc_action_handler.dart';
 import 'package:book_app/presentation/widgets/page_indicator.dart';
 import 'package:book_app/presentation/widgets/reading_text_block_painter.dart';
 import 'package:book_app/presentation/widgets/semantics_icon_button.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:book_app/vendor/photo_view/photo_view.dart';
 import 'package:book_app/vendor/photo_view/photo_view_gallery.dart';
+import '../providers/reading_state.dart';
 
 class BookReaderPage extends ConsumerStatefulWidget {
   final BookModel book;
@@ -47,22 +48,19 @@ class BookReaderPage extends ConsumerStatefulWidget {
 class _BookReaderPageState extends ConsumerState<BookReaderPage>
     with TickerProviderStateMixin {
   late BookModel _book;
-  int _currentIndex;
-  int? _playingBlockIndex;
-  int? _loadingBlockIndex;
+  ReadingState _readingState = ReadingState(
+    book: BookModel(
+      id: '',
+      title: '',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+      pages: [],
+    ),
+  );
   late AnimationController _loadingSpinnerController;
-  String? _playingText;
   double _currentSpeechRate = AppConstants.systemTtsDefaultSpeed;
   Size _viewportSize = Size.zero;
   Timer? _longPressTimer;
-  bool _showBorders = true;
-  bool _showAppBar = true;
-  bool _showTranslation = true;
-
-  int? _translatedBlockIndex;
-  String? _translatedText;
-  bool _isTranslating = false;
-  TranslationStatus _translationStatus = TranslationStatus.idle;
 
   late AnimationController _focusAnimationController;
   late AnimationController _bounceAnimationController;
@@ -72,15 +70,14 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   Rect? _currentFocusRect;
   bool _hasPlayedBefore = false;
 
-  StreamSubscription<NfcAction>? _nfcSubscription;
-
-  _BookReaderPageState() : _currentIndex = 0;
-
   @override
   void initState() {
     super.initState();
     _book = widget.book;
-    _currentIndex = _book.currentPageIndex;
+    _readingState = ReadingState(
+      book: _book,
+      currentIndex: _book.currentPageIndex,
+    );
 
     _focusAnimationController = AnimationController(
       duration: AppAnim.quick,
@@ -96,8 +93,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
       }
     });
 
-    TtsService.instance.onPlayingComplete = _onTtsComplete;
-    _initTtsCallbacks();
+    _subscribeToTtsState();
 
     _loadingSpinnerController = AnimationController(
       duration: const Duration(milliseconds: 800),
@@ -107,7 +103,13 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
       });
 
     _loadVoiceSettings();
-    _initNfc();
+    _pendingNfcActionSubscription = ref
+        .listenManual<NfcAction?>(pendingNfcActionProvider, (previous, next) {
+      if (next != null && mounted) {
+        _playFromNfcAction(next);
+        ref.read(pendingNfcActionProvider.notifier).state = null;
+      }
+    }, fireImmediately: true);
 
     if (widget.autoPlayPageId != null && widget.autoPlayBlockId != null) {
       TtsService.instance.initialize().then((_) {
@@ -119,39 +121,40 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   @override
   void dispose() {
     _longPressTimer?.cancel();
-    if (TtsService.instance.onPlayingComplete == _onTtsComplete) {
-      TtsService.instance.onPlayingComplete = null;
-    }
-    TtsService.instance.onLoadingStarted = null;
-    TtsService.instance.onPlayingStarted = null;
-    _nfcSubscription?.cancel();
+    _ttsStateSubscription?.cancel();
+    _pendingNfcActionSubscription?.close();
     _focusAnimationController.dispose();
     _bounceAnimationController.dispose();
     _loadingSpinnerController.dispose();
     super.dispose();
   }
 
-  void _onTtsComplete() {
-    if (mounted) {
-      setState(() {
-        _playingText = null;
-        _playingBlockIndex = null;
-      });
-    }
-  }
+  StreamSubscription<TtsPlaybackState>? _ttsStateSubscription;
+  ProviderSubscription<NfcAction?>? _pendingNfcActionSubscription;
 
-  void _initTtsCallbacks() {
-    final ttsService = TtsService.instance;
-    ttsService.onLoadingStarted = () {
-      if (mounted) setState(() {});
-    };
-    ttsService.onPlayingStarted = () {
-      if (mounted) {
-        setState(() {
-          _loadingBlockIndex = null;
-        });
+  void _subscribeToTtsState() {
+    _ttsStateSubscription = TtsService.instance.stateStream.listen((state) {
+      if (!mounted) return;
+      switch (state.phase) {
+        case TtsPlaybackPhase.playing:
+          _loadingSpinnerController.stop();
+          setState(() {
+            _readingState =
+                _readingState.copyWith(clearLoadingBlockIndex: true);
+          });
+        case TtsPlaybackPhase.completed:
+          setState(() {
+            _readingState = _readingState.copyWith(
+              clearPlayingText: true,
+              clearPlayingBlockIndex: true,
+            );
+          });
+        case TtsPlaybackPhase.loading:
+        case TtsPlaybackPhase.idle:
+        case TtsPlaybackPhase.error:
+          break;
       }
-    };
+    });
   }
 
   String get _ttsEngine {
@@ -164,23 +167,6 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     if (settings != null) {
       _currentSpeechRate = settings.speechRate;
     }
-  }
-
-  void _initNfc() {
-    final nfcEnabled = ref.read(nfcEnabledProvider);
-    if (!nfcEnabled) return;
-
-    final nfcService = ref.read(nfcServiceProvider);
-    _nfcSubscription = nfcService.onTagDetected.listen((action) {
-      if (action.bookId == _book.id) {
-        nfcService.markActionConsumed();
-        _playFromNfcAction(action);
-      }
-    });
-
-    if (Platform.isIOS) return;
-
-    nfcService.startForegroundListening();
   }
 
   void _playFromNfcAction(NfcAction action) {
@@ -205,12 +191,11 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     if (targetBlockIndex == null) return;
     final bi = targetBlockIndex;
 
-    setState(() {
-      if (_currentIndex != ti) {
-        _currentIndex = ti;
-        _pageController.jumpToPage(ti);
-      }
-    });
+    if (_readingState.currentIndex != ti) {
+      _readingState = _readingState.copyWith(currentIndex: ti);
+      _pageController.jumpToPage(ti);
+    }
+    setState(() {});
 
     final block = page.textBlocks[bi];
     _playTextBlock(block, bi);
@@ -238,8 +223,8 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     double scale,
     Offset panOffset,
   ) {
-    final offsetFromCenter = screenPos -
-        Offset(viewportSize.width / 2, viewportSize.height / 2);
+    final offsetFromCenter =
+        screenPos - Offset(viewportSize.width / 2, viewportSize.height / 2);
     final imageLocal = offsetFromCenter - panOffset;
     return Offset(
       (imageLocal.dx / scale) + imageSize.width / 2,
@@ -260,29 +245,18 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   }
 
   Future<void> _playTextBlock(TextBlockModel block, int blockIndex) async {
-    final ttsService = TtsService.instance;
-    ttsService.onLoadingStarted = () {
-      if (mounted) setState(() {});
-    };
-    ttsService.onPlayingStarted = () {
-      if (mounted) {
-        _loadingSpinnerController.stop();
-        setState(() {
-          _loadingBlockIndex = null;
-        });
-      }
-    };
-
-    if (_playingText != null) {
+    if (_readingState.playingText != null) {
       if (!mounted) return;
       await ref.read(ttsServiceProvider).stop();
     }
 
     if (!mounted) return;
     setState(() {
-      _playingText = block.text;
-      _playingBlockIndex = blockIndex;
-      _loadingBlockIndex = blockIndex;
+      _readingState = _readingState.copyWith(
+        playingText: block.text,
+        playingBlockIndex: blockIndex,
+        loadingBlockIndex: blockIndex,
+      );
     });
     _loadingSpinnerController.repeat();
 
@@ -299,19 +273,19 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
       if (!mounted) return;
       _loadingSpinnerController.stop();
       setState(() {
-        _loadingBlockIndex = null;
+        _readingState = _readingState.copyWith(clearLoadingBlockIndex: true);
       });
     }
 
     if (mounted) {
       setState(() {
-        _playingText = null;
+        _readingState = _readingState.copyWith(clearPlayingText: true);
       });
     }
   }
 
   void _updateFocusAnimation(TextBlockModel block) {
-    final page = _book.pages[_currentIndex];
+    final page = _book.pages[_readingState.currentIndex];
     final imageWidth = page.imageWidth;
     final imageHeight = page.imageHeight;
     if (imageWidth <= 0 || imageHeight <= 0) return;
@@ -336,7 +310,10 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
 
     if (!_hasPlayedBefore) {
       beginRect = Rect.fromLTWH(
-        0, 0, imageWidth, imageHeight,
+        0,
+        0,
+        imageWidth,
+        imageHeight,
       );
       endRect = targetRect;
       curve = Curves.easeInOut;
@@ -402,9 +379,11 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     ref.read(ttsServiceProvider).stop();
     _loadingSpinnerController.stop();
     setState(() {
-      _playingText = null;
-      _playingBlockIndex = null;
-      _loadingBlockIndex = null;
+      _readingState = _readingState.copyWith(
+        clearPlayingText: true,
+        clearPlayingBlockIndex: true,
+        clearLoadingBlockIndex: true,
+      );
       _currentFocusRect = null;
       _focusAnimation = null;
       _previousFocusRect = null;
@@ -413,41 +392,49 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   }
 
   void _replayCurrentBlock() {
-    if (_translatedBlockIndex == null) return;
-    final page = _book.pages[_currentIndex];
-    if (_translatedBlockIndex! >= page.textBlocks.length) return;
-    final block = page.textBlocks[_translatedBlockIndex!];
-    _playTextBlock(block, _translatedBlockIndex!);
+    final translatedBlockIndex = _readingState.translatedBlockIndex;
+    if (translatedBlockIndex == null) return;
+    final page = _book.pages[_readingState.currentIndex];
+    if (translatedBlockIndex >= page.textBlocks.length) return;
+    final block = page.textBlocks[translatedBlockIndex];
+    _playTextBlock(block, translatedBlockIndex);
   }
 
   Future<void> _translateBlock(TextBlockModel block, int blockIndex) async {
-    if (_translatedBlockIndex == blockIndex && _translatedText != null) return;
+    if (_readingState.translatedBlockIndex == blockIndex &&
+        _readingState.translatedText != null) return;
 
     if (block.aiTranslatedText != null) {
       setState(() {
-        _translatedBlockIndex = blockIndex;
-        _translatedText = block.aiTranslatedText;
-        _isTranslating = false;
-        _translationStatus = TranslationStatus.done;
+        _readingState = _readingState.copyWith(
+          translatedBlockIndex: blockIndex,
+          translatedText: block.aiTranslatedText,
+          isTranslating: false,
+          translationStatus: TranslationStatus.done,
+        );
       });
       return;
     }
 
     if (block.translatedText != null) {
       setState(() {
-        _translatedBlockIndex = blockIndex;
-        _translatedText = block.translatedText;
-        _isTranslating = false;
-        _translationStatus = TranslationStatus.done;
+        _readingState = _readingState.copyWith(
+          translatedBlockIndex: blockIndex,
+          translatedText: block.translatedText,
+          isTranslating: false,
+          translationStatus: TranslationStatus.done,
+        );
       });
       return;
     }
 
     setState(() {
-      _translatedBlockIndex = blockIndex;
-      _translatedText = null;
-      _isTranslating = true;
-      _translationStatus = TranslationStatus.translating;
+      _readingState = _readingState.copyWith(
+        translatedBlockIndex: blockIndex,
+        clearTranslatedText: true,
+        isTranslating: true,
+        translationStatus: TranslationStatus.translating,
+      );
     });
 
     final result = await ref
@@ -457,32 +444,31 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     if (!mounted) return;
 
     setState(() {
-      _isTranslating = false;
-      _translationStatus = result.status;
-      _translatedText = result.translatedText;
+      _readingState = _readingState.copyWith(
+        isTranslating: false,
+        translationStatus: result.status,
+        translatedText: result.translatedText,
+      );
     });
 
     if (result.status == TranslationStatus.done &&
         result.translatedText != null) {
       final updatedBlock =
           block.copyWith(aiTranslatedText: result.translatedText);
-      final page = _book.pages[_currentIndex];
-      final updatedTextBlocks = List<TextBlockModel>.from(page.textBlocks);
-      updatedTextBlocks[blockIndex] = updatedBlock;
-      final updatedPage = page.copyWith(textBlocks: updatedTextBlocks);
-      _book.pages[_currentIndex] = updatedPage;
-      _book.updatedAt = DateTime.now();
-      _book.save();
+      await _updateBlockInPage(blockIndex, updatedBlock);
     }
   }
 
   void _clearTranslation() {
     setState(() {
-      _translatedBlockIndex = null;
-      _translatedText = null;
-      _isTranslating = false;
-      _translationStatus = TranslationStatus.idle;
-      _playingBlockIndex = null;
+      _readingState = _readingState.copyWith(
+        clearTranslatedBlockIndex: true,
+        clearTranslatedText: true,
+        isTranslating: false,
+        translationStatus: TranslationStatus.idle,
+        clearPlayingBlockIndex: true,
+        clearPlayingText: true,
+      );
       _currentFocusRect = null;
       _focusAnimation = null;
       _previousFocusRect = null;
@@ -491,15 +477,24 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   }
 
   void _toggleAppBar() {
-    setState(() => _showAppBar = !_showAppBar);
+    setState(() {
+      _readingState =
+          _readingState.copyWith(showAppBar: !_readingState.showAppBar);
+    });
   }
 
   void _toggleBorders() {
-    setState(() => _showBorders = !_showBorders);
+    setState(() {
+      _readingState =
+          _readingState.copyWith(showBorders: !_readingState.showBorders);
+    });
   }
 
   void _toggleTranslation() {
-    setState(() => _showTranslation = !_showTranslation);
+    setState(() {
+      _readingState = _readingState.copyWith(
+          showTranslation: !_readingState.showTranslation);
+    });
   }
 
   void _handleTapUp(
@@ -530,7 +525,8 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     }
 
     final index = page.textBlocks.indexOf(block);
-    if (index == _playingBlockIndex || index == _loadingBlockIndex) return;
+    if (index == _readingState.playingBlockIndex ||
+        index == _readingState.loadingBlockIndex) return;
     _playTextBlock(block, index);
   }
 
@@ -662,8 +658,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
       ),
       title: Text(title,
           style: TextStyle(
-              fontWeight: FontWeight.w500,
-              color: AppTheme.onSurfaceOf(ctx))),
+              fontWeight: FontWeight.w500, color: AppTheme.onSurfaceOf(ctx))),
       subtitle: Text(subtitle,
           style: TextStyle(
               fontSize: 12,
@@ -673,13 +668,16 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     );
   }
 
-  void _updateBlockInPage(int index, TextBlockModel updatedBlock) {
-    final page = _book.pages[_currentIndex];
+  Future<void> _updateBlockInPage(
+      int index, TextBlockModel updatedBlock) async {
+    final page = _book.pages[_readingState.currentIndex];
     final textBlocks = List<TextBlockModel>.from(page.textBlocks);
     textBlocks[index] = updatedBlock;
-    _book.pages[_currentIndex] = page.copyWith(textBlocks: textBlocks);
-    _book.updatedAt = DateTime.now();
-    _book.save();
+    await ref.read(bookRepositoryProvider).updatePageTextBlocks(
+          _book.id,
+          _readingState.currentIndex,
+          textBlocks,
+        );
     setState(() {});
   }
 
@@ -746,8 +744,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                           ? const SizedBox(
                               width: 16,
                               height: 16,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2))
+                              child: CircularProgressIndicator(strokeWidth: 2))
                           : const Icon(Icons.auto_fix_high, size: 18),
                       label: const Text('AI 优化'),
                       style: ElevatedButton.styleFrom(
@@ -792,8 +789,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     );
   }
 
-  Future<void> _editBlockTranslation(
-      TextBlockModel block, int index) async {
+  Future<void> _editBlockTranslation(TextBlockModel block, int index) async {
     final currentTranslation =
         block.aiTranslatedText ?? block.translatedText ?? '';
     final controller = TextEditingController(text: currentTranslation);
@@ -858,12 +854,12 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                           ? const SizedBox(
                               width: 16,
                               height: 16,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2))
+                              child: CircularProgressIndicator(strokeWidth: 2))
                           : const Icon(Icons.g_translate, size: 18),
                       label: const Text('AI 翻译'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepPurple.withValues(alpha: 0.85),
+                        backgroundColor:
+                            Colors.deepPurple.withValues(alpha: 0.85),
                         foregroundColor:
                             Theme.of(context).colorScheme.onPrimary,
                         padding: const EdgeInsets.symmetric(
@@ -882,11 +878,15 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                     ElevatedButton(
                       onPressed: () {
                         if (controller.text != currentTranslation) {
-                          final updatedBlock = block.copyWith(
-                              aiTranslatedText: controller.text);
+                          final updatedBlock =
+                              block.copyWith(aiTranslatedText: controller.text);
                           _updateBlockInPage(index, updatedBlock);
-                          _translatedText = controller.text;
-                          _translatedBlockIndex = index;
+                          setState(() {
+                            _readingState = _readingState.copyWith(
+                              translatedText: controller.text,
+                              translatedBlockIndex: index,
+                            );
+                          });
                         }
                         Navigator.pop(ctx);
                       },
@@ -902,6 +902,8 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     );
   }
 
+  final _textBlockAiUseCase = TextBlockAiUseCase();
+
   Future<void> _aiEnhanceAndFill(
     BuildContext ctx,
     StateSetter setDialogState,
@@ -911,41 +913,39 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     required VoidCallback clearLoading,
   }) async {
     if (!ctx.mounted) return;
-    final hasKey = await AiBlockHelper.checkApiKey(ctx);
-    if (!hasKey) return;
-
-    final page = _book.pages[_currentIndex];
-    final imageFile =
-        ref.read(imageServiceProvider).getImageFile(page.imagePath);
-    if (imageFile == null || !imageFile.existsSync()) {
-      if (ctx.mounted) ToastUtil.error('图片文件不存在');
+    final hasKey = await _textBlockAiUseCase.checkApiKey();
+    if (!hasKey) {
+      if (ctx.mounted) {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          const SnackBar(content: Text('请先在设置中配置 API Key')),
+        );
+      }
       return;
     }
 
-    final model = AiService.instance.getSelectedModel();
-    final block = page.textBlocks[index];
-
     setDialogState(setLoading);
 
-    try {
-      final corrected = await AiBlockHelper.enhance(
-        imageFile: imageFile,
-        blocks: [{0: block.text}],
-        model: model,
-      );
+    final result = await _textBlockAiUseCase.enhanceTextBlock(
+      bookId: _book.id,
+      pageIndex: _readingState.currentIndex,
+      blockIndex: index,
+    );
 
-      if (!ctx.mounted) return;
+    if (!ctx.mounted) return;
+    setDialogState(clearLoading);
 
-      if (corrected[0] != null && corrected[0] != block.text) {
-        controller.text = corrected[0]!;
-        ToastUtil.success('AI 优化完成');
+    if (result.text != null) {
+      controller.text = result.text!;
+      ToastUtil.success('AI 优化完成');
+    } else {
+      final msg = result.message ?? 'AI 优化完成，无需修改';
+      if (result.isError) {
+        ToastUtil.error(msg);
+      } else if (result.changed) {
+        ToastUtil.success(msg);
       } else {
-        ToastUtil.info('AI 优化完成，无需修改');
+        ToastUtil.info(msg);
       }
-    } catch (e) {
-      if (ctx.mounted) ToastUtil.error('AI 优化失败: $e');
-    } finally {
-      if (ctx.mounted) setDialogState(clearLoading);
     }
   }
 
@@ -958,41 +958,34 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     required VoidCallback clearLoading,
   }) async {
     if (!ctx.mounted) return;
-    final hasKey = await AiBlockHelper.checkApiKey(ctx);
-    if (!hasKey) return;
-
-    final page = _book.pages[_currentIndex];
-    final imageFile =
-        ref.read(imageServiceProvider).getImageFile(page.imagePath);
-    if (imageFile == null || !imageFile.existsSync()) {
-      if (ctx.mounted) ToastUtil.error('图片文件不存在');
+    final hasKey = await _textBlockAiUseCase.checkApiKey();
+    if (!hasKey) {
+      if (ctx.mounted) {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          const SnackBar(content: Text('请先在设置中配置 API Key')),
+        );
+      }
       return;
     }
 
-    final model = AiService.instance.getSelectedModel();
-    final block = page.textBlocks[index];
-
     setDialogState(setLoading);
 
-    try {
-      final result = await AiBlockHelper.translate(
-        imageFile: imageFile,
-        blocks: [{0: block.text}],
-        model: model,
-      );
+    final result = await _textBlockAiUseCase.translateTextBlock(
+      bookId: _book.id,
+      pageIndex: _readingState.currentIndex,
+      blockIndex: index,
+    );
 
-      if (!ctx.mounted) return;
+    if (!ctx.mounted) return;
+    setDialogState(clearLoading);
 
-      if (result[0] != null && result[0]!.isNotEmpty) {
-        controller.text = result[0]!;
-        ToastUtil.success('AI 翻译完成');
-      } else {
-        ToastUtil.info('AI 翻译无结果');
-      }
-    } catch (e) {
-      if (ctx.mounted) ToastUtil.error('AI 翻译失败: $e');
-    } finally {
-      if (ctx.mounted) setDialogState(clearLoading);
+    if (result.text != null) {
+      controller.text = result.text!;
+      ToastUtil.success('AI 翻译完成');
+    } else if (result.isError) {
+      ToastUtil.error(result.message ?? 'AI 翻译失败');
+    } else {
+      ToastUtil.info(result.message ?? 'AI 翻译无结果');
     }
   }
 
@@ -1006,7 +999,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
       return;
     }
 
-    final page = _book.pages[_currentIndex];
+    final page = _book.pages[_readingState.currentIndex];
     bool isWriting = false;
     String? errorMessage;
 
@@ -1143,9 +1136,8 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                         if (context.mounted) {
                           setDialogState(() {
                             isWriting = false;
-                            errorMessage = e is NfcException
-                                ? e.message
-                                : '绑定失败，请重试';
+                            errorMessage =
+                                e is NfcException ? e.message : '绑定失败，请重试';
                           });
                         }
                       }
@@ -1235,8 +1227,10 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                               horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: _ttsEngine == 'supertonic'
-                                ? AppTheme.accentOf(context).withValues(alpha: 0.2)
-                                : AppTheme.primaryOf(context).withValues(alpha: 0.2),
+                                ? AppTheme.accentOf(context)
+                                    .withValues(alpha: 0.2)
+                                : AppTheme.primaryOf(context)
+                                    .withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
@@ -1244,7 +1238,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                          color: dialogEngine == 'supertonic'
+                              color: dialogEngine == 'supertonic'
                                   ? AppTheme.accentOf(context)
                                   : AppTheme.primaryOf(context),
                             ),
@@ -1342,8 +1336,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                                 .getAiSettings();
                             final settings = (currentSettings ??
                                     AiSettingsModel(
-                                      selectedModel:
-                                          AppConstants.defaultModel,
+                                      selectedModel: AppConstants.defaultModel,
                                     ))
                                 .copyWith(
                               speechRate: dialogRate,
@@ -1384,15 +1377,16 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   }
 
   Widget _buildReadingBar() {
-    final block = _book.pages[_currentIndex].textBlocks[_translatedBlockIndex!];
-    final isPlaying = _playingText != null;
+    final block = _book.pages[_readingState.currentIndex]
+        .textBlocks[_readingState.translatedBlockIndex!];
+    final isPlaying = _readingState.playingText != null;
 
     String statusText;
-    if (_translationStatus == TranslationStatus.downloadingModel) {
+    if (_readingState.translationStatus == TranslationStatus.downloadingModel) {
       statusText = '正在下载翻译模型...';
-    } else if (_isTranslating) {
+    } else if (_readingState.isTranslating) {
       statusText = '翻译中...';
-    } else if (_translationStatus == TranslationStatus.failed) {
+    } else if (_readingState.translationStatus == TranslationStatus.failed) {
       statusText = '翻译失败';
     } else {
       statusText = '';
@@ -1481,7 +1475,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                   ),
                 ],
               ),
-              if (_showTranslation && _isTranslating)
+              if (_readingState.showTranslation && _readingState.isTranslating)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Row(
@@ -1505,7 +1499,8 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                     ],
                   ),
                 )
-              else if (_showTranslation && _translatedText != null)
+              else if (_readingState.showTranslation &&
+                  _readingState.translatedText != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Container(
@@ -1516,7 +1511,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      _translatedText!,
+                      _readingState.translatedText!,
                       style: TextStyle(
                         color: AppTheme.accentOf(context),
                         fontSize: 15,
@@ -1525,8 +1520,8 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                     ),
                   ),
                 )
-              else if (_showTranslation &&
-                  _translationStatus == TranslationStatus.failed)
+              else if (_readingState.showTranslation &&
+                  _readingState.translationStatus == TranslationStatus.failed)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
@@ -1631,7 +1626,8 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                       child: Icon(
                         Icons.auto_stories_rounded,
                         size: 64,
-                        color: AppTheme.primaryOf(context).withValues(alpha: 0.7),
+                        color:
+                            AppTheme.primaryOf(context).withValues(alpha: 0.7),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -1649,12 +1645,14 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14,
-                        color: AppTheme.onSurfaceOf(context).withValues(alpha: 0.6),
+                        color: AppTheme.onSurfaceOf(context)
+                            .withValues(alpha: 0.6),
                       ),
                     ),
                     const SizedBox(height: 32),
                     ElevatedButton.icon(
-                      onPressed: () => context.push('/book/${_book.id}/manage', extra: _book),
+                      onPressed: () => context.push('/book/${_book.id}/manage',
+                          extra: _book),
                       icon: const Icon(Icons.edit_rounded, size: 18),
                       label: const Text('去编辑读本'),
                     ),
@@ -1670,7 +1668,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.black,
-      appBar: _showAppBar
+      appBar: _readingState.showAppBar
           ? AppBar(
               backgroundColor: isDark
                   ? AppTheme.darkSurface.withValues(alpha: 0.85)
@@ -1722,7 +1720,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                 ),
                 if (PlatformUtils.supportsMlKit)
                   Semantics(
-                    label: _showTranslation ? '隐藏翻译' : '显示翻译',
+                    label: _readingState.showTranslation ? '隐藏翻译' : '显示翻译',
                     hint: '切换翻译显示状态',
                     button: true,
                     child: IconButton(
@@ -1733,21 +1731,21 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
-                          _showTranslation
+                          _readingState.showTranslation
                               ? Icons.translate_rounded
                               : Icons.translate_outlined,
                           size: 18,
-                          color: _showTranslation
+                          color: _readingState.showTranslation
                               ? Colors.white
                               : Colors.white.withValues(alpha: 0.6),
                         ),
                       ),
                       onPressed: _toggleTranslation,
-                      tooltip: _showTranslation ? '隐藏翻译' : '显示翻译',
+                      tooltip: _readingState.showTranslation ? '隐藏翻译' : '显示翻译',
                     ),
                   ),
                 Semantics(
-                  label: _showBorders ? '隐藏边框' : '显示边框',
+                  label: _readingState.showBorders ? '隐藏边框' : '显示边框',
                   hint: '切换文字块边框显示',
                   button: true,
                   child: IconButton(
@@ -1758,7 +1756,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
-                        _showBorders
+                        _readingState.showBorders
                             ? Icons.border_color_rounded
                             : Icons.border_clear_rounded,
                         size: 18,
@@ -1766,7 +1764,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                       ),
                     ),
                     onPressed: _toggleBorders,
-                    tooltip: _showBorders ? '隐藏边框' : '显示边框',
+                    tooltip: _readingState.showBorders ? '隐藏边框' : '显示边框',
                   ),
                 ),
                 if (Platform.isIOS && ref.watch(nfcEnabledProvider))
@@ -1806,85 +1804,85 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
       body: Stack(
         children: [
           PhotoViewGallery.builder(
-              scrollPhysics: const BouncingScrollPhysics(),
-              builder: (context, index) {
-                final page = pages[index];
-                final file = _imageFile(page.imagePath);
-                final imageSize = Size(page.imageWidth, page.imageHeight);
-                final hasValidSize =
-                    imageSize.width > 0 && imageSize.height > 0;
-                final activeBlocks =
-                    page.textBlocks.where((b) => !b.isDeleted).toList();
+            scrollPhysics: const BouncingScrollPhysics(),
+            builder: (context, index) {
+              final page = pages[index];
+              final file = _imageFile(page.imagePath);
+              final imageSize = Size(page.imageWidth, page.imageHeight);
+              final hasValidSize = imageSize.width > 0 && imageSize.height > 0;
+              final activeBlocks =
+                  page.textBlocks.where((b) => !b.isDeleted).toList();
 
-                return PhotoViewGalleryPageOptions.customChild(
-                  child: Stack(
-                    children: [
-                      if (file != null)
-                        Image.file(
-                          file,
-                          fit: BoxFit.contain,
-                          width: hasValidSize ? imageSize.width : null,
-                          height: hasValidSize ? imageSize.height : null,
-                        )
-                      else
-                        Image(
-                          image: const AssetImage('assets/placeholder.png'),
-                          fit: BoxFit.contain,
+              return PhotoViewGalleryPageOptions.customChild(
+                child: Stack(
+                  children: [
+                    if (file != null)
+                      Image.file(
+                        file,
+                        fit: BoxFit.contain,
+                        width: hasValidSize ? imageSize.width : null,
+                        height: hasValidSize ? imageSize.height : null,
+                      )
+                    else
+                      Image(
+                        image: const AssetImage('assets/placeholder.png'),
+                        fit: BoxFit.contain,
+                      ),
+                    if (hasValidSize &&
+                        activeBlocks.isNotEmpty &&
+                        _readingState.showBorders)
+                      CustomPaint(
+                        size: imageSize,
+                        painter: ReadingTextBlockPainter(
+                          textBlocks: page.textBlocks,
+                          imageWidth: page.imageWidth,
+                          imageHeight: page.imageHeight,
+                          displayWidth: page.imageWidth,
+                          displayHeight: page.imageHeight,
+                          playingBlockIndex: _readingState.playingBlockIndex,
+                          loadingBlockIndex: _readingState.loadingBlockIndex,
+                          loadingAnimationValue:
+                              _loadingSpinnerController.value,
+                          textBlockMaskColor:
+                              Colors.orange.withValues(alpha: 0.25),
                         ),
-                      if (hasValidSize && activeBlocks.isNotEmpty && _showBorders)
-                        CustomPaint(
-                          size: imageSize,
-                          painter: ReadingTextBlockPainter(
-                            textBlocks: page.textBlocks,
-                            imageWidth: page.imageWidth,
-                            imageHeight: page.imageHeight,
-                            displayWidth: page.imageWidth,
-                            displayHeight: page.imageHeight,
-                            playingBlockIndex: _playingBlockIndex,
-                            loadingBlockIndex: _loadingBlockIndex,
-                            loadingAnimationValue:
-                                _loadingSpinnerController.value,
-                            textBlockMaskColor:
-                                Colors.orange.withValues(alpha: 0.25),
-                          ),
-                        ),
-                      _buildFocusBorder(),
-                    ],
-                  ),
-                  childSize: hasValidSize ? imageSize : null,
+                      ),
+                    _buildFocusBorder(),
+                  ],
+                ),
+                childSize: hasValidSize ? imageSize : null,
                 initialScale: PhotoViewComputedScale.contained,
                 minScale: PhotoViewComputedScale.contained * 0.8,
                 maxScale: PhotoViewComputedScale.covered * 3,
                 onDoubleTap: _toggleAppBar,
-                heroAttributes:
-                    PhotoViewHeroAttributes(tag: page.imagePath),
-                  onTapDown: (context, details, ctrlVal) =>
-                      _onTapDown(details, ctrlVal, page),
-                  onTapUp: (context, details, ctrlVal) =>
-                      _handleTapUp(context, details, ctrlVal, page),
-                  onScaleEnd: (context, details, ctrlVal) =>
-                      _cancelLongPress(),
-                );
-              },
-              itemCount: pages.length,
-              loadingBuilder: (context, event) => const Center(
-                child: CircularProgressIndicator(color: Colors.white),
-              ),
-              pageController: _pageController = PageController(
-                initialPage: _currentIndex,
-              ),
-              onPageChanged: (index) {
-                setState(() {
-                  _currentIndex = index;
-                  _clearTranslation();
-                });
-                _book.currentPageIndex = index;
-                _book.updatedAt = DateTime.now();
-                _book.save();
-              },
-              backgroundDecoration: const BoxDecoration(color: Colors.black),
+                heroAttributes: PhotoViewHeroAttributes(tag: page.imagePath),
+                onTapDown: (context, details, ctrlVal) =>
+                    _onTapDown(details, ctrlVal, page),
+                onTapUp: (context, details, ctrlVal) =>
+                    _handleTapUp(context, details, ctrlVal, page),
+                onScaleEnd: (context, details, ctrlVal) => _cancelLongPress(),
+              );
+            },
+            itemCount: pages.length,
+            loadingBuilder: (context, event) => const Center(
+              child: CircularProgressIndicator(color: Colors.white),
             ),
-          if (!_showAppBar)
+            pageController: _pageController = PageController(
+              initialPage: _readingState.currentIndex,
+            ),
+            onPageChanged: (index) {
+              setState(() {
+                _readingState = _readingState.copyWith(currentIndex: index);
+                _clearTranslation();
+              });
+              ref.read(bookRepositoryProvider).updateCurrentPageIndex(
+                    _book.id,
+                    index,
+                  );
+            },
+            backgroundDecoration: const BoxDecoration(color: Colors.black),
+          ),
+          if (!_readingState.showAppBar)
             Positioned(
               top: 0,
               left: 0,
@@ -1897,7 +1895,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                 ),
               ),
             ),
-          if (_translatedBlockIndex != null) _buildReadingBar(),
+          if (_readingState.translatedBlockIndex != null) _buildReadingBar(),
           if (pages.length > 1)
             Positioned(
               bottom: 24,
@@ -1905,7 +1903,7 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
               right: 0,
               child: Center(
                 child: PageIndicator(
-                  currentPage: _currentIndex,
+                  currentPage: _readingState.currentIndex,
                   totalPages: pages.length,
                 ),
               ),

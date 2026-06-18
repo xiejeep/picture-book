@@ -36,6 +36,11 @@ class BookRepositoryImpl implements BookRepository {
   }
 
   @override
+  Future<void> updateCurrentPageIndex(String bookId, int pageIndex) async {
+    await _bookService.updateCurrentPageIndex(bookId, pageIndex);
+  }
+
+  @override
   Future<void> updateBookTitle(String bookId, String newTitle) async {
     await _bookService.updateBookTitle(bookId, newTitle);
   }

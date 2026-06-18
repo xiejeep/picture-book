@@ -55,8 +55,7 @@ class StorageService {
           bookChanged = true;
         }
         if (bookChanged) {
-          book.pages[p] =
-              book.pages[p].copyWith(textBlocks: newBlocks);
+          book.pages[p] = book.pages[p].copyWith(textBlocks: newBlocks);
         }
       }
       if (bookChanged) {
@@ -101,13 +100,7 @@ class StorageService {
     if (book != null) {
       debugPrint('=== StorageService.getBook ===');
       debugPrint('bookId: $id, title: ${book.title}');
-      for (int p = 0; p < book.pages.length; p++) {
-        debugPrint('  pages[$p]:');
-        for (int b = 0; b < book.pages[p].textBlocks.length; b++) {
-          debugPrint(
-              '    textBlocks[$b]: text="${book.pages[p].textBlocks[b].text}", isDeleted=${book.pages[p].textBlocks[b].isDeleted}');
-        }
-      }
+      debugPrint('  页面数: ${book.pages.length}');
     }
     return book;
   }

@@ -6,19 +6,59 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_onnxruntime/flutter_onnxruntime.dart';
 import 'package:path_provider/path_provider.dart';
+import '../../core/constants/app_log.dart';
 import 'supertonic_model_service.dart';
 
 const List<String> availableSupertonicLangs = [
-  'en', 'ko', 'ja', 'ar', 'bg', 'cs', 'da', 'de', 'el', 'es', 'et', 'fi',
-  'fr', 'hi', 'hr', 'hu', 'id', 'it', 'lt', 'lv', 'nl', 'pl', 'pt', 'ro',
-  'ru', 'sk', 'sl', 'sv', 'tr', 'uk', 'vi', 'na'
+  'en',
+  'ko',
+  'ja',
+  'ar',
+  'bg',
+  'cs',
+  'da',
+  'de',
+  'el',
+  'es',
+  'et',
+  'fi',
+  'fr',
+  'hi',
+  'hr',
+  'hu',
+  'id',
+  'it',
+  'lt',
+  'lv',
+  'nl',
+  'pl',
+  'pt',
+  'ro',
+  'ru',
+  'sk',
+  'sl',
+  'sv',
+  'tr',
+  'uk',
+  'vi',
+  'na'
 ];
 
 const List<String> availableSupertonicVoices = [
-  'M1', 'M2', 'M3', 'M4', 'M5', 'F1', 'F2', 'F3', 'F4', 'F5'
+  'M1',
+  'M2',
+  'M3',
+  'M4',
+  'M5',
+  'F1',
+  'F2',
+  'F3',
+  'F4',
+  'F5'
 ];
 
-bool isValidSupertonicLang(String lang) => availableSupertonicLangs.contains(lang);
+bool isValidSupertonicLang(String lang) =>
+    availableSupertonicLangs.contains(lang);
 
 const int _hangulSyllableBase = 0xAC00;
 const int _hangulSyllableEnd = 0xD7A3;
@@ -35,7 +75,8 @@ List<int> _decomposeHangulSyllable(int codePoint) {
 
   final syllableIndex = codePoint - _hangulSyllableBase;
   final leadingIndex = syllableIndex ~/ (_vowelCount * _trailingCount);
-  final vowelIndex = (syllableIndex % (_vowelCount * _trailingCount)) ~/ _trailingCount;
+  final vowelIndex =
+      (syllableIndex % (_vowelCount * _trailingCount)) ~/ _trailingCount;
   final trailingIndex = syllableIndex % _trailingCount;
 
   final result = <int>[
@@ -177,7 +218,8 @@ String preprocessText(String text, String lang) {
   }
 
   if (!isValidSupertonicLang(lang)) {
-    throw ArgumentError('Invalid language: $lang. Available: ${availableSupertonicLangs.join(", ")}');
+    throw ArgumentError(
+        'Invalid language: $lang. Available: ${availableSupertonicLangs.join(", ")}');
   }
 
   text = '<$lang>$text</$lang>';
@@ -201,7 +243,8 @@ class UnicodeProcessor {
             for (var i = 0; i < json.length; i++)
               if (json[i] is int && json[i] >= 0) i: json[i] as int
           }
-        : (json as Map<String, dynamic>).map((k, v) => MapEntry(int.parse(k), v as int));
+        : (json as Map<String, dynamic>)
+            .map((k, v) => MapEntry(int.parse(k), v as int));
 
     return UnicodeProcessor._(indexer);
   }
@@ -254,7 +297,8 @@ class TextToSpeech {
         chunkCompressFactor = cfgs['ttl']['chunk_compress_factor'],
         ldim = cfgs['ttl']['latent_dim'];
 
-  Future<Map<String, dynamic>> call(String text, String lang, Style style, int totalStep,
+  Future<Map<String, dynamic>> call(
+      String text, String lang, Style style, int totalStep,
       {double speed = 1.05, double silenceDuration = 0.3}) async {
     final maxLen = (lang == 'ko' || lang == 'ja') ? 120 : 300;
     final chunks = _chunkText(text, maxLen: maxLen);
@@ -263,7 +307,8 @@ class TextToSpeech {
     double durCat = 0;
 
     for (var i = 0; i < chunks.length; i++) {
-      final result = await _infer([chunks[i]], [langList[i]], style, totalStep, speed: speed);
+      final result = await _infer([chunks[i]], [langList[i]], style, totalStep,
+          speed: speed);
       final wav = _safeCast<double>(result['wav']);
       final duration = _safeCast<double>(result['duration']);
 
@@ -280,10 +325,14 @@ class TextToSpeech {
       }
     }
 
-    return {'wav': wavCat, 'duration': [durCat]};
+    return {
+      'wav': wavCat,
+      'duration': [durCat]
+    };
   }
 
-  Future<Map<String, dynamic>> _infer(List<String> textList, List<String> langList, Style style, int totalStep,
+  Future<Map<String, dynamic>> _infer(
+      List<String> textList, List<String> langList, Style style, int totalStep,
       {double speed = 1.05}) async {
     final bsz = textList.length;
     final result = textProcessor.call(textList, langList);
@@ -297,7 +346,9 @@ class TextToSpeech {
     final textMask = textMaskRaw is List<List<List<double>>>
         ? textMaskRaw
         : (textMaskRaw as List)
-            .map((batch) => (batch as List).map((row) => (row as List).cast<double>()).toList())
+            .map((batch) => (batch as List)
+                .map((row) => (row as List).cast<double>())
+                .toList())
             .toList();
 
     final textIdsShape = [bsz, textIds[0].length];
@@ -323,20 +374,26 @@ class TextToSpeech {
     var noisyLatent = noisyLatentRaw is List<List<List<double>>>
         ? noisyLatentRaw
         : (noisyLatentRaw as List)
-            .map((batch) => (batch as List).map((row) => (row as List).cast<double>()).toList())
+            .map((batch) => (batch as List)
+                .map((row) => (row as List).cast<double>())
+                .toList())
             .toList();
 
     final latentMaskRaw = latentData['latentMask'];
     final latentMask = latentMaskRaw is List<List<List<double>>>
         ? latentMaskRaw
         : (latentMaskRaw as List)
-            .map((batch) => (batch as List).map((row) => (row as List).cast<double>()).toList())
+            .map((batch) => (batch as List)
+                .map((row) => (row as List).cast<double>())
+                .toList())
             .toList();
 
     final latentShape = [bsz, noisyLatent[0].length, noisyLatent[0][0].length];
-    final latentMaskTensor = await _toTensor(latentMask, [bsz, 1, latentMask[0][0].length]);
+    final latentMaskTensor =
+        await _toTensor(latentMask, [bsz, 1, latentMask[0][0].length]);
 
-    final totalStepTensor = await _scalarToTensor(List.filled(bsz, totalStep.toDouble()), [bsz]);
+    final totalStepTensor =
+        await _scalarToTensor(List.filled(bsz, totalStep.toDouble()), [bsz]);
 
     for (var step = 0; step < totalStep; step++) {
       final result = await vectorEstOrt.run({
@@ -346,11 +403,14 @@ class TextToSpeech {
         'text_mask': textMaskTensor,
         'latent_mask': latentMaskTensor,
         'total_step': totalStepTensor,
-        'current_step': await _scalarToTensor(List.filled(bsz, step.toDouble()), [bsz]),
+        'current_step':
+            await _scalarToTensor(List.filled(bsz, step.toDouble()), [bsz]),
       });
 
       final denoisedRaw = await result.values.first.asList();
-      final denoised = denoisedRaw is List<double> ? denoisedRaw : _safeCast<double>(denoisedRaw);
+      final denoised = denoisedRaw is List<double>
+          ? denoisedRaw
+          : _safeCast<double>(denoisedRaw);
       var idx = 0;
       for (var b = 0; b < noisyLatent.length; b++) {
         for (var d = 0; d < noisyLatent[b].length; d++) {
@@ -361,7 +421,8 @@ class TextToSpeech {
       }
     }
 
-    final vocoderResult = await vocoderOrt.run({'latent': await _toTensor(noisyLatent, latentShape)});
+    final vocoderResult = await vocoderOrt
+        .run({'latent': await _toTensor(noisyLatent, latentShape)});
     final wavRaw = await vocoderResult.values.first.asList();
     final wav = wavRaw is List<double> ? wavRaw : _safeCast<double>(wavRaw);
 
@@ -403,20 +464,29 @@ class TextToSpeech {
 
   List<List<List<double>>> _getLatentMask(List<int> wavLengths) {
     final latentSize = baseChunkSize * chunkCompressFactor;
-    final latentLengths = wavLengths.map((len) => ((len + latentSize - 1) / latentSize).floor()).toList();
+    final latentLengths = wavLengths
+        .map((len) => ((len + latentSize - 1) / latentSize).floor())
+        .toList();
     final maxLen = latentLengths.reduce(math.max);
-    return latentLengths.map((len) => [List.generate(maxLen, (i) => i < len ? 1.0 : 0.0)]).toList();
+    return latentLengths
+        .map((len) => [List.generate(maxLen, (i) => i < len ? 1.0 : 0.0)])
+        .toList();
   }
 
   List<String> _chunkText(String text, {int maxLen = 300}) {
-    final paragraphs = text.trim().split(RegExp(r'\n\s*\n+')).where((p) => p.trim().isNotEmpty).toList();
+    final paragraphs = text
+        .trim()
+        .split(RegExp(r'\n\s*\n+'))
+        .where((p) => p.trim().isNotEmpty)
+        .toList();
 
     final chunks = <String>[];
     for (var paragraph in paragraphs) {
       paragraph = paragraph.trim();
       if (paragraph.isEmpty) continue;
 
-      final sentences = paragraph.split(RegExp(r'(?<!Mr\.|Mrs\.|Ms\.|Dr\.|Prof\.)(?<!\b[A-Z]\.)(?<=[.!?])\s+'));
+      final sentences = paragraph.split(RegExp(
+          r'(?<!Mr\.|Mrs\.|Ms\.|Dr\.|Prof\.)(?<!\b[A-Z]\.)(?<=[.!?])\s+'));
 
       var currentChunk = '';
       for (final sentence in sentences) {
@@ -440,7 +510,9 @@ class TextToSpeech {
         return _flattenList<T>(raw);
       }
       if (T == double) {
-        return raw.map((e) => e is num ? e.toDouble() : double.parse(e.toString())).toList() as List<T>;
+        return raw
+            .map((e) => e is num ? e.toDouble() : double.parse(e.toString()))
+            .toList() as List<T>;
       }
       return raw.cast<T>();
     }
@@ -477,7 +549,8 @@ Future<TextToSpeech> loadTextToSpeech(String onnxDir) async {
 
   final cfgs = await _loadCfgs(onnxDir);
   final sessions = await _loadOnnxAll(onnxDir);
-  final textProcessor = await UnicodeProcessor.load('$onnxDir/unicode_indexer.json');
+  final textProcessor =
+      await UnicodeProcessor.load('$onnxDir/unicode_indexer.json');
 
   debugPrint('TTS models loaded successfully');
 
@@ -522,7 +595,12 @@ Future<Map<String, dynamic>> _loadCfgs(String onnxDir) async {
 
 Future<Map<String, OrtSession>> _loadOnnxAll(String dir) async {
   final ort = OnnxRuntime();
-  final models = ['duration_predictor', 'text_encoder', 'vector_estimator', 'vocoder'];
+  final models = [
+    'duration_predictor',
+    'text_encoder',
+    'vector_estimator',
+    'vocoder'
+  ];
 
   final sessions = await Future.wait(models.map((name) async {
     final path = '$dir/$name.onnx';
@@ -628,7 +706,8 @@ class SupertonicService {
     debugPrint('Starting to load Supertonic models');
 
     try {
-      final modelsDir = await SupertonicModelService.instance.getModelsDirectory();
+      final modelsDir =
+          await SupertonicModelService.instance.getModelsDirectory();
       _tts = await loadTextToSpeech(modelsDir);
       _isLoaded = true;
       debugPrint('Supertonic models loaded successfully');
@@ -680,7 +759,8 @@ class SupertonicService {
       throw Exception('Voice style not loaded');
     }
 
-    debugPrint('Synthesizing: text="$text", lang=$lang, voice=$voice, steps=$steps, speed=$speed');
+    AppLog.content(
+        'Synthesizing: text="$text", lang=$lang, voice=$voice, steps=$steps, speed=$speed');
 
     try {
       final result = await _tts!.call(
@@ -698,7 +778,8 @@ class SupertonicService {
           ? result['duration']
           : (result['duration'] as List).cast<double>();
 
-      debugPrint('Generated audio: duration=${duration[0]}s, samples=${wav.length}');
+      debugPrint(
+          'Generated audio: duration=${duration[0]}s, samples=${wav.length}');
 
       final tempDir = await getTemporaryDirectory();
       final timestamp = DateTime.now().millisecondsSinceEpoch;

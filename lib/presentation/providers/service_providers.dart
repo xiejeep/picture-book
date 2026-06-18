@@ -32,6 +32,10 @@ final ttsServiceProvider = Provider<TtsService>((ref) {
   return TtsService.instance;
 });
 
+final ttsStateProvider = StreamProvider<TtsPlaybackState>((ref) {
+  return TtsService.instance.stateStream;
+});
+
 final translationServiceProvider = Provider<TranslationService>((ref) {
   return TranslationService.instance;
 });

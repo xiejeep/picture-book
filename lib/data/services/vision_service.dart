@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import '../../core/constants/app_log.dart';
 import '../../core/constants/constants.dart';
 import '../../core/constants/app_prompts.dart';
 import 'storage_service.dart';
@@ -52,14 +53,14 @@ class VisionService {
     );
 
     if (response.statusCode != 200) {
-      debugPrint('Step1 API Error: ${response.statusCode} - ${response.body}');
+      debugPrint('Step1 API Error: ${response.statusCode}');
       throw Exception('Vision model request failed: ${response.statusCode}');
     }
 
     final responseBody = jsonDecode(response.body);
     final content = responseBody['choices'][0]['message']['content'] as String;
 
-    debugPrint('Step1视觉模型原始返回:\n$content');
+    AppLog.content('Step1视觉模型原始返回:\n$content');
 
     return content;
   }

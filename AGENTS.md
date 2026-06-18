@@ -1,70 +1,45 @@
-# AGENTS.md — 点读鸭 (DianDuYa)
+# AGENTS.md - 点读鸭 (DianDuYa)
 
-Flutter children's English picture-book reading app. Chinese market, Chinese UI.
+Flutter children's English picture-book reading app for the Chinese market; keep UI copy Chinese unless a task says otherwise.
 
 ## Commands
 
 ```bash
-fvm flutter pub get          # install deps (always use via fvm)
-fvm flutter run              # run app
-fvm flutter analyze          # lint + typecheck (run before committing)
-dart format lib/             # format
-fvm flutter pub run build_runner build --delete-conflicting-outputs  # Hive model codegen
+fvm flutter pub get
+fvm flutter run
+fvm flutter analyze
+dart format lib/
+fvm flutter test
+fvm flutter pub run build_runner build --delete-conflicting-outputs
 ```
 
-No tests exist (`test/` is empty). No CI. No unit tests.
+- `.fvmrc` pins `stable`; use `fvm flutter`, not bare `flutter` from README examples.
+- `test/` is empty and there is no CI workflow; `fvm flutter analyze` is the main verification step today.
+- Run the `build_runner` command after changing Hive models in `lib/data/models/`; generated `*.g.dart` files are committed beside models.
 
 ## Architecture
 
-- **State**: Riverpod 2.x — `Notifier<State>` pattern with custom `copyWith` state classes
-- **Routing**: GoRouter (all routes in `lib/core/router/app_router.dart:77`)
-- **Storage**: Hive with `build_runner` codegen (`*.g.dart` alongside models)
-- **Services**: All singletons (`ClassName.instance`) wrapped in Riverpod Providers (`lib/presentation/providers/service_providers.dart`), then Repository layer (`lib/presentation/providers/repository_providers.dart`). Mixed usage — some code reads singletons directly, some via providers. Prefer provider access.
-- **Entrypoint**: `lib/main.dart` — initializes `StorageService.instance` and `ImageService.instance` synchronously before `runApp`
+- Entrypoint is `lib/main.dart`: initializes `StorageService.instance` and `ImageService.instance` before `runApp(const ProviderScope(child: BookApp()))`.
+- `lib/app.dart` owns `MaterialApp.router`, theme mode, TTS/file-intent init, and NFC lifecycle/subscription handling.
+- Routes are in `lib/core/router/app_router.dart`; README route/version tables are stale, so trust this file and `pubspec.yaml`.
+- State uses Riverpod 2 `Notifier<State>` providers with hand-written immutable state/copyWith classes in `lib/presentation/providers/`.
+- Services are singletons wrapped by providers in `lib/presentation/providers/service_providers.dart`, then repository providers in `repository_providers.dart`; prefer provider access in new Riverpod-aware code, but existing pages still mix in direct `.instance` calls.
+- Storage is Hive: boxes are `books`, `ai_settings`, plus internal `app_settings`; `StorageService` also stores the Zhipu API key in `flutter_secure_storage` under `zhipu_api_key`.
 
-## Key Convensions
+## Conventions
 
-- `.withOpacity()` is fully migrated to `.withValues(alpha:)` — never reintroduce deprecated API
-- `TextBlockData` fields are `final` — use `copyWith` to update, never direct assignment
-- AI prompts live in `lib/core/constants/app_prompts.dart` (not inline in services)
-- Semantics wrappers added on interactive elements for accessibility
-- App name: `点读鸭`, deep link scheme: `dianduya://`
-- Portrait orientation preferred (set in `main.dart`)
-- Hive box names: `books`, `ai_settings`
-- `version: 1.0.6+11` (from pubspec.yaml, also served via `package_info_plus`)
+- Do not reintroduce deprecated `.withOpacity()`; use `.withValues(alpha:)`.
+- Keep AI prompts in `lib/core/constants/app_prompts.dart`, not inline in services.
+- `TextBlockData`, `TextBlockModel`, and `PageModel` fields are effectively immutable; update with `copyWith()` instead of assignment.
+- Never renumber existing Hive `typeId` or `@HiveField` values; `AiSettingsModel` intentionally has gaps in field numbers.
+- Preserve semantics/accessibility wrappers on interactive controls; `lib/presentation/widgets/semantics_icon_button.dart` exists for icon buttons.
+- App name is `点读鸭`; NFC/deep-link payloads use `dianduya://play/<bookId>/<pageId>/<blockId>`.
 
-## Directory Layout
+## Platform And Package Gotchas
 
-```
-lib/
-├── main.dart                          # Entrypoint + init
-├── app.dart                           # MaterialApp.router + NFC lifecycle
-├── core/                              # constants, router, theme, utils
-├── data/
-│   ├── models/                        # Hive-annotated models (+ .g.dart generated)
-│   ├── repositories/                  # Thin wrappers over services
-│   └── services/                      # 16 singleton services (AiService, TtsService, etc.)
-└── presentation/
-    ├── providers/                     # Riverpod providers (books, settings, tts, services, repos)
-    ├── pages/                         # Full-screen pages (12)
-    ├── features/text_detection/       # OCR + text block editing module
-    └── widgets/                       # Shared widgets (5)
-```
-
-## Refactoring History
-
-Key completed work (see `REFACTOR_PROGRESS.md` for full detail):
-- Sync I/O → async throughout
-- `withOpacity()` → `withValues(alpha:)` (105 replacements)
-- `AiService` God class split into `VisionService` + `TextCleaningService`
-- `TextDetectionView` (1014→570 lines) — dialogs extracted to part-file mixin
-- `BookDetailPage` — converted from singletons to Riverpod `ConsumerStatefulWidget`
-- Prompts extracted from services to `AppPrompts` constants
-
-## Gotchas
-
-- `.fvmrc` pins `"stable"` — always use `fvm flutter` not bare `flutter`
-- VS Code SDK path: `.fvm/versions/stable`
-- `book_detail_page.dart` still has inline `TextBlockPainter` duplicate (2 copies exist)
-- `image_service.getImageFile()` remains sync (callers use in `build()`)
-- `BookManagePage` is not Riverpod (by design, per refactor notes)
+- `photo_view` is vendored via `pubspec.yaml` path `lib/vendor/photo_view` with custom `onDoubleTap` support; do not replace it with the pub.dev package casually.
+- Android native package/application id is still `com.example.picture_book_app`; release builds currently use the debug signing config.
+- Android handles NFC intents and `.ddb` file imports in `android/app/src/main/.../MainActivity.kt` plus manifest filters.
+- iOS Podfile sets `platform :ios, '16.0'`, `use_frameworks! :linkage => :static`, and manually links `CoreNFC` for `nfc_manager`; keep that hook if editing pods.
+- Orientation is not portrait-only: `main.dart`, Android manifest config changes, and iOS plist all allow portrait and landscape.
+- `ImageService.getImageFile()` is synchronous and is used from build paths; do not make it async without changing callers.

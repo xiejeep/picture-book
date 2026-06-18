@@ -124,6 +124,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
 
           return BookReaderPage(
             book: book,
+            autoPlayPageId: autoPlayPageId,
+            autoPlayBlockId: autoPlayBlockId,
           );
         },
       ),

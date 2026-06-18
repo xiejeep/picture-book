@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_translation/google_mlkit_translation.dart';
+import '../../core/constants/app_log.dart';
 import '../../core/utils/platform_utils.dart';
 
 enum TranslationStatus {
@@ -88,7 +89,7 @@ class TranslationService {
 
     try {
       final result = await _translator!.translateText(text);
-      debugPrint('翻译结果: "$text" -> "$result"');
+      AppLog.content('翻译结果: "$text" -> "$result"');
       return TranslationResult(
         status: TranslationStatus.done,
         translatedText: result,

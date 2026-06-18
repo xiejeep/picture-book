@@ -88,25 +88,11 @@ class BookModel extends HiveObject {
     if (index >= 0 && index < pages.length) {
       debugPrint('=== BookModel.updatePage ===');
       debugPrint('更新索引: $index');
-      debugPrint('旧页面textBlocks:');
-      for (int i = 0; i < pages[index].textBlocks.length; i++) {
-        debugPrint(
-            '  old[$i]: text="${pages[index].textBlocks[i].text}", isDeleted=${pages[index].textBlocks[i].isDeleted}');
-      }
-      debugPrint('新页面textBlocks:');
-      for (int i = 0; i < newPage.textBlocks.length; i++) {
-        debugPrint(
-            '  new[$i]: text="${newPage.textBlocks[i].text}", isDeleted=${newPage.textBlocks[i].isDeleted}');
-      }
+      debugPrint('旧页面textBlocks数: ${pages[index].textBlocks.length}');
+      debugPrint('新页面textBlocks数: ${newPage.textBlocks.length}');
 
       pages[index] = newPage;
       updatedAt = DateTime.now();
-
-      debugPrint('更新后pages[$index].textBlocks:');
-      for (int i = 0; i < pages[index].textBlocks.length; i++) {
-        debugPrint(
-            '  updated[$i]: text="${pages[index].textBlocks[i].text}", isDeleted=${pages[index].textBlocks[i].isDeleted}');
-      }
 
       save();
       debugPrint('已调用save()');

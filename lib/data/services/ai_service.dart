@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import '../../core/constants/app_log.dart';
 import '../../core/constants/constants.dart';
 import 'storage_service.dart';
 import 'vision_service.dart';
@@ -92,7 +93,7 @@ class AiService {
       visionResult = await VisionService.instance.extractText(imageFile, model);
     }
 
-    debugPrint('视觉模型提取的文本:\n$visionResult');
+    AppLog.content('视觉模型提取的文本:\n$visionResult');
 
     return await TextCleaningService.instance.enhanceTextBlocks(
       visionResult,
@@ -127,7 +128,7 @@ class AiService {
       visionResult = await VisionService.instance.extractText(imageFile, model);
     }
 
-    debugPrint('翻译用视觉模型描述:\n$visionResult');
+    AppLog.content('翻译用视觉模型描述:\n$visionResult');
 
     return await TextCleaningService.instance.enhanceTranslation(
       visionResult,

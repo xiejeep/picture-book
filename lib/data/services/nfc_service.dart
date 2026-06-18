@@ -70,7 +70,6 @@ class NfcService {
 
   final _controller = StreamController<NfcAction>.broadcast();
   bool _isListening = false;
-  bool _lastActionConsumed = false;
   String? _lastEmittedKey;
   DateTime? _lastEmitTime;
 
@@ -78,9 +77,6 @@ class NfcService {
 
   Stream<NfcAction> get onTagDetected => _controller.stream;
   bool get isListening => _isListening;
-
-  void markActionConsumed() => _lastActionConsumed = true;
-  bool get isLastActionConsumed => _lastActionConsumed;
 
   void initIntentListener() {
     if (!Platform.isAndroid) return;
@@ -118,7 +114,6 @@ class NfcService {
     }
     _lastEmittedKey = key;
     _lastEmitTime = now;
-    _lastActionConsumed = false;
     _controller.add(action);
   }
 

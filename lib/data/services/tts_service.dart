@@ -6,13 +6,31 @@ import 'tts_cache_service.dart';
 import 'storage_service.dart';
 import 'supertonic_service.dart';
 import 'supertonic_model_service.dart';
+import '../../core/constants/app_log.dart';
 import '../../core/constants/constants.dart';
 import '../../core/utils/platform_utils.dart';
+
+enum TtsPlaybackPhase { idle, loading, playing, completed, error }
+
+class TtsPlaybackState {
+  final TtsPlaybackPhase phase;
+  final String? text;
+  final Object? error;
+
+  const TtsPlaybackState({
+    required this.phase,
+    this.text,
+    this.error,
+  });
+}
 
 class TtsService {
   static final TtsService _instance = TtsService._internal();
   static TtsService get instance => _instance;
   TtsService._internal();
+
+  final _stateController = StreamController<TtsPlaybackState>.broadcast();
+  Stream<TtsPlaybackState> get stateStream => _stateController.stream;
 
   FlutterTts _flutterTts = FlutterTts();
   AudioPlayer _audioPlayer = AudioPlayer();
@@ -58,6 +76,8 @@ class TtsService {
       _flutterTts.setStartHandler(() {
         debugPrint('开始播放');
         _isSpeaking = true;
+        _stateController.add(TtsPlaybackState(
+            phase: TtsPlaybackPhase.playing, text: _currentText));
       });
 
       _flutterTts.setCompletionHandler(() {
@@ -67,6 +87,8 @@ class TtsService {
         _speakCompleter?.complete();
         _speakCompleter = null;
         onPlayingComplete?.call();
+        _stateController
+            .add(const TtsPlaybackState(phase: TtsPlaybackPhase.completed));
       });
 
       _flutterTts.setCancelHandler(() {
@@ -83,6 +105,8 @@ class TtsService {
         _currentText = null;
         _speakCompleter?.completeError(Exception(message));
         _speakCompleter = null;
+        _stateController.add(TtsPlaybackState(
+            phase: TtsPlaybackPhase.error, text: null, error: message));
       });
     } else {
       debugPrint('桌面平台，跳过FlutterTTS初始化');
@@ -96,6 +120,8 @@ class TtsService {
       _speakCompleter = null;
       _cleanupAudioFile();
       onPlayingComplete?.call();
+      _stateController
+          .add(const TtsPlaybackState(phase: TtsPlaybackPhase.completed));
     });
 
     _audioPlayer.onLog.listen((message) {
@@ -112,7 +138,7 @@ class TtsService {
       await initialize();
     }
 
-    debugPrint('准备播放: $text');
+    AppLog.content('准备播放: $text');
 
     if (_isSpeaking) {
       debugPrint('停止当前播放');
@@ -121,10 +147,13 @@ class TtsService {
 
     _currentText = text;
     _speakCompleter = Completer<void>();
+    _stateController
+        .add(TtsPlaybackState(phase: TtsPlaybackPhase.loading, text: text));
 
     final settings = StorageService.instance.getAiSettings();
     final ttsEngine = settings?.ttsEngine ?? 'system';
-    final speechRate = settings?.speechRate ?? AppConstants.systemTtsDefaultSpeed;
+    final speechRate =
+        settings?.speechRate ?? AppConstants.systemTtsDefaultSpeed;
 
     debugPrint('TTS引擎: $ttsEngine, 语速: $speechRate');
 
@@ -145,8 +174,10 @@ class TtsService {
       }
 
       try {
-        final voice = settings?.supertonicVoice ?? AppConstants.supertonicDefaultVoice;
-        final steps = settings?.supertonicSteps ?? AppConstants.supertonicDefaultSteps;
+        final voice =
+            settings?.supertonicVoice ?? AppConstants.supertonicDefaultVoice;
+        final steps =
+            settings?.supertonicSteps ?? AppConstants.supertonicDefaultSteps;
         final lang = AppConstants.supertonicDefaultLang;
         await _speakWithSupertonic(text, lang, voice, steps, speechRate);
         await _speakCompleter?.future;
@@ -193,6 +224,8 @@ class TtsService {
     debugPrint('使用Supertonic播放: voice=$voice, steps=$steps, speed=$speed');
 
     _isLoading = true;
+    _stateController.add(
+        TtsPlaybackState(phase: TtsPlaybackPhase.loading, text: _currentText));
     onLoadingStarted?.call();
 
     try {
@@ -227,6 +260,8 @@ class TtsService {
       if (audioPath != null) {
         _isSpeaking = true;
         onPlayingStarted?.call();
+        _stateController.add(TtsPlaybackState(
+            phase: TtsPlaybackPhase.playing, text: _currentText));
         await _audioPlayer.play(DeviceFileSource(audioPath));
         debugPrint('Supertonic开始播放');
       } else {
@@ -304,6 +339,7 @@ class TtsService {
     _currentText = null;
     _speakCompleter?.complete();
     _speakCompleter = null;
+    _stateController.close();
     onLoadingStarted = null;
     onPlayingStarted = null;
     onPlayingComplete = null;
