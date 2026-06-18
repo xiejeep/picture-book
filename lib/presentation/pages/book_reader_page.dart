@@ -14,7 +14,6 @@ import 'package:book_app/data/models/page_model.dart';
 import 'package:book_app/data/models/text_block_model.dart';
 import 'package:book_app/data/services/image_service.dart';
 import 'package:book_app/data/services/nfc_service.dart';
-import 'package:book_app/data/services/translation_service.dart';
 import 'package:book_app/data/services/tts_service.dart';
 import 'package:book_app/presentation/providers/service_providers.dart';
 import 'package:book_app/presentation/providers/settings_provider.dart';
@@ -382,21 +381,17 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
       return;
     }
 
-    if (block.aiTranslatedText != null) {
-      notifier.setCachedTranslation(blockIndex, block.aiTranslatedText!);
-      return;
-    }
-
-    if (block.translatedText != null) {
-      notifier.setCachedTranslation(blockIndex, block.translatedText!);
+    final useCase = ref.read(translateTextBlockUseCaseProvider);
+    final cached = useCase.cachedTranslation(block);
+    if (cached != null) {
+      notifier.setCachedTranslation(blockIndex, cached);
       return;
     }
 
     notifier.setTranslationLoading(blockIndex);
 
-    final result = await ref
-        .read(translationServiceProvider)
-        .translateWithStatus(block.text);
+    final result =
+        await useCase.translate(block: block, blockIndex: blockIndex);
 
     if (!mounted) return;
 
@@ -405,11 +400,8 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
       translatedText: result.translatedText,
     );
 
-    if (result.status == TranslationStatus.done &&
-        result.translatedText != null) {
-      final updatedBlock =
-          block.copyWith(aiTranslatedText: result.translatedText);
-      await _updateBlockInPage(blockIndex, updatedBlock);
+    if (result.shouldPersist && result.updatedBlock != null) {
+      await _updateBlockInPage(blockIndex, result.updatedBlock!);
     }
   }
 

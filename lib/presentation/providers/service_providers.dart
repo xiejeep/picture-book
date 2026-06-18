@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../application/reading/play_text_block_use_case.dart';
+import '../../application/reading/translate_text_block_use_case.dart';
 import '../../data/services/storage_service.dart';
 import '../../data/services/image_service.dart';
 import '../../data/services/book_service.dart';
@@ -43,6 +44,11 @@ final ttsStateProvider = StreamProvider<TtsPlaybackState>((ref) {
 
 final translationServiceProvider = Provider<TranslationService>((ref) {
   return TranslationService.instance;
+});
+
+final translateTextBlockUseCaseProvider =
+    Provider<TranslateTextBlockUseCase>((ref) {
+  return TranslateTextBlockUseCase(ref.watch(translationServiceProvider));
 });
 
 final nfcServiceProvider = Provider<NfcService>((ref) {
