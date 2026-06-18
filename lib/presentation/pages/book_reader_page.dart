@@ -22,18 +22,16 @@ import 'package:book_app/presentation/providers/nfc_action_handler.dart';
 import 'package:book_app/presentation/features/reader/widgets/reader_app_bar.dart';
 import 'package:book_app/presentation/features/reader/widgets/reader_block_actions_sheet.dart';
 import 'package:book_app/presentation/features/reader/widgets/reader_empty_state.dart';
-import 'package:book_app/presentation/features/reader/widgets/reader_focus_border.dart';
+import 'package:book_app/presentation/features/reader/widgets/reader_gallery.dart';
 import 'package:book_app/presentation/features/reader/widgets/reader_nfc_bind_dialog.dart';
 import 'package:book_app/presentation/features/reader/widgets/reader_reading_bar.dart';
 import 'package:book_app/presentation/features/reader/widgets/reader_text_edit_sheet.dart';
 import 'package:book_app/presentation/features/reader/widgets/reader_voice_settings_dialog.dart';
 import 'package:book_app/presentation/widgets/page_indicator.dart';
-import 'package:book_app/presentation/widgets/reading_text_block_painter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:book_app/vendor/photo_view/photo_view.dart';
-import 'package:book_app/vendor/photo_view/photo_view_gallery.dart';
 import '../providers/reading_state.dart';
 
 class BookReaderPage extends ConsumerStatefulWidget {
@@ -859,79 +857,25 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
           : null,
       body: Stack(
         children: [
-          PhotoViewGallery.builder(
-            scrollPhysics: const BouncingScrollPhysics(),
-            builder: (context, index) {
-              final page = pages[index];
-              final file = _imageFile(page.imagePath);
-              final imageSize = Size(page.imageWidth, page.imageHeight);
-              final hasValidSize = imageSize.width > 0 && imageSize.height > 0;
-              final activeBlocks =
-                  page.textBlocks.where((b) => !b.isDeleted).toList();
-
-              return PhotoViewGalleryPageOptions.customChild(
-                child: Stack(
-                  children: [
-                    if (file != null)
-                      Image.file(
-                        file,
-                        fit: BoxFit.contain,
-                        width: hasValidSize ? imageSize.width : null,
-                        height: hasValidSize ? imageSize.height : null,
-                      )
-                    else
-                      const Image(
-                        image: AssetImage('assets/placeholder.png'),
-                        fit: BoxFit.contain,
-                      ),
-                    if (hasValidSize &&
-                        activeBlocks.isNotEmpty &&
-                        _readingState.showBorders)
-                      CustomPaint(
-                        size: imageSize,
-                        painter: ReadingTextBlockPainter(
-                          textBlocks: page.textBlocks,
-                          imageWidth: page.imageWidth,
-                          imageHeight: page.imageHeight,
-                          displayWidth: page.imageWidth,
-                          displayHeight: page.imageHeight,
-                          playingBlockIndex: _readingState.playingBlockIndex,
-                          loadingBlockIndex: _readingState.loadingBlockIndex,
-                          loadingAnimationValue:
-                              _loadingSpinnerController.value,
-                          textBlockMaskColor:
-                              Colors.orange.withValues(alpha: 0.25),
-                        ),
-                      ),
-                    ReaderFocusBorder(
-                      focusAnimation: _focusAnimation,
-                      currentFocusRect: _currentFocusRect,
-                      bounceAnimation: _bounceAnimation,
-                      animation: Listenable.merge([
-                        _focusAnimationController,
-                        _bounceAnimationController,
-                      ]),
-                    ),
-                  ],
-                ),
-                childSize: hasValidSize ? imageSize : null,
-                initialScale: PhotoViewComputedScale.contained,
-                minScale: PhotoViewComputedScale.contained * 0.8,
-                maxScale: PhotoViewComputedScale.covered * 3,
-                onDoubleTap: _toggleAppBar,
-                heroAttributes: PhotoViewHeroAttributes(tag: page.imagePath),
-                onTapDown: (context, details, ctrlVal) =>
-                    _onTapDown(details, ctrlVal, page),
-                onTapUp: (context, details, ctrlVal) =>
-                    _handleTapUp(context, details, ctrlVal, page),
-                onScaleEnd: (context, details, ctrlVal) => _cancelLongPress(),
-              );
-            },
-            itemCount: pages.length,
-            loadingBuilder: (context, event) => const Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            ),
+          ReaderGallery(
+            pages: pages,
             pageController: _pageController,
+            showBorders: _readingState.showBorders,
+            playingBlockIndex: _readingState.playingBlockIndex,
+            loadingBlockIndex: _readingState.loadingBlockIndex,
+            loadingAnimationValue: _loadingSpinnerController.value,
+            focusAnimation: _focusAnimation,
+            currentFocusRect: _currentFocusRect,
+            bounceAnimation: _bounceAnimation,
+            focusBounceAnimation: Listenable.merge([
+              _focusAnimationController,
+              _bounceAnimationController,
+            ]),
+            imageFileResolver: _imageFile,
+            onDoubleTap: _toggleAppBar,
+            onTapDown: _onTapDown,
+            onTapUp: _handleTapUp,
+            onScaleEnd: _cancelLongPress,
             onPageChanged: (index) {
               setState(() {
                 _readingState = _readingState.copyWith(currentIndex: index);
@@ -942,7 +886,6 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
                     index,
                   );
             },
-            backgroundDecoration: const BoxDecoration(color: Colors.black),
           ),
           if (!_readingState.showAppBar)
             Positioned(
