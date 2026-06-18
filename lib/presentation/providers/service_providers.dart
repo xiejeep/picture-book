@@ -48,7 +48,8 @@ final translationServiceProvider = Provider<TranslationService>((ref) {
 
 final translateTextBlockUseCaseProvider =
     Provider<TranslateTextBlockUseCase>((ref) {
-  return TranslateTextBlockUseCase(ref.watch(translationServiceProvider));
+  return TranslateTextBlockUseCase(
+      ref.watch(translationServiceProvider).translateWithStatus);
 });
 
 final nfcServiceProvider = Provider<NfcService>((ref) {

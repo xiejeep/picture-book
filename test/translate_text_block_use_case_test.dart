@@ -5,13 +5,6 @@ import 'package:book_app/data/models/text_block_model.dart';
 import 'package:book_app/data/services/translation_service.dart';
 
 void main() {
-  // TranslationService has a private constructor, so the async translate()
-  // path cannot be exercised without a real service instance. These tests
-  // cover the pure cached-translation priority logic, which is the part most
-  // likely to regress when block fields change. The real singleton is safe
-  // here because cachedTranslation() never touches the service.
-  final useCase = TranslateTextBlockUseCase(TranslationService.instance);
-
   TextBlockModel block({
     String? aiTranslatedText,
     String? translatedText,
@@ -24,7 +17,15 @@ void main() {
     );
   }
 
+  TranslateTextBlockUseCase useCaseWith(
+      Future<TranslationResult> Function(String) fn) {
+    return TranslateTextBlockUseCase(fn);
+  }
+
   group('TranslateTextBlockUseCase.cachedTranslation priority', () {
+    final useCase = useCaseWith(
+        (_) async => const TranslationResult(status: TranslationStatus.idle));
+
     test('prefers aiTranslatedText over translatedText', () {
       expect(
         useCase.cachedTranslation(block(
@@ -36,11 +37,57 @@ void main() {
     });
 
     test('returns translatedText when no aiTranslatedText', () {
-      expect(useCase.cachedTranslation(block(translatedText: '人工翻译')), '人工翻译');
+      expect(
+        useCase.cachedTranslation(block(translatedText: '人工翻译')),
+        '人工翻译',
+      );
     });
 
     test('returns null when no cache', () {
       expect(useCase.cachedTranslation(block()), isNull);
+    });
+  });
+
+  group('TranslateTextBlockUseCase.translate', () {
+    test('returns translated with updated block on done', () async {
+      final useCase = useCaseWith((_) async => const TranslationResult(
+            status: TranslationStatus.done,
+            translatedText: '你好',
+          ));
+
+      final result = await useCase.translate(block: block(), blockIndex: 2);
+
+      expect(result.phase, TranslateTextBlockPhase.translated);
+      expect(result.translatedText, '你好');
+      expect(result.status, TranslationStatus.done);
+      expect(result.shouldPersist, isTrue);
+      expect(result.updatedBlock?.aiTranslatedText, '你好');
+    });
+
+    test('returns failed with null text on non-done status', () async {
+      final useCase = useCaseWith((_) async => const TranslationResult(
+            status: TranslationStatus.downloadingModel,
+          ));
+
+      final result = await useCase.translate(block: block(), blockIndex: 0);
+
+      expect(result.phase, TranslateTextBlockPhase.failed);
+      expect(result.translatedText, isNull);
+      expect(result.status, TranslationStatus.downloadingModel);
+      expect(result.shouldPersist, isFalse);
+      expect(result.updatedBlock, isNull);
+    });
+
+    test('returns failed when status done but text is null', () async {
+      final useCase = useCaseWith(
+          (_) async => const TranslationResult(status: TranslationStatus.done));
+
+      final result = await useCase.translate(block: block(), blockIndex: 0);
+
+      expect(result.phase, TranslateTextBlockPhase.failed);
+      expect(result.translatedText, isNull);
+      expect(result.shouldPersist, isFalse);
+      expect(result.updatedBlock, isNull);
     });
   });
 }

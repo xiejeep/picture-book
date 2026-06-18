@@ -1,6 +1,8 @@
 import '../../data/models/text_block_model.dart';
 import '../../data/services/translation_service.dart';
 
+typedef TranslateWithStatusFn = Future<TranslationResult> Function(String text);
+
 enum TranslateTextBlockPhase {
   translated,
   failed,
@@ -9,7 +11,7 @@ enum TranslateTextBlockPhase {
 class TranslateTextBlockResult {
   final TranslateTextBlockPhase phase;
   final int blockIndex;
-  final String translatedText;
+  final String? translatedText;
   final TranslationStatus status;
   final TextBlockModel? updatedBlock;
 
@@ -25,9 +27,9 @@ class TranslateTextBlockResult {
 }
 
 class TranslateTextBlockUseCase {
-  TranslateTextBlockUseCase(this._translationService);
+  TranslateTextBlockUseCase(this._translateWithStatus);
 
-  final TranslationService _translationService;
+  final TranslateWithStatusFn _translateWithStatus;
 
   String? cachedTranslation(TextBlockModel block) {
     return block.aiTranslatedText ?? block.translatedText;
@@ -37,14 +39,14 @@ class TranslateTextBlockUseCase {
     required TextBlockModel block,
     required int blockIndex,
   }) async {
-    final result = await _translationService.translateWithStatus(block.text);
+    final result = await _translateWithStatus(block.text);
 
     if (result.status == TranslationStatus.done &&
         result.translatedText != null) {
       return TranslateTextBlockResult(
         phase: TranslateTextBlockPhase.translated,
         blockIndex: blockIndex,
-        translatedText: result.translatedText!,
+        translatedText: result.translatedText,
         status: result.status,
         updatedBlock: block.copyWith(aiTranslatedText: result.translatedText),
       );
@@ -53,7 +55,7 @@ class TranslateTextBlockUseCase {
     return TranslateTextBlockResult(
       phase: TranslateTextBlockPhase.failed,
       blockIndex: blockIndex,
-      translatedText: result.translatedText ?? '',
+      translatedText: result.translatedText,
       status: result.status,
     );
   }
