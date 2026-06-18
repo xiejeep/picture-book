@@ -3,22 +3,26 @@ import 'package:book_app/data/services/translation_service.dart';
 import 'package:book_app/presentation/features/reader/models/reader_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ReaderNotifier extends Notifier<ReaderState> {
+class ReaderNotifier extends AutoDisposeNotifier<ReaderState> {
+  ReaderNotifier(this._initialBook);
+
+  final BookModel? _initialBook;
+
   @override
   ReaderState build() {
-    return ReaderState(
-      book: BookModel(
-        id: '',
-        title: '',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        pages: [],
-      ),
-    );
-  }
-
-  void initialize(BookModel book) {
-    state = ReaderState(book: book, currentIndex: book.currentPageIndex);
+    final book = _initialBook;
+    if (book == null) {
+      return ReaderState(
+        book: BookModel(
+          id: '',
+          title: '',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+          pages: [],
+        ),
+      );
+    }
+    return ReaderState(book: book, currentIndex: book.currentPageIndex);
   }
 
   void updateBook(BookModel book) {
@@ -109,6 +113,7 @@ class ReaderNotifier extends Notifier<ReaderState> {
   }
 }
 
-final readerProvider = NotifierProvider<ReaderNotifier, ReaderState>(() {
-  return ReaderNotifier();
+final readerProvider =
+    AutoDisposeNotifierProvider<ReaderNotifier, ReaderState>(() {
+  return ReaderNotifier(null);
 });

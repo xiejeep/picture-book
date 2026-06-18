@@ -13,6 +13,7 @@ import '../../presentation/pages/supertonic_model_page.dart';
 import '../../presentation/pages/help/help_center_page.dart';
 import '../../presentation/pages/help/help_topic_page.dart';
 import '../../presentation/pages/about_page.dart';
+import '../../presentation/features/reader/view_models/reader_notifier.dart';
 import '../../presentation/pages/appearance_settings_page.dart';
 import '../../data/models/book_model.dart';
 import '../../data/services/storage_service.dart';
@@ -117,15 +118,18 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             return _buildErrorPage(context, state);
           }
 
-          final autoPlayPageId =
-              state.uri.queryParameters['autoPlayPageId'];
-          final autoPlayBlockId =
-              state.uri.queryParameters['autoPlayBlockId'];
+          final autoPlayPageId = state.uri.queryParameters['autoPlayPageId'];
+          final autoPlayBlockId = state.uri.queryParameters['autoPlayBlockId'];
 
-          return BookReaderPage(
-            book: book,
-            autoPlayPageId: autoPlayPageId,
-            autoPlayBlockId: autoPlayBlockId,
+          return ProviderScope(
+            overrides: [
+              readerProvider.overrideWith(() => ReaderNotifier(book)),
+            ],
+            child: BookReaderPage(
+              book: book,
+              autoPlayPageId: autoPlayPageId,
+              autoPlayBlockId: autoPlayBlockId,
+            ),
           );
         },
       ),

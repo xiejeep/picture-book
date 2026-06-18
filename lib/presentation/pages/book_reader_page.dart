@@ -66,7 +66,6 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   void initState() {
     super.initState();
     _book = widget.book;
-    ref.read(readerProvider.notifier).initialize(_book);
     _pageController = PageController(initialPage: _book.currentPageIndex);
 
     _focusAnimationController = AnimationController(
