@@ -249,10 +249,18 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
     } catch (e) {
       if (!mounted) return;
       _loadingSpinnerController.stop();
-      ref.read(readerProvider.notifier).clearPlayback();
+      _clearPlaybackIfCurrent(blockIndex, block.text);
     }
 
     if (mounted) {
+      _clearPlaybackIfCurrent(blockIndex, block.text);
+    }
+  }
+
+  void _clearPlaybackIfCurrent(int blockIndex, String text) {
+    final current = ref.read(readerProvider);
+    if (current.playingBlockIndex == blockIndex &&
+        current.playingText == text) {
       ref.read(readerProvider.notifier).clearPlayback();
     }
   }
