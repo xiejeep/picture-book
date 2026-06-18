@@ -26,6 +26,7 @@ import 'package:book_app/presentation/features/reader/widgets/reader_focus_borde
 import 'package:book_app/presentation/features/reader/widgets/reader_nfc_bind_dialog.dart';
 import 'package:book_app/presentation/features/reader/widgets/reader_reading_bar.dart';
 import 'package:book_app/presentation/features/reader/widgets/reader_text_edit_sheet.dart';
+import 'package:book_app/presentation/features/reader/widgets/reader_voice_settings_dialog.dart';
 import 'package:book_app/presentation/widgets/page_indicator.dart';
 import 'package:book_app/presentation/widgets/reading_text_block_painter.dart';
 import 'package:flutter/material.dart';
@@ -781,221 +782,33 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   }
 
   void _showVoiceSettingsDialog() {
-    final dialogEngine = _ttsEngine;
-    double dialogRate = (_currentSpeechRate).clamp(
-      dialogEngine == 'supertonic'
-          ? AppConstants.supertonicMinSpeed
-          : AppConstants.systemTtsMinSpeed,
-      dialogEngine == 'supertonic'
-          ? AppConstants.supertonicMaxSpeed
-          : AppConstants.systemTtsMaxSpeed,
-    );
-
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppTheme.surfaceOf(context),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryOf(context)
-                              .withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(
-                          Icons.record_voice_over_rounded,
-                          color: AppTheme.primaryColor,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        '语音设置',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.onSurfaceOf(context),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.cardOf(context),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: _ttsEngine == 'supertonic'
-                                ? AppTheme.accentOf(context)
-                                    .withValues(alpha: 0.2)
-                                : AppTheme.primaryOf(context)
-                                    .withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            _ttsEngine == 'supertonic' ? 'Supertonic' : '系统TTS',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: dialogEngine == 'supertonic'
-                                  ? AppTheme.accentOf(context)
-                                  : AppTheme.primaryOf(context),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '语速',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppTheme.onSurfaceOf(context)
-                                .withValues(alpha: 0.6),
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          '${(dialogRate * 100).toInt()}%',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.primaryOf(context),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Slider(
-                    value: dialogRate,
-                    min: _ttsEngine == 'supertonic'
-                        ? AppConstants.supertonicMinSpeed
-                        : AppConstants.systemTtsMinSpeed,
-                    max: _ttsEngine == 'supertonic'
-                        ? AppConstants.supertonicMaxSpeed
-                        : AppConstants.systemTtsMaxSpeed,
-                    divisions: _ttsEngine == 'supertonic'
-                        ? AppConstants.supertonicSpeedDivisions
-                        : AppConstants.systemTtsSpeedDivisions,
-                    activeColor: AppTheme.primaryOf(context),
-                    onChanged: (value) {
-                      setDialogState(() => dialogRate = value);
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '慢速',
-                        style: TextStyle(
-                            color: AppTheme.onSurfaceOf(context)
-                                .withValues(alpha: 0.6),
-                            fontSize: 12),
-                      ),
-                      Text(
-                        '快速',
-                        style: TextStyle(
-                            color: AppTheme.onSurfaceOf(context)
-                                .withValues(alpha: 0.6),
-                            fontSize: 12),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            context.push('/settings');
-                          },
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            backgroundColor: AppTheme.primaryOf(context)
-                                .withValues(alpha: 0.1),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: Text(
-                            '更多设置',
-                            style: TextStyle(
-                                color: AppTheme.onSurfaceOf(context)
-                                    .withValues(alpha: 0.6)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            final currentSettings = ref
-                                .read(storageServiceProvider)
-                                .getAiSettings();
-                            final settings = (currentSettings ??
-                                    AiSettingsModel(
-                                      selectedModel: AppConstants.defaultModel,
-                                    ))
-                                .copyWith(
-                              speechRate: dialogRate,
-                            );
-                            await ref
-                                .read(storageServiceProvider)
-                                .saveAiSettings(settings);
-
-                            setState(() {
-                              _currentSpeechRate = dialogRate;
-                            });
-                            if (context.mounted) Navigator.pop(context);
-
-                            ToastUtil.success('语速已调整');
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryOf(context)
-                                .withValues(alpha: 0.85),
-                            foregroundColor:
-                                Theme.of(context).colorScheme.onPrimary,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Text('确定'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
+      builder: (context) => ReaderVoiceSettingsDialog(
+        engine: _ttsEngine,
+        speechRate: _currentSpeechRate,
+        onMoreSettings: () => context.push('/settings'),
+        onSave: _saveSpeechRate,
       ),
     );
+  }
+
+  Future<void> _saveSpeechRate(double speechRate) async {
+    final currentSettings = ref.read(storageServiceProvider).getAiSettings();
+    final settings = (currentSettings ??
+            AiSettingsModel(
+              selectedModel: AppConstants.defaultModel,
+            ))
+        .copyWith(
+      speechRate: speechRate,
+    );
+    await ref.read(storageServiceProvider).saveAiSettings(settings);
+
+    if (!mounted) return;
+    setState(() {
+      _currentSpeechRate = speechRate;
+    });
+    ToastUtil.success('语速已调整');
   }
 
   @override
