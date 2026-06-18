@@ -24,9 +24,9 @@ import 'package:book_app/presentation/features/reader/widgets/reader_block_actio
 import 'package:book_app/presentation/features/reader/widgets/reader_empty_state.dart';
 import 'package:book_app/presentation/features/reader/widgets/reader_focus_border.dart';
 import 'package:book_app/presentation/features/reader/widgets/reader_reading_bar.dart';
+import 'package:book_app/presentation/features/reader/widgets/reader_text_edit_sheet.dart';
 import 'package:book_app/presentation/widgets/page_indicator.dart';
 import 'package:book_app/presentation/widgets/reading_text_block_painter.dart';
-import 'package:book_app/presentation/widgets/semantics_icon_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -621,109 +621,30 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   }
 
   Future<void> _editBlockText(TextBlockModel block, int index) async {
-    final controller = TextEditingController(text: block.text);
-    final onSurfaceColor = AppTheme.onSurfaceOf(context);
-    bool isAiLoading = false;
-
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => Container(
-          color: AppTheme.surfaceOf(context),
-          child: Padding(
-            padding: EdgeInsets.only(
-              left: 20,
-              right: 20,
-              top: 20,
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('编辑文字',
-                        style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: onSurfaceColor)),
-                    SemanticsIconButton(
-                        icon: Icons.close,
-                        label: '关闭',
-                        hint: '关闭编辑窗口',
-                        color: onSurfaceColor,
-                        onPressed: () => Navigator.pop(ctx)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: controller,
-                  maxLines: 4,
-                  autofocus: true,
-                  decoration: const InputDecoration(
-                      labelText: '最终文本', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: isAiLoading
-                          ? null
-                          : () => _aiEnhanceAndFill(
-                              ctx, setDialogState, controller, index,
-                              setLoading: () => isAiLoading = true,
-                              clearLoading: () => isAiLoading = false),
-                      icon: isAiLoading
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.auto_fix_high, size: 18),
-                      label: const Text('AI 优化'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            AppTheme.primaryOf(context).withValues(alpha: 0.85),
-                        foregroundColor:
-                            Theme.of(context).colorScheme.onPrimary,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 10),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                    const Spacer(),
-                    TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: Text('取消',
-                            style: TextStyle(
-                                color: onSurfaceColor.withValues(alpha: 0.6)))),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      onPressed: () {
-                        if (controller.text != block.text) {
-                          final updatedBlock = block.copyWith(
-                            text: controller.text,
-                            clearTranslatedText: true,
-                            clearAiTranslatedText: true,
-                          );
-                          _updateBlockInPage(index, updatedBlock);
-                        }
-                        Navigator.pop(ctx);
-                      },
-                      child: const Text('保存'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
+      builder: (ctx) => ReaderTextEditSheet(
+        title: '编辑文字',
+        fieldLabel: '最终文本',
+        initialText: block.text,
+        aiButtonLabel: 'AI 优化',
+        aiButtonIcon: Icons.auto_fix_high,
+        aiButtonColor: AppTheme.primaryOf(ctx).withValues(alpha: 0.85),
+        onAiFill: () => _requestAiEnhancedText(index),
+        onSave: (text) {
+          if (text != block.text) {
+            final updatedBlock = block.copyWith(
+              text: text,
+              clearTranslatedText: true,
+              clearAiTranslatedText: true,
+            );
+            _updateBlockInPage(index, updatedBlock);
+          }
+        },
       ),
     );
   }
@@ -731,9 +652,6 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
   Future<void> _editBlockTranslation(TextBlockModel block, int index) async {
     final currentTranslation =
         block.aiTranslatedText ?? block.translatedText ?? '';
-    final controller = TextEditingController(text: currentTranslation);
-    final onSurfaceColor = AppTheme.onSurfaceOf(context);
-    bool isAiLoading = false;
 
     await showModalBottomSheet(
       context: context,
@@ -741,128 +659,42 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => Container(
-          color: AppTheme.surfaceOf(context),
-          child: Padding(
-            padding: EdgeInsets.only(
-              left: 20,
-              right: 20,
-              top: 20,
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('编辑翻译',
-                        style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: onSurfaceColor)),
-                    SemanticsIconButton(
-                        icon: Icons.close,
-                        label: '关闭',
-                        hint: '关闭编辑窗口',
-                        color: onSurfaceColor,
-                        onPressed: () => Navigator.pop(ctx)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: controller,
-                  maxLines: 4,
-                  autofocus: true,
-                  decoration: const InputDecoration(
-                      labelText: '翻译文本', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: isAiLoading
-                          ? null
-                          : () => _aiTranslateAndFill(
-                              ctx, setDialogState, controller, index,
-                              setLoading: () => isAiLoading = true,
-                              clearLoading: () => isAiLoading = false),
-                      icon: isAiLoading
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.g_translate, size: 18),
-                      label: const Text('AI 翻译'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            Colors.deepPurple.withValues(alpha: 0.85),
-                        foregroundColor:
-                            Theme.of(context).colorScheme.onPrimary,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 10),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                    const Spacer(),
-                    TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: Text('取消',
-                            style: TextStyle(
-                                color: onSurfaceColor.withValues(alpha: 0.6)))),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      onPressed: () {
-                        if (controller.text != currentTranslation) {
-                          final updatedBlock =
-                              block.copyWith(aiTranslatedText: controller.text);
-                          _updateBlockInPage(index, updatedBlock);
-                          setState(() {
-                            _readingState = _readingState.copyWith(
-                              translatedText: controller.text,
-                              translatedBlockIndex: index,
-                            );
-                          });
-                        }
-                        Navigator.pop(ctx);
-                      },
-                      child: const Text('保存'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
+      builder: (ctx) => ReaderTextEditSheet(
+        title: '编辑翻译',
+        fieldLabel: '翻译文本',
+        initialText: currentTranslation,
+        aiButtonLabel: 'AI 翻译',
+        aiButtonIcon: Icons.g_translate,
+        aiButtonColor: Colors.deepPurple.withValues(alpha: 0.85),
+        onAiFill: () => _requestAiTranslatedText(index),
+        onSave: (text) {
+          if (text != currentTranslation) {
+            final updatedBlock = block.copyWith(aiTranslatedText: text);
+            _updateBlockInPage(index, updatedBlock);
+            setState(() {
+              _readingState = _readingState.copyWith(
+                translatedText: text,
+                translatedBlockIndex: index,
+              );
+            });
+          }
+        },
       ),
     );
   }
 
   final _textBlockAiUseCase = TextBlockAiUseCase();
 
-  Future<void> _aiEnhanceAndFill(
-    BuildContext ctx,
-    StateSetter setDialogState,
-    TextEditingController controller,
-    int index, {
-    required VoidCallback setLoading,
-    required VoidCallback clearLoading,
-  }) async {
-    if (!ctx.mounted) return;
+  Future<String?> _requestAiEnhancedText(int index) async {
     final hasKey = await _textBlockAiUseCase.checkApiKey();
     if (!hasKey) {
-      if (ctx.mounted) {
-        ScaffoldMessenger.of(ctx).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('请先在设置中配置 API Key')),
         );
       }
-      return;
+      return null;
     }
-
-    setDialogState(setLoading);
 
     final result = await _textBlockAiUseCase.enhanceTextBlock(
       bookId: _book.id,
@@ -870,44 +702,34 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
       blockIndex: index,
     );
 
-    if (!ctx.mounted) return;
-    setDialogState(clearLoading);
+    if (!mounted) return null;
 
     if (result.text != null) {
-      controller.text = result.text!;
       ToastUtil.success('AI 优化完成');
-    } else {
-      final msg = result.message ?? 'AI 优化完成，无需修改';
-      if (result.isError) {
-        ToastUtil.error(msg);
-      } else if (result.changed) {
-        ToastUtil.success(msg);
-      } else {
-        ToastUtil.info(msg);
-      }
+      return result.text;
     }
+
+    final msg = result.message ?? 'AI 优化完成，无需修改';
+    if (result.isError) {
+      ToastUtil.error(msg);
+    } else if (result.changed) {
+      ToastUtil.success(msg);
+    } else {
+      ToastUtil.info(msg);
+    }
+    return null;
   }
 
-  Future<void> _aiTranslateAndFill(
-    BuildContext ctx,
-    StateSetter setDialogState,
-    TextEditingController controller,
-    int index, {
-    required VoidCallback setLoading,
-    required VoidCallback clearLoading,
-  }) async {
-    if (!ctx.mounted) return;
+  Future<String?> _requestAiTranslatedText(int index) async {
     final hasKey = await _textBlockAiUseCase.checkApiKey();
     if (!hasKey) {
-      if (ctx.mounted) {
-        ScaffoldMessenger.of(ctx).showSnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('请先在设置中配置 API Key')),
         );
       }
-      return;
+      return null;
     }
-
-    setDialogState(setLoading);
 
     final result = await _textBlockAiUseCase.translateTextBlock(
       bookId: _book.id,
@@ -915,17 +737,19 @@ class _BookReaderPageState extends ConsumerState<BookReaderPage>
       blockIndex: index,
     );
 
-    if (!ctx.mounted) return;
-    setDialogState(clearLoading);
+    if (!mounted) return null;
 
     if (result.text != null) {
-      controller.text = result.text!;
       ToastUtil.success('AI 翻译完成');
-    } else if (result.isError) {
+      return result.text;
+    }
+
+    if (result.isError) {
       ToastUtil.error(result.message ?? 'AI 翻译失败');
     } else {
       ToastUtil.info(result.message ?? 'AI 翻译无结果');
     }
+    return null;
   }
 
   void _showNfcBindDialog(TextBlockModel block, int blockIndex) async {
